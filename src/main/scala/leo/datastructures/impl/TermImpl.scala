@@ -75,7 +75,7 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   // Substitutions
 
   // Other
-  final lazy val symbols: Multiset[Signature.Key] = Multiset.fromMap(symbolMap.mapValues(_._1))
+  final lazy val symbols: Multiset[Signature.Key] = Multiset.fromMap(symbolMap.view.mapValues(_._1).toMap)
   final lazy val vars: Multiset[Int] = vars0(0)
   protected[impl] def vars0(depth: Int): Multiset[Int]
   // FV Indexing utility
@@ -163,14 +163,14 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
     hd match {
       case BoundIndex(_,_) => Map()
-      case Atom(key,_)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.mapValues {case (c,d) => (c,d+1)})
-      case HeadClosure(Atom(key,_), _) => fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.mapValues {case (c,d) => (c,d+1)})
+      case Atom(key,_)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
+      case HeadClosure(Atom(key,_), _) => fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
       case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
         case BoundFront(_) => Map()
-        case TermFront(t) => fuseSymbolMap(t.asInstanceOf[TermImpl].symbolMap, args.symbolMap.mapValues {case (c,d) => (c,d+1)})
+        case TermFront(t) => fuseSymbolMap(t.asInstanceOf[TermImpl].symbolMap, args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
         case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
       }
-      case HeadClosure(HeadClosure(h, s2), s1) => fuseSymbolMap(HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbolMap, args.symbolMap.mapValues {case (c,d) => (c,d+1)})
+      case HeadClosure(HeadClosure(h, s2), s1) => fuseSymbolMap(HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbolMap, args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
       case _ => Map()
     }
   }
@@ -347,11 +347,11 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   lazy val tyFV: Set[Int] = body.tyFV union args.tyFV
   def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth) sum args.vars0(depth)
 
-  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.mapValues{case (c,d) => (c,d+1)})
+  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.view.mapValues{case (c,d) => (c,d+1)}.toMap)
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
   lazy val size = 1 + body.size + args.size
-  lazy val feasibleOccurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurrences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
+  lazy val feasibleOccurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurrences.view.mapValues(_.map(_.prependHeadPos)).toMap), args.feasibleOccurences)
   // Other operations
   def etaExpand0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
   def etaContract0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
@@ -426,7 +426,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
   lazy val tyFV: Set[Int] = typ.typeVars.map(BoundType.unapply(_).get) union body.tyFV
   def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth+1)
-  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
+  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
   lazy val size = 1 + body.size
@@ -537,7 +537,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   lazy val fv: Set[(Int, Type)] = body.fv
   lazy val tyFV: Set[Int] = body.tyFV.map(_ - 1).filter(_ > 0)
   def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth)
-  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
+  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
 
@@ -850,7 +850,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
   lazy val size = 1+ hd.size + tail.size
-  def feasibleOccurrences0(pos: Int) = fuseMaps(hd.feasibleOccurrences.mapValues(_.map(_.preprendArgPos(pos))), tail.feasibleOccurrences0(pos+1))
+  def feasibleOccurrences0(pos: Int) = fuseMaps(hd.feasibleOccurrences.view.mapValues(_.map(_.preprendArgPos(pos))).toMap, tail.feasibleOccurrences0(pos+1))
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = App(TermClos(hd, subst), tail.merge(subst, sp, spSubst))

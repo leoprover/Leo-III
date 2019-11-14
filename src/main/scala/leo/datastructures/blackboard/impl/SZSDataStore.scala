@@ -23,7 +23,7 @@ object SZSDataStore extends DataStore {
    *
    * @param s - The status to set
    */
-  def forceStatus(s: StatusSZS): Unit = synchronized(szs = s)
+  def forceStatus(s: StatusSZS): Unit = synchronized{szs = s}
 
 
   override def isEmpty: Boolean = szs == null

@@ -5,7 +5,7 @@ val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's p
 
 lazy val commonSettings = Seq(
     version := "1.3",
-    scalaVersion := "2.12.8",
+    scalaVersion := "2.13.1",
     organization := "org.leo",
     test in assembly := {},
     logLevel := Level.Warn,
@@ -19,7 +19,7 @@ lazy val leo = (project in file(".")).
   settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.0.5" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.0.8" % "test"),
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions += "-target:jvm-1.8",
     mainClass in (Compile, run) := Some("leo.Main"),

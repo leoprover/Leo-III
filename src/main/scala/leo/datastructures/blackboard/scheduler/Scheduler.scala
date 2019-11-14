@@ -163,7 +163,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = {s.synchronized(pauseFlag = true)
+  def pause() : Unit = {s.synchronized{pauseFlag = true}
 //    println("Scheduler paused.")
   }
 

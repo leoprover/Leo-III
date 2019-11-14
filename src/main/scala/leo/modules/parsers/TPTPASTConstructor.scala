@@ -2,14 +2,15 @@ package leo.modules.parsers
 
 import antlr.tptpParser
 import leo.datastructures.tptp.Commons._
-import scala.collection.JavaConverters._
+
+import scala.jdk.CollectionConverters._
 /**
   * Created by lex on 14.12.16.
   */
 object TPTPASTConstructor {
   final def tptpFile(ctx: tptpParser.Tptp_fileContext): TPTPInput = {
-    val input = ctx.tptp_input()
-    TPTPInput(input.asScala.map(tptpInput))
+    val input = ctx.tptp_input().asScala.toSeq
+    TPTPInput(input.map(tptpInput))
   }
   final def tptpInput(ctx: tptpParser.Tptp_inputContext): Either[AnnotatedFormula, Include] = {
     if (ctx.annotated_formula() != null) {
@@ -19,7 +20,7 @@ object TPTPASTConstructor {
   final def include(ctx: tptpParser.IncludeContext): Include = {
     val filename = ctx.file_name().Single_quoted().getText.tail.init
     if (ctx.formula_selection() != null) {
-      val formulaSelection = ctx.formula_selection().name().asScala.map(_.getText)
+      val formulaSelection = ctx.formula_selection().name().asScala.toSeq.map(_.getText)
       (filename, formulaSelection)
     } else (filename, Seq())
   }
@@ -69,7 +70,7 @@ object TPTPASTConstructor {
     else {
       lazy val source = generalTerm(ctx.source().general_term())
       if (ctx.optional_info() != null) {
-        val optional_info = ctx.optional_info().general_list().general_term().asScala.map(generalTerm)
+        val optional_info = ctx.optional_info().general_list().general_term().asScala.toSeq.map(generalTerm)
         Some((source, optional_info))
       } else Some((source, Seq()))
     }
@@ -82,7 +83,7 @@ object TPTPASTConstructor {
         GeneralTerm(Left(data) +: convertedGT.term)
       } else GeneralTerm(Seq(Left(data)))
     } else if (ctx.general_list() != null) {
-      GeneralTerm(Seq(Right(ctx.general_list().general_term().asScala.map(generalTerm))))
+      GeneralTerm(Seq(Right(ctx.general_list().general_term().asScala.toSeq.map(generalTerm))))
     } else throw new IllegalArgumentException
   }
   final def atomicWord(ctx: tptpParser.Atomic_wordContext): String = {
@@ -103,7 +104,7 @@ object TPTPASTConstructor {
       GFormulaData(formulaData(ctx.formula_data()))
     } else if (ctx.general_function() != null) {
       val fun = atomicWord(ctx.general_function().atomic_word())
-      val args = ctx.general_function().general_term().asScala.map(generalTerm)
+      val args = ctx.general_function().general_term().asScala.toSeq.map(generalTerm)
       GFunc(fun, args)
     } else throw new IllegalArgumentException
   }
@@ -146,8 +147,8 @@ object TPTPASTConstructor {
   final def fofSequent(ctx: tptpParser.Fof_sequentContext): fof.Sequent = {
     if (ctx.fof_sequent() != null) fofSequent(ctx.fof_sequent())
     else if (ctx.fof_formula_tuple() != null) {
-      val left = ctx.fof_formula_tuple(0).fof_formula_tuple_list().fof_logic_formula().asScala
-      val right = ctx.fof_formula_tuple(1).fof_formula_tuple_list().fof_logic_formula().asScala
+      val left = ctx.fof_formula_tuple(0).fof_formula_tuple_list().fof_logic_formula().asScala.toSeq
+      val right = ctx.fof_formula_tuple(1).fof_formula_tuple_list().fof_logic_formula().asScala.toSeq
       fof.Sequent(left.map(fofLogicFormula), right.map(fofLogicFormula))
     } else throw new IllegalArgumentException
   }
@@ -212,7 +213,7 @@ object TPTPASTConstructor {
     } else if (ctx.fof_quantified_formula() != null) {
       val matrix = fofUnitary(ctx.fof_quantified_formula().fof_unitary_formula())
       val quantifier = fofQuantifier(ctx.fof_quantified_formula().fof_quantifier())
-      val varlist = ctx.fof_quantified_formula().fof_variable_list().variable().asScala.map(fofVariable)
+      val varlist = ctx.fof_quantified_formula().fof_variable_list().variable().asScala.toSeq.map(fofVariable)
       fof.Quantified(quantifier, varlist, matrix)
     } else if (ctx.fof_unary_formula() != null) {
       val unary = ctx.fof_unary_formula()
@@ -252,7 +253,7 @@ object TPTPASTConstructor {
         val func = definedPlain.defined_functor().getText
         if (definedPlain.fof_arguments() == null) fof.Atomic(DefinedPlain(DefinedFunc(func, Seq())))
         else {
-          val args = definedPlain.fof_arguments().fof_term().asScala.map(fofTerm)
+          val args = definedPlain.fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
           fof.Atomic(DefinedPlain(DefinedFunc(func, args)))
         }
       } else throw new IllegalArgumentException
@@ -261,7 +262,7 @@ object TPTPASTConstructor {
       val func = system.fof_system_term().system_functor().getText
       if (system.fof_system_term().fof_arguments() == null) fof.Atomic(SystemPlain(SystemFunc(func, Seq())))
       else {
-        val args = system.fof_system_term().fof_arguments().fof_term().asScala.map(fofTerm)
+        val args = system.fof_system_term().fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
         fof.Atomic(SystemPlain(SystemFunc(func, args)))
       }
     } else throw new IllegalArgumentException
@@ -270,7 +271,7 @@ object TPTPASTConstructor {
     val func = atomicWord(ctx.functor().atomic_word())
     if (ctx.fof_arguments() == null) Func(func, Seq())
     else {
-      val args = ctx.fof_arguments().fof_term().asScala.map(fofTerm)
+      val args = ctx.fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
       Func(func, args)
     }
   }
@@ -302,7 +303,7 @@ object TPTPASTConstructor {
         val plain = fun.fof_plain_term()
         val f = atomicWord(plain.functor().atomic_word())
         if (plain.fof_arguments() != null) {
-          val args = plain.fof_arguments().fof_term().asScala.map(fofTerm)
+          val args = plain.fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
           Func(f, args)
         } else {
           Func(f, Seq())
@@ -311,7 +312,7 @@ object TPTPASTConstructor {
         val defined = fun.fof_defined_term()
         val f = defined.defined_functor().atomic_defined_word().getText
         if (defined.fof_arguments() != null) {
-          val args = defined.fof_arguments().fof_term().asScala.map(fofTerm)
+          val args = defined.fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
           DefinedFunc(f, args)
         } else
           DefinedFunc(f, Seq())
@@ -319,7 +320,7 @@ object TPTPASTConstructor {
         val system = fun.fof_system_term()
         val f = system.system_functor().getText
         if (system.fof_arguments() != null) {
-          val args = system.fof_arguments().fof_term().asScala.map(fofTerm)
+          val args = system.fof_arguments().fof_term().asScala.toSeq.map(fofTerm)
           SystemFunc(f, args)
         } else {
           SystemFunc(f, Seq())
@@ -339,8 +340,8 @@ object TPTPASTConstructor {
   final def thfSequent(ctx: tptpParser.Thf_sequentContext): thf.Sequent = {
     if (ctx.thf_sequent() != null) thfSequent(ctx.thf_sequent())
     else if (ctx.thf_tuple() != null) {
-      val left = ctx.thf_tuple(0).thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
-      val right = ctx.thf_tuple(1).thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+      val left = ctx.thf_tuple(0).thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula)
+      val right = ctx.thf_tuple(1).thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula)
       thf.Sequent(left, right)
     } else throw new IllegalArgumentException
   }
@@ -453,7 +454,7 @@ object TPTPASTConstructor {
 
   final def thfTuple(ctx: tptpParser.Thf_tupleContext): thf.Tuple = {
     if (ctx.thf_formula_list() != null)
-      thf.Tuple(ctx.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula))
+      thf.Tuple(ctx.thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula))
     else thf.Tuple(Seq())
   }
   final def thfQuantifier(ctx: tptpParser.Thf_quantifierContext): thf.Quantifier = {
@@ -498,7 +499,7 @@ object TPTPASTConstructor {
       val quantification = ctx.thf_quantified_formula().thf_quantification()
       val matrix = thfUnitary(ctx.thf_quantified_formula().thf_unitary_formula())
       thf.Quantified(thfQuantifier(quantification.thf_quantifier()),
-        quantification.thf_variable().asScala.map(thfVariable),
+        quantification.thf_variable().asScala.toSeq.map(thfVariable),
         matrix)
     } else if (ctx.thf_tuple() != null) {
       thfTuple(ctx.thf_tuple())
@@ -513,7 +514,7 @@ object TPTPASTConstructor {
     // It may already be a tuple of formulas
     if (ctx.thf_tuple() != null) {
       // process each of it
-      val transformed = ctx.thf_tuple().thf_formula_list().thf_logic_formula().asScala.map(transformUnitaryLetBinding0)
+      val transformed = ctx.thf_tuple().thf_formula_list().thf_logic_formula().asScala.toSeq.map(transformUnitaryLetBinding0)
       thf.Tuple(transformed)
     } else if (ctx.thf_quantified_formula() != null) {
       thf.Tuple(Seq(transformUnitaryLetBinding1(ctx.thf_quantified_formula())))
@@ -548,7 +549,7 @@ object TPTPASTConstructor {
             if (pair.thf_pair_connective().Infix_equality() != null || (pair.thf_pair_connective().binary_connective() != null && pair.thf_pair_connective().binary_connective().Iff() != null)) {
               val right = thfUnitary(pair.thf_unitary_formula(1))
               val head = headSymbolForLetBinding(pair.thf_unitary_formula(0))
-              thf.Binary(head, thf.Eq, thf.Quantified(thf.^,ctx.thf_quantification().thf_variable().asScala.map(thfVariable),right))
+              thf.Binary(head, thf.Eq, thf.Quantified(thf.^,ctx.thf_quantification().thf_variable().asScala.toSeq.map(thfVariable),right))
             } else throw new IllegalArgumentException
           } else throw new IllegalArgumentException
         } else throw new IllegalArgumentException
@@ -592,7 +593,7 @@ object TPTPASTConstructor {
         if (thfFun.thf_plain_term().thf_arguments() == null) thf.Function(fun, Seq())
         else {
           val args = thfFun.thf_plain_term().thf_arguments()
-          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula)
           thf.Function(fun, convertedArgs)
         }
       } else if (thfFun.thf_defined_term() != null) {
@@ -600,7 +601,7 @@ object TPTPASTConstructor {
         if (fun.thf_arguments() == null) thf.Function(fun.defined_functor().getText, Seq())
         else {
           val args = fun.thf_arguments()
-          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula)
           thf.Function(fun.defined_functor().getText, convertedArgs)
         }
       } else if (thfFun.thf_system_term() != null) {
@@ -608,7 +609,7 @@ object TPTPASTConstructor {
         if (thfFun.thf_system_term().thf_arguments() == null) thf.Function(fun, Seq())
         else {
           val args = thfFun.thf_system_term().thf_arguments()
-          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.toSeq.map(thfLogicFormula)
           thf.Function(fun, convertedArgs)
         }
       } else throw new IllegalArgumentException
@@ -762,7 +763,7 @@ object TPTPASTConstructor {
       val quantifier = if (quant.fof_quantifier().Forall() != null) tff.!
       else if (quant.fof_quantifier().Exists() != null) tff.?
       else throw new IllegalArgumentException
-      val vars = quant.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      val vars = quant.tff_variable_list().tff_variable().asScala.toSeq.map(tffVariable)
       val matrix = tffUnitary(quant.tff_unitary_formula())
       tff.Quantified(quantifier, vars, matrix)
     } else throw new IllegalArgumentException
@@ -783,7 +784,7 @@ object TPTPASTConstructor {
     if (ctx.tff_let_term_defn() != null) {
       Right(Map(tffLetTermBinding(ctx.tff_let_term_defn().tff_let_term_binding()))).asInstanceOf[tff.Formula#LetBinding]
     } else if (ctx.tff_let_term_list() != null) {
-      Right(Map(ctx.tff_let_term_list().tff_let_term_defn().asScala.map(x => tffLetTermBinding(x.tff_let_term_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
+      Right(Map(ctx.tff_let_term_list().tff_let_term_defn().asScala.toSeq.map(x => tffLetTermBinding(x.tff_let_term_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
     } else throw new IllegalArgumentException
   }
   final def tffLetTermBinding(ctx: tptpParser.Tff_let_term_bindingContext): (Func, Term) = {
@@ -799,7 +800,7 @@ object TPTPASTConstructor {
     if (ctx.tff_let_formula_defn() != null) {
       Left(Map(tffLetFormulaBinding(ctx.tff_let_formula_defn().tff_let_formula_binding()))).asInstanceOf[tff.Formula#LetBinding]
     } else if (ctx.tff_let_formula_list() != null) {
-      Left(Map(ctx.tff_let_formula_list().tff_let_formula_defn().asScala.map(x => tffLetFormulaBinding(x.tff_let_formula_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
+      Left(Map(ctx.tff_let_formula_list().tff_let_formula_defn().asScala.toSeq.map(x => tffLetFormulaBinding(x.tff_let_formula_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
     } else throw new IllegalArgumentException
   }
   final def tffLetFormulaBinding(ctx: tptpParser.Tff_let_formula_bindingContext): (Func, tff.LogicFormula) = {
@@ -812,7 +813,7 @@ object TPTPASTConstructor {
   }
   final def tffTupleTerm(ctx: tptpParser.Tff_tuple_termContext): Tuple = {
     if (ctx.fof_arguments() != null) Tuple(Seq())
-    else Tuple(ctx.fof_arguments().fof_term().asScala.map(fofTerm))
+    else Tuple(ctx.fof_arguments().fof_term().asScala.toSeq.map(fofTerm))
   }
   final def tffVariable(ctx: tptpParser.Tff_variableContext): (Variable, Option[tff.AtomicType]) = {
     val varname = ctx.variable().getText
@@ -828,7 +829,7 @@ object TPTPASTConstructor {
       tffMappingType(ctx.tff_mapping_type())
     } else if (ctx.tf1_quantified_type() != null) {
       val quant = ctx.tf1_quantified_type()
-      val vars = quant.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      val vars = quant.tff_variable_list().tff_variable().asScala.toSeq.map(tffVariable)
       val monotype = if (quant.tff_monotype().tff_atomic_type() != null) tffAtomicType(quant.tff_monotype().tff_atomic_type())
       else tffMappingType(quant.tff_monotype().tff_mapping_type())
       tff.QuantifiedType(vars, monotype)
@@ -840,7 +841,7 @@ object TPTPASTConstructor {
     else {
       val fun = if (atomic.defined_type() != null) atomic.defined_type().getText
       else atomicWord(atomic.type_functor().atomic_word())
-      val args = if (atomic.tff_type_arguments() != null) atomic.tff_type_arguments().tff_atomic_type().asScala.map(tffAtomicType)
+      val args = if (atomic.tff_type_arguments() != null) atomic.tff_type_arguments().tff_atomic_type().asScala.toSeq.map(tffAtomicType)
       else Seq()
       tff.AtomicType(fun, args)
     }
@@ -881,10 +882,10 @@ object TPTPASTConstructor {
       val left = ctx.tff_formula_tuple(0)
       val right = ctx.tff_formula_tuple(1)
       val convertedLeft = if (left.tff_formula_tuple_list() == null) Seq() else {
-        left.tff_formula_tuple_list().tff_logic_formula().asScala.map(tffLogicFormula)
+        left.tff_formula_tuple_list().tff_logic_formula().asScala.toSeq.map(tffLogicFormula)
       }
       val convertedRight = if (right.tff_formula_tuple_list() == null) Seq() else {
-        right.tff_formula_tuple_list().tff_logic_formula().asScala.map(tffLogicFormula)
+        right.tff_formula_tuple_list().tff_logic_formula().asScala.toSeq.map(tffLogicFormula)
       }
       tff.Sequent(convertedLeft, convertedRight)
     }
