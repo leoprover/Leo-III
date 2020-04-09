@@ -57,7 +57,18 @@ class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
   protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], prop: Signature.SymbProp): Key = {
     import leo.datastructures.isPropSet
     if (keyMap.contains(identifier)) {
-      throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
+      // If this is just a symbol type declaration, i.e., typ is a Type and defn == None,
+      // then we check if the types are equal to the one already present in the signature.
+      // If yes, this is ok and it is simply ignored. If no, an error is thrown.
+      if (typ.isLeft && defn.isEmpty) {
+        val typ0 = typ.left.get
+        val meta = apply(identifier)
+        if (meta._ty == typ0) {
+          // all good, skip
+        } else throw new IllegalArgumentException("Type declaration of symbol " + identifier + s" is already present in" +
+          s"signature, but the given type (${typ0.pretty(this)}) conflicts with the type " +
+          s"stored in the signature (${meta._ty.pretty(this)}).")
+      } else throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
 
     val key = curConstKey
