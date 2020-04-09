@@ -65,6 +65,7 @@ class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
         val meta = apply(identifier)
         if (meta._ty == typ0) {
           // all good, skip
+          return meta.key
         } else throw new IllegalArgumentException("Type declaration of symbol " + identifier + s" is already present in" +
           s"signature, but the given type (${typ0.pretty(this)}) conflicts with the type " +
           s"stored in the signature (${meta._ty.pretty(this)}).")
