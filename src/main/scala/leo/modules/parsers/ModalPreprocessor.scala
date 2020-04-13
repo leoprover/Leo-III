@@ -51,13 +51,9 @@ object ModalPreprocessor {
       val tptpModalSemanticSpecification = modalSemanticsToTPTPSpecification(tptpModalSystem,
         tptpModalDomain, tptpModalRigidity, tptpModalConsequence)
 
-      val embeddingParam = if (Configuration.isSet(Configuration.PARAM_MODAL_EMBEDDINGTYPE)) {
-        TransformationParameter.valueOf(Configuration.MODAL_EMBEDDINGTYPE.toUpperCase)
-      } else TransformationParameter.SEMANTICAL
-
       logging.Logger.getLogger("default").setLevel(logging.Level.WARNING) // suppress logger of embedding tool
       val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE),
-        null, null, null, tptpModalSemanticSpecification, embeddingParam)
+        null, null, null, tptpModalSemanticSpecification, null)
       if (Configuration.isSet("modal-debug")) {
         println(result)
         System.exit(0)
