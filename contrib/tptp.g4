@@ -507,7 +507,7 @@ tff_untyped_atom: functor | system_functor;
 // <tff_xprod_type>       ::= <tff_unitary_type> <star> <tff_atomic_type> |
 //                            <tff_xprod_type> <star> <tff_atomic_type>
 tff_top_level_type : tff_atomic_type | tff_mapping_type | tf1_quantified_type | '(' tff_top_level_type ')';
-tf1_quantified_type : '!>' '[' tff_variable_list ']' ':' tff_monotype;
+tf1_quantified_type : '!>' '[' tff_variable_list ']' ':' (tff_monotype | tf1_quantified_type);
 tff_monotype: tff_atomic_type | '(' tff_mapping_type ')';
 tff_unitary_type : tff_atomic_type | '(' tff_xprod_type ')';
 tff_atomic_type : defined_type | type_functor ('(' tff_type_arguments ')')? | variable;

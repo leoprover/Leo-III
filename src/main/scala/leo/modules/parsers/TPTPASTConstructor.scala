@@ -821,6 +821,19 @@ object TPTPASTConstructor {
     (varname, ty)
   }
 
+  private final def collectTF1Quants(ctx: tptpParser.Tf1_quantified_typeContext): (Seq[(String, Option[tff.AtomicType])], tff.Type) = {
+    var body = ctx
+    var vars: Seq[(String, Option[tff.AtomicType])] = body.tff_variable_list().tff_variable().asScala.map(tffVariable).toSeq
+    while (body.tf1_quantified_type() != null) {
+      body = body.tf1_quantified_type()
+      val res = body.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      vars = vars ++ res
+    }
+    assert(body.tff_monotype() != null)
+    val bodyType = if (body.tff_monotype().tff_atomic_type() != null) tffAtomicType(body.tff_monotype().tff_atomic_type())
+    else tffMappingType(body.tff_monotype().tff_mapping_type())
+    (vars, bodyType)
+  }
   final def tffTopLevelType(ctx: tptpParser.Tff_top_level_typeContext): tff.Type = {
     if (ctx.tff_top_level_type() != null) tffTopLevelType(ctx.tff_top_level_type())
     else if (ctx.tff_atomic_type() != null) {
@@ -829,9 +842,10 @@ object TPTPASTConstructor {
       tffMappingType(ctx.tff_mapping_type())
     } else if (ctx.tf1_quantified_type() != null) {
       val quant = ctx.tf1_quantified_type()
-      val vars = quant.tff_variable_list().tff_variable().asScala.toSeq.map(tffVariable)
-      val monotype = if (quant.tff_monotype().tff_atomic_type() != null) tffAtomicType(quant.tff_monotype().tff_atomic_type())
-      else tffMappingType(quant.tff_monotype().tff_mapping_type())
+      val (vars, monotype) = collectTF1Quants(quant)
+      //val vars = quant.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      //val monotype = if (quant.tff_monotype().tff_atomic_type() != null) tffAtomicType(quant.tff_monotype().tff_atomic_type())
+      //else tffMappingType(quant.tff_monotype().tff_mapping_type())
       tff.QuantifiedType(vars, monotype)
     } else throw new IllegalArgumentException
   }

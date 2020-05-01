@@ -1,0 +1,19 @@
+Und gu install -L native-imageEE.jar
+Muss man selbst runterladen weil es automatisch nur die ce lädt
+
+
+### Native Image with Profile Optimisation GraalVM EE
+
+In order to create a native Image with Profile-guided optimization of GraalVM EE and Native Image EE,
+please install [GraalVM EE](https://www.graalvm.org/docs/getting-started/) and follow the instructions found there.
+And make shure to install Native Image EE.
+
+    export GRAALVM_HOME=<Path to GraalVM EE home>
+    make native-profile
+    make native-profile-run
+    
+    make native-pgo3 # -o3
+    #or
+    make native-pgo # -o2
+
+Than the native image can be found in the bin folder of LEO-III.
