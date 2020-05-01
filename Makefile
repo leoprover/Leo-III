@@ -35,7 +35,7 @@ clean:
 
 native:
 		@echo Creating native Leo-III image with graalvm
-		native-image -jar bin/leo3.jar \
+		$(GRAALVM_HOME)/bin/native-image -jar bin/leo3.jar \
 		-H:+ReportExceptionStackTraces \
 		-H:Name="leo3-bin" \
 		--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
