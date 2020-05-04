@@ -627,28 +627,33 @@ package inferenceControl {
 
 
     final def factorNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      Out.debug(s"[Factor] On ${cl.id}")
-      implicit val sig: Signature = state.signature
-      var res: Set[AnnotatedClause] = Set.empty
+      if (cl.cl.lits.size < 2) {
+        Out.debug(s"[Factor] On ${cl.id}, skipping (unit or empty literal)")
+        Set.empty
+      } else {
+        Out.debug(s"[Factor] On ${cl.id}")
+        implicit val sig: Signature = state.signature
+        var res: Set[AnnotatedClause] = Set.empty
 
-      val maxLits = cl.cl.maxLits.toSet
-      val lits = cl.cl.lits
-      val litCount = lits.size
-      var curMaxLitIdx = 0
-      while (curMaxLitIdx < litCount) {
-        val lit = lits(curMaxLitIdx)
-        if (maxLits.contains(lit)) {
-          Out.trace(s"maxLit chosen: ${lit.pretty(sig)}")
-          // do the factoring
-          res = res ++ factorWithLit(cl, lits, maxLits, curMaxLitIdx, lit)(state)
-        } else {
-          /* skip literal */
+        val maxLits = cl.cl.maxLits.toSet
+        val lits = cl.cl.lits
+        val litCount = lits.size
+        var curMaxLitIdx = 0
+        while (curMaxLitIdx < litCount) {
+          val lit = lits(curMaxLitIdx)
+          if (maxLits.contains(lit)) {
+            Out.trace(s"maxLit chosen: ${lit.pretty(sig)}")
+            // do the factoring
+            res = res ++ factorWithLit(cl, lits, maxLits, curMaxLitIdx, lit)(state)
+          } else {
+            /* skip literal */
+          }
+          curMaxLitIdx += 1
         }
-        curMaxLitIdx += 1
+        Out.debug(s"[Factor] Generated: ${res.map(_.id).mkString(",")}")
+        Out.finest(s"[Factor] Results: ${res.map(_.pretty(sig)).mkString("\n")}")
+        res
       }
-      Out.debug(s"[Factor] Generated: ${res.map(_.id).mkString(",")}")
-      Out.finest(s"[Factor] Results: ${res.map(_.pretty(sig)).mkString("\n")}")
-      res
     }
 
     final def factorWithLit(cl: AnnotatedClause, literals: Seq[Literal], maxLits: Set[Literal],
@@ -847,14 +852,19 @@ package inferenceControl {
     type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
     final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      Out.trace(s"[detUni] On ${cl.pretty(state.signature)}")
-      leo.modules.myAssert(Clause.wellTyped(cl.cl),
-        s"Not well typed: ${cl.pretty(state.signature)}"
-      )
-      val results = Simp.detUniInferences(cl.cl)(state.signature)
-      val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
-      Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
-      results0
+      if (cl.cl.negLits.isEmpty) {
+        Out.trace(s"[detUni] On ${cl.id}, skipping (no negative literal)")
+        Set.empty
+      } else {
+        Out.trace(s"[detUni] On ${cl.id}")
+        leo.modules.myAssert(Clause.wellTyped(cl.cl),
+          s"Not well typed: ${cl.pretty(state.signature)}"
+        )
+        val results = Simp.detUniInferences(cl.cl)(state.signature)
+        val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
+        Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
+        results0
+      }
     }
 
     final def getUniTaskFromLit(lit: Literal): (Term, Term) = {
@@ -1677,7 +1687,8 @@ package inferenceControl {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
         val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
-        Out.trace(s"to_eq: ${result.pretty(sig)}")
+        Out.debug(s"[ToEq] [${cl.id}] > [${result.id}]")
+        Out.trace(s"[ToEq] Result: ${result.pretty(sig)}")
         result
       } else
         cl
@@ -2262,6 +2273,7 @@ package inferenceControl {
       val replaceAndrews = !Configuration.isSet("naeq")
       if (replaceLeibniz || replaceAndrews) {
         Out.debug(s"[DefEq] On ${clSet.map(_.id).mkString(",")}")
+        Out.finest(s"[DefEq] ${clSet.map(_.pretty(sig)).mkString("\n\t")}")
         var newClauses: Set[AnnotatedClause] = Set.empty
         val clSetIt = clSet.iterator
         while (clSetIt.hasNext) {
@@ -2287,14 +2299,12 @@ package inferenceControl {
       else convertLeibniz0(cl)(sig)
     }
     @inline private final def convertLeibniz0(cl: AnnotatedClause)(sig: Signature): AnnotatedClause = {
-      Out.trace(s"[DefEq][LEq] On ${cl.id}")
-      Out.finest(s"[DefEq][LEq] ${cl.pretty(sig)}")
       val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
       if (cA_leibniz) {
-        Out.trace(s"Replace Leibniz equalities in ${cl.id}")
+        Out.trace(s"[DefEq][LEq] On ${cl.id}: Leibniz equalities found, replacing ...")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
-        Out.finest(s"Result: ${res.pretty(sig)}")
+        Out.finest(s"[DefEq][LEq] Result: ${res.pretty(sig)}")
         res
       } else {
         Out.trace(s"[DefEq][LEq] On ${cl.id}: No Leibniz equalities found.")
@@ -2308,14 +2318,12 @@ package inferenceControl {
       else convertAndrews0(cl)(sig)
     }
     @inline private final def convertAndrews0(cl: AnnotatedClause)(sig: Signature): AnnotatedClause = {
-      Out.trace(s"[DefEq][AEq] On ${cl.id}")
-      Out.finest(s"[DefEq][AEq] ${cl.pretty(sig)}")
       val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cl.cl)
       if (cA_Andrews) {
-        Out.trace(s"Replace Andrews equalities in ${cl.id}")
+        Out.trace(s"[DefEq][AEq] On ${cl.id}: Andrews equalities found, replacing ...")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
-        Out.finest(s"Result: ${res.pretty(sig)}")
+        Out.finest(s"[DefEq][AEq] Result: ${res.pretty(sig)}")
         res
       } else {
         Out.trace(s"[DefEq][AEq] On ${cl.id}: No Andrews equalities found.")

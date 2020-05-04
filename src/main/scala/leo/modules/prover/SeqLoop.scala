@@ -55,7 +55,7 @@ object SeqLoop {
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
 //    result = Control.extPreprocessUnify(result)(state)
-    result = Control.cheapSimpSet(result)
+    //result = Control.cheapSimpSet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
