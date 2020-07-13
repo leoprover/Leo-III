@@ -431,12 +431,12 @@ object ReplaceLeibnizEq extends CalculusRule {
         }
       }
     }
-    val resMap = gbTermMap.filterKeys(k => flexHeadSet.contains(k))
+    val resMap = gbTermMap.view.filterKeys(k => flexHeadSet.contains(k)).toMap
     (resMap.nonEmpty, resMap)
   }
 
   def apply(cl: Clause, bindings: Map[Int, Term])(implicit sig: Signature): (Clause, Subst) = {
-    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
+    val gbMap = bindings.view.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1)))).toMap
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)
@@ -481,7 +481,7 @@ object ReplaceAndrewsEq extends CalculusRule {
   }
 
   def apply(cl: Clause, vars: Map[Int, Type])(implicit sig: Signature): (Clause, Subst) = {
-    val gbMap = vars.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
+    val gbMap = vars.view.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}.toMap
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)

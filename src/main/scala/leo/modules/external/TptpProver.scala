@@ -164,10 +164,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
 
 
     /* internal definitions */
-    private val stdoutAnswer: StringBuilder = new StringBuilder
-    private val stderrAnswer: StringBuilder = new StringBuilder
-    private var result: TptpResult[C] = _
-    private var terminated: Boolean = false
+    private[this] var result: TptpResult[C] = _
+    private[this] var terminated: Boolean = false
 
     /* start the computation */
     private val process0: Process = process.start()
@@ -239,7 +237,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
 
       val szsAnswer = atpAnswerToSZS(stdin.iterator)
       result = new TptpResultImpl(originalProblem, szsAnswer, exitCode,
-        stdoutAnswer.lines.toIterable, stderrAnswer.lines.toIterable)
+        stdin, stderr)
     } catch {
       case e : Exception =>
         val error = if(Configuration.isSet("atpdebug")) Seq(e.toString) else Seq()

@@ -21,7 +21,7 @@ leo3:
 		@echo Building Leo-III ...
 		sbt assembly
 		mkdir bin -p
-		cp target/scala-2.12/leo3.jar bin/leo3.jar
+		cp target/scala-2.13/leo3.jar bin/leo3.jar
 		cat ./src/main/resources/scripts/exec_dummy bin/leo3.jar > bin/leo3
 		chmod +x bin/leo3
 
@@ -78,3 +78,4 @@ native-pgo:
 			--static \
 			--pgo
 			mv leo3-pgo bin/leo3-pgo
+
