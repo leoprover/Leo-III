@@ -4,8 +4,8 @@ val buildParser = taskKey[Unit]("Run ANTLR parser generation.")
 val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's parser.")
 
 lazy val commonSettings = Seq(
-    version := "1.3",
-    scalaVersion := "2.13.2",
+    version := "1.5",
+    scalaVersion := "2.13.3",
     organization := "org.leo",
     test in assembly := {},
     logLevel := Level.Warn,
@@ -19,7 +19,7 @@ lazy val leo = (project in file(".")).
   settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.1.1" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.0" % "test"),
     mainClass in (Compile, run) := Some("leo.Main"),
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),

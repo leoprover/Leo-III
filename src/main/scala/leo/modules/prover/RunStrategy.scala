@@ -58,14 +58,14 @@ object RunStrategy {
       Configuration.RENAMING_SET,
       Configuration.FUNCSPEC,
       Configuration.DEFAULT_DOMCONSTR,
-      Configuration.PRE_PRIMSUBST_LEVEL,
+      39,
       Configuration.RESTRICT_UNI_ATTEMPTS,
       Configuration.TERM_ORDERING)
 
 
   final def byName(str: String): RunStrategy = str match {
     case "s1" => s1
-    case "s1restricted" => s1restricted
+    case "s1unrestricted" => s1unrestricted
     case "s1general" => s1general
     case "s1a" => s1a
     case "s1b" => s1b
@@ -79,6 +79,7 @@ object RunStrategy {
     case "s5b" => s5b
     case "s5c" => s5c
     case "s6" => s6
+    case "funcspec" => funcspec
     case "default" => defaultStrategy
     case _ => defaultStrategy
   }
@@ -92,23 +93,23 @@ object RunStrategy {
     share = 1,
     primSubst = 1,
     sos = false,
-    unifierCount = 2,
+    unifierCount = 10,
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
     boolExt = true,
     choice = true,
     renaming =  true,
     funcspec = false,
     domConstr = 0,
-    specialInstances = -1,
+    specialInstances = 18,
     restrictUniAttempts = true,
     Configuration.DEFAULT_TERMORDERING)
 
-  def s1restricted: RunStrategy = RunStrategy(
-    name = "s1restricted",
+  def s1unrestricted: RunStrategy = RunStrategy(
+    name = "s1unrestricted",
     share = 1,
     primSubst = 1,
-    sos = true,
-    unifierCount = 2,
+    sos = false,
+    unifierCount = 10,
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
     boolExt = true,
     choice = false,
@@ -116,8 +117,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true,
-    Configuration.DEFAULT_TERMORDERING)
+    restrictUniAttempts = false,
+    leo.datastructures.impl.orderings.NO_ORDERING)
 
   def s1general: RunStrategy = RunStrategy(
     name = "s1general",
@@ -131,7 +132,7 @@ object RunStrategy {
     renaming =  true,
     funcspec = false,
     domConstr = 0,
-    specialInstances = -1,
+    specialInstances = 0,
     restrictUniAttempts = false,
     Configuration.DEFAULT_TERMORDERING)
 
@@ -331,9 +332,9 @@ object RunStrategy {
   def funcspec: RunStrategy = RunStrategy(
     name = "funcspec",
     share = 0.5f,
-    primSubst = 3,
+    primSubst = 2,
     sos = false,
-    unifierCount = 4,
+    unifierCount = 10,
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
     boolExt = true,
     choice = true,

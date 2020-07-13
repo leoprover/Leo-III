@@ -15,7 +15,7 @@ infile=$(realpath "../bin/leo3.jar")
 externals=()
 starexec_run_default="#!/bin/bash
 
-java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p"
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_WALLCLOCK_LIMIT -p"
 description=$(git rev-parse HEAD) 
 
 while getopts ':hi:o:d:e:' option; do
@@ -74,7 +74,7 @@ do
   tar -rf "$tmpdir/$outfile.tar" --transform 's,^,externals/,' -C "$proverpath" "$proverfilename"
   echo "#!/bin/bash
 
-java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p $extarg" > "$tmpdir/bin/starexec_run_$proverfilename"
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_WALLCLOCK_LIMIT -p $extarg" > "$tmpdir/bin/starexec_run_$proverfilename"
   chmod +x "$tmpdir/bin/starexec_run_$proverfilename"
   tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_$proverfilename"
 done
@@ -83,7 +83,7 @@ if [ ! -z "$allext" ]
 then
   echo "#!/bin/bash
 
-java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p $allext" > "$tmpdir/bin/starexec_run_all"
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_WALLCLOCK_LIMIT -p $allext" > "$tmpdir/bin/starexec_run_all"
   chmod +x "$tmpdir/bin/starexec_run_all"
   tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_all"
 fi
