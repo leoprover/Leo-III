@@ -195,7 +195,7 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)])(implicit sig: Signature): Output = new Output {
+  final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)], tyVars: Seq[Int])(implicit sig: Signature): Output = new Output {
     override def apply: String = {
       if (termsubst.length == 0) {
         ""
@@ -214,7 +214,7 @@ object ToTPTP {
                 case TermFront(t) =>
                   val newVars = t.looseBounds.map(k => (k, intToName(varmapSize + k - varmapMaxKey - 1)))
                   val varmap2 = varmap ++ newVars
-                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, 0,varmap2)(sig)}))")
+                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, tyVars.size, varmap2)(sig)}))")
                 case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${intToName(varmapSize + j - varmapMaxKey - 1)}))")
                 case _ => throw new SZSException(SZS_Error, "Types in term substitution")
               }
@@ -229,6 +229,7 @@ object ToTPTP {
         if (sb.isEmpty) "" else sb.init.toString()
       }
     }
+    val erg00 = apply()
   }
 
   ///////////////////////////////
