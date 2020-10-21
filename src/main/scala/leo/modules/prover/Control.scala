@@ -499,7 +499,7 @@ package inferenceControl {
               myAssert(Clause.wellTyped(withClauseSubst))
               myAssert(Literal.wellTyped(withLitSubst))
               if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
-                AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, intermediateClause.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
+                AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, typeSubst, intermediateClause.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
               } else {
                 leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
                 null
@@ -1085,7 +1085,7 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
+      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, subst._2, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
     }
 
 
@@ -1228,7 +1228,7 @@ package inferenceControl {
               }
             }
           }
-          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, Subst.id, cw.cl.implicitlyBound)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
           Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
@@ -2303,7 +2303,7 @@ package inferenceControl {
       if (cA_leibniz) {
         Out.trace(s"[DefEq][LEq] On ${cl.id}: Leibniz equalities found, replacing ...")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][LEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2322,7 +2322,7 @@ package inferenceControl {
       if (cA_Andrews) {
         Out.trace(s"[DefEq][AEq] On ${cl.id}: Andrews equalities found, replacing ...")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][AEq] Result: ${res.pretty(sig)}")
         res
       } else {

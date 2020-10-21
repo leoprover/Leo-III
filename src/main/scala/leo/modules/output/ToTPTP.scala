@@ -195,9 +195,9 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  final def apply(subst: Subst, implicitlyBound: Seq[(Int, Type)])(implicit sig: Signature): Output = new Output {
+  final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)])(implicit sig: Signature): Output = new Output {
     override def apply: String = {
-      if (subst.length == 0) {
+      if (termsubst.length == 0) {
         ""
       } else {
         val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)(sig)
@@ -205,10 +205,10 @@ object ToTPTP {
         val varmapSize = varmap.size
         val sb = new StringBuilder
         var i = 1
-        val max = subst.length
+        val max = termsubst.length
         while (i <= max) {
           if (varmap.keySet.contains(i)) {
-            val erg = subst.substBndIdx(i)
+            val erg = termsubst.substBndIdx(i)
             try {
               erg match {
                 case TermFront(t) =>
