@@ -19,7 +19,7 @@ lazy val leo = (project in file(".")).
   settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.0" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.1.0" % "test"),
     mainClass in (Compile, run) := Some("leo.Main"),
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
