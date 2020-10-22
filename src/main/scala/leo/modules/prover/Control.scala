@@ -500,11 +500,6 @@ package inferenceControl {
               myAssert(Literal.wellTyped(withLitSubst))
               if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
                 val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
-                if (res.id == 88) {
-//                  break
-                  assert(res.id == 88)
-                  ;;
-                }
                 res
               } else {
                 leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
