@@ -1951,8 +1951,14 @@ package inferenceControl {
       //        cl
       //      else {
       val simpResult = Simp(cl.cl)
+
+
       val result0 = if (simpResult == cl.cl) cl
-      else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      else AnnotatedClause(simpResult, cl.annotation, addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      /*else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))*/
+      // TODO: Hacky, we let the old clause vanish. This was done because the pretty print routines could not handle non-simped formulas
+      // e.g. with holes in type variables.
+
       val result = result0
       Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
       result
@@ -1966,7 +1972,9 @@ package inferenceControl {
 //      else {
         val simpResult = Simp(cl.cl)
         val result0 = if (simpResult == cl.cl) cl
-        else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        else AnnotatedClause(simpResult, cl.annotation, addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        /* else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))*/
+        // TODO: see above in cheapSimp2
         val result = rewriteClause(result0)(state)
         Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
         result

@@ -243,6 +243,11 @@ object ToTPTP {
       sb.append(cl.typeVars.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (cl.typeVars.nonEmpty && cl.implicitlyBound.nonEmpty) sb.append(",")
       val (namedFVEnumeration, bVarMap) = clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.size))(sig)
+      /* if (cl.typeVars.isEmpty) {
+        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, 0))(sig)
+      } else {
+        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.max))(sig)
+      }*/
       sb.append(namedFVEnumeration)
       sb.append("] : (")
       sb.append(clauseToTPTP(cl, cl.typeVars.size, bVarMap)(sig))
