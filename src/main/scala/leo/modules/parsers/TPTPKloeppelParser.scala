@@ -215,11 +215,47 @@ object TPTPKloeppelParser {
               tok(NOR, 2)
             } else
               tok(NOT, 1)
-          case '!' => ??? // FORALL, FORALLCOMB, TYFORAL, or NOTEQUALS
-          case '?' => ??? // EXISTS, TYEXISTS, EXISTSCOMB
-          case '@' => ??? // CHOICE, DESC, COMBS of that and EQ, and APP
+          case '!' => // FORALL, FORALLCOMB, TYFORAL, or NOTEQUALS
+            if (iter.hasNext && iter.head == '!') {
+              consume()
+              tok(FORALLCOMB, 2)
+            } else if (iter.hasNext && iter.head == '=') {
+              consume()
+              tok(NOTEQUALS, 2)
+            } else if (iter.hasNext && iter.head == '>') {
+              consume()
+              tok(TYFORALL, 2)
+            } else
+              tok(FORALL, 1)
+          case '?' => // EXISTS, TYEXISTS, EXISTSCOMB
+            if (iter.hasNext && iter.head == '?') {
+              consume()
+              tok(EXISTSCOMB, 2)
+            } else if (iter.hasNext && iter.head == '*') {
+              consume()
+              tok(TYEXISTS, 2)
+            } else
+              tok(EXISTS, 1)
+          case '@' => // CHOICE, DESC, COMBS of that and EQ, and APP
+            if (iter.hasNext && iter.head == '+') {
+              consume()
+              tok(CHOICE, 2)
+            } else if (iter.hasNext && iter.head == '-') {
+              consume()
+              tok(DESCRIPTION, 2)
+            } else if (iter.hasNext && iter.head == '@') {
+              consume()
+              if (iter.hasNext && iter.head == '+') {
+                tok(CHOICECOMB, 3)
+              } else if (iter.hasNext && iter.head == '-') {
+                tok(DESCRIPTIONCOMB, 3)
+              } else {
+                throw new TPTPParseException("Unrecognized token '@@'", curLine, curOffset-2)
+              }
+            } else
+              tok(APP, 1)
           // remaining tokens
-          case _ if ch.isDigit && ch <= '9' => ??? // numbers
+          case _ if isNumeric(ch) => ??? // numbers
           case '*' => tok(STAR, 1)
           case '+' => // PLUS or number
             if (iter.hasNext && isNumeric(iter.head)) {
@@ -227,12 +263,29 @@ object TPTPKloeppelParser {
             } else tok(PLUS, 1)
           case '>' => tok(RANGLE, 1)
           case '.' => tok(DOT, 1)
-          case '\'' => ??? // single quoted
-          case '"' => ??? // double quoted
-          case '-' => ??? // Can start a number, or a sequent arrow
+          case ''' => // single quoted
+            val payload = collectSQChars()
+            (SINGLEQUOTED, payload, curLine, curOffset-payload.length)
+          case '"' => // double quoted
+            val payload = collectDQChars()
+            (DOUBLEQUOTED, payload, curLine, curOffset-payload.length)
+          case '-' => // Can start a number, or a sequent arrow
+            if (iter.hasNext && isNumeric(iter.head)) {
+              ???
+            } else if (iter.hasNext && iter.head == '-') {
+              consume()
+              if (iter.hasNext && iter.head == '>') {
+                consume()
+                tok(SEQUENTARROW, 3)
+              } else {
+                throw new TPTPParseException(s"Unrecognized token '--'", curLine, curOffset-2)
+              }
+            } else {
+              throw new TPTPParseException(s"Unrecognized token '-'", curLine, curOffset-1)
+            }
           case '{' => tok(LBRACES, 1)
           case '}' => tok(RBRACES, 1)
-          case _ => throw new TPTPParseException(s"Unrecognized token '$ch'", curLine, curOffset)
+          case _ => throw new TPTPParseException(s"Unrecognized token '$ch'", curLine, curOffset-1)
         }
       }
     }
@@ -247,7 +300,54 @@ object TPTPKloeppelParser {
       }
       sb.toString()
     }
+    @inline private[this] def isSQChar(char: Char): Boolean = !char.isControl && char <= '~' && char != '\\' && char != '''
+    @inline private[this] def isDQChar(char: Char): Boolean = !char.isControl && char <= '~' && char != '\\' && char != '"'
+    @inline private[this] def collectSQChars(): String = {
+      val sb: StringBuilder = new StringBuilder()
+      // omit starting '
+      var done = false
+      while (!done) {
+        while (iter.hasNext && isSQChar(iter.head)) {
+          sb.append(consume())
+        }
+        if (iter.hasNext) {
+          if (iter.head == ''') { // end of single quoted string
+            consume()
+            done = true
+          } else if (iter.head == '\\') {
+            consume()
+            if (iter.hasNext && (iter.head == '\\' || iter.head == ''')) {
+              sb.append(consume())
+            } else throw new TPTPParseException(s"Unexpected escape character '\' within single quoted string", curLine, curOffset-sb.length()-2)
+          } else throw new TPTPParseException(s"Unexpected token within single quoted string", curLine, curOffset-sb.length()-1)
+        } else throw new TPTPParseException(s"Unclosed single quoted string", curLine, curOffset-sb.length()-1)
+      }
+      sb.toString()
+    }
+    @inline private[this] def collectDQChars(): String = {
+      val sb: StringBuilder = new StringBuilder()
+      sb.append('"')
+      var done = false
+      while (!done) {
+        while (iter.hasNext && isDQChar(iter.head)) {
+          sb.append(consume())
+        }
+        if (iter.hasNext) {
+          if (iter.head == '"') { // end of double quoted string
+            sb.append(consume())
+            done = true
+          } else if (iter.head == '\\') {
+            consume()
+            if (iter.hasNext && (iter.head == '\\' || iter.head == '"')) {
+              sb.append(consume())
+            } else throw new TPTPParseException(s"Unexpected escape character '\' within double quoted string", curLine, curOffset-sb.length()-2)
+          } else throw new TPTPParseException(s"Unexpected token within double quoted string", curLine, curOffset-sb.length()-1)
+        } else throw new TPTPParseException(s"Unclosed double quoted string", curLine, curOffset-sb.length()-1)
+      }
+      sb.toString()
+    }
   }
+
   object TPTPLexer {
     type TPTPLexerToken = (TPTPLexerTokenType, Any, LineNo, Offset) // Cast Any to whatever it should be
     type TPTPLexerTokenType = TPTPLexerTokenType.TPTPLexerTokenType
