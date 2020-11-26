@@ -102,18 +102,72 @@ object TPTPKloeppelParser {
     }
 
     override def next(): TPTPLexer.TPTPLexerToken = {
+      import TPTPLexer.TPTPLexerTokenType._
+
       if (!hasNext) throw new NoSuchElementException // also to remove ignored input such as comments etc.
       else {
+        val ch = iter.head
+        // BIG switch case over all different possibilities.
+        ch match {
+          // most frequent tokens
+          case '(' => LPAREN
+          case ')' => RPAREN
+          case '[' => LBRACKET
+          case ']' => RBRACKET
+          case _ if ch.isLower && ch <= 'z' => ??? // lower word
+          case _ if ch.isUpper && ch <= 'Z' => ??? // upper word
+          case ',' => COMMA
+          case '$' => ??? // doller word or doller doller word
+          case ':' => ??? // COLON or Assignment
+          // connectives
+          case '|' => OR
+          case '&' => AND
+          case '^' => LAMBDA
+          case '<' => ??? // IFF, NIFF, IF, but also subtype
+          case '=' => ??? // IMPL or EQUALS
+          case '~' => ??? // NOT, NAND, or NOR
+          case '!' => ??? // FORALL, FORALLCOMB, TYFORAL, or NOTEQUALS
+          case '?' => ??? // EXISTS, TYEXISTS, EXISTSCOMB
+          case '@' => ??? // CHOICE, DESC, COMBS of that and EQ, and APP  
+          // remaining tokens
+          case '*' => STAR
+          case '+' => PLUS // TODO: Plus can also start a number
+          case '>' => RANGLE
+          case '.' => DOT
+          case '\'' => ??? // single quoted
+          case '"' => ??? // double quoted
+          case '-' => ??? // Can start a number, or a sequent arrow
+          case '{' => LBRACES
+          case '}' => RBRACES
+        }
         ???
       }
     }
 
   }
   object TPTPLexer {
-    type TPTPLexerToken = (TPTPLexerTokenType, Any, LineNo, Offset)
-    type TPTPLexerTokenType
-    type LineNo
-    type Offset
+    type TPTPLexerToken = (TPTPLexerTokenType, Any, LineNo, Offset) // Cast Any to whatever it should be
+    type TPTPLexerTokenType = TPTPLexerTokenType.TPTPLexerTokenType
+    type LineNo = Int
+    type Offset = Int
+
+    object TPTPLexerTokenType extends Enumeration {
+      type TPTPLexerTokenType = Value
+      val REAL, RATIONAL, INT,
+          DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD, LOWERWORD,
+          SINGLEQUOTED, DOUBLEQUOTED,
+          OR, AND, IFF, IMPL, IF,
+          NOR, NAND, NIFF, NOT,
+          FORALL, EXISTS, FORALLCOMB, EXISTSCOMB,
+          EQUALS, NOTEQUALS, EQCOMB, LAMBDA, APP,
+          CHOICE, DESCRIPTION, CHOICECOMB, DESCRIPTIONCOMB,
+          TYFORALL, TYEXISTS, ASSIGNMENT,
+          SUBTYPE,
+          LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACES, RBRACES,
+          COMMA, DOT, COLON,
+          RANGLE, STAR, PLUS,
+          SEQUENTARROW = Value
+    }
   }
 
 
