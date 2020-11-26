@@ -43,6 +43,7 @@ object TPTPKloeppelParser {
     @inline private[this] def isUpperAlpha(ch: Char): Boolean = ch.isUpper && ch <= 'Z' // only select ASCII
     @inline private[this] def isAlpha(ch: Char): Boolean = isLowerAlpha(ch) || isUpperAlpha(ch)
     @inline private[this] def isNumeric(ch: Char): Boolean = ch.isDigit && ch <= '9' // only select ASCII
+    @inline private[this] def isNonZeroNumeric(ch: Char): Boolean = ch > '0' && ch <= '9' // only select ASCII
     @inline private[this] def isAlphaNumeric(ch: Char): Boolean = isAlpha(ch) || isNumeric(ch) || ch == '_'
 
     @tailrec
@@ -100,7 +101,7 @@ object TPTPKloeppelParser {
       // ignore line comments: consume percentage sign and everything else until newline
       else if (ch == '%') {
         consume()
-        while (iter.hasNext && (iter.head != '\n' || iter.head != '\r')) { consume() }
+        while (iter.hasNext && (iter.head != '\n' && iter.head != '\r')) { consume() }
         // dont need to check rest, just pass to recursive call
         hasNext
       }
@@ -255,15 +256,16 @@ object TPTPKloeppelParser {
             } else
               tok(APP, 1)
           // remaining tokens
-          case _ if isNumeric(ch) => ??? // numbers
+          case _ if isNumeric(ch) => // numbers
+            generateNumberToken(ch)
           case '*' => tok(STAR, 1)
           case '+' => // PLUS or number
             if (iter.hasNext && isNumeric(iter.head)) {
-              ???
+              generateNumberToken(ch)
             } else tok(PLUS, 1)
           case '>' => tok(RANGLE, 1)
           case '.' => tok(DOT, 1)
-          case ''' => // single quoted
+          case '\'' => // single quoted
             val payload = collectSQChars()
             (SINGLEQUOTED, payload, curLine, curOffset-payload.length)
           case '"' => // double quoted
@@ -271,7 +273,7 @@ object TPTPKloeppelParser {
             (DOUBLEQUOTED, payload, curLine, curOffset-payload.length)
           case '-' => // Can start a number, or a sequent arrow
             if (iter.hasNext && isNumeric(iter.head)) {
-              ???
+              generateNumberToken(ch)
             } else if (iter.hasNext && iter.head == '-') {
               consume()
               if (iter.hasNext && iter.head == '>') {
@@ -292,6 +294,53 @@ object TPTPKloeppelParser {
     @inline private[this] def tok(tokType: TPTPLexer.TPTPLexerTokenType, length: Int): TPTPLexer.TPTPLexerToken =
       (tokType, null, curLine, curOffset-length)
 
+    @inline private[this] def generateNumberToken(signOrFirstDigit: Char): TPTPLexer.TPTPLexerToken = {
+      import TPTPLexer.TPTPLexerTokenType._
+      val sb: StringBuilder = new StringBuilder
+      sb.append(signOrFirstDigit)
+      // iter.head is a digit if signOrFirstDigit is + or -
+      val firstNumber = collectNumbers()
+      sb.append(firstNumber)
+      if (iter.hasNext && iter.head == '/') {
+        sb.append(consume())
+        if (iter.hasNext && isNonZeroNumeric(iter.head)) {
+          val secondNumber = collectNumbers()
+          sb.append(secondNumber)
+          (RATIONAL, sb.toString(), curLine, curOffset-sb.length())
+        } else throw new TPTPParseException(s"Unexpected end of rational token '${sb.toString()}'", curLine, curOffset-sb.length())
+      } else {
+        var isReal = false
+        if (iter.hasNext && iter.head == '.') {
+          isReal = true
+          sb.append(consume())
+          if (iter.hasNext && isNumeric(iter.head)) {
+            val secondNumber = collectNumbers()
+            sb.append(secondNumber)
+          } else throw new TPTPParseException(s"Unexpected end of real number token '${sb.toString()}'", curLine, curOffset-sb.length())
+        }
+        if (iter.hasNext && (iter.head == 'E' || iter.head == 'e')) {
+          isReal = true
+          sb.append(consume())
+          if (iter.hasNext && (iter.head == '+' || iter.head == '-')) {
+            sb.append(consume())
+          }
+          if (iter.hasNext && isNumeric(iter.head)) {
+            val exponent = collectNumbers()
+            sb.append(exponent)
+          } else throw new TPTPParseException(s"Unexpected end of real number token '${sb.toString()}'", curLine, curOffset-sb.length())
+        }
+        if (isReal) (REAL, sb.toString(), curLine, curOffset - sb.length())
+        else  (INT, sb.toString(), curLine, curOffset-sb.length())
+      }
+    }
+
+    @inline private[this] def collectNumbers(): StringBuilder = {
+      val sb: StringBuilder = new StringBuilder
+      while (iter.hasNext && isNumeric(iter.head)) {
+        sb.append(consume())
+      }
+      sb
+    }
     @inline private[this] def collectAlphaNums(startChar: Char): String = {
       val sb: StringBuilder = new StringBuilder()
       sb.append(startChar)
@@ -300,7 +349,7 @@ object TPTPKloeppelParser {
       }
       sb.toString()
     }
-    @inline private[this] def isSQChar(char: Char): Boolean = !char.isControl && char <= '~' && char != '\\' && char != '''
+    @inline private[this] def isSQChar(char: Char): Boolean = !char.isControl && char <= '~' && char != '\\' && char != '\''
     @inline private[this] def isDQChar(char: Char): Boolean = !char.isControl && char <= '~' && char != '\\' && char != '"'
     @inline private[this] def collectSQChars(): String = {
       val sb: StringBuilder = new StringBuilder()
@@ -311,12 +360,12 @@ object TPTPKloeppelParser {
           sb.append(consume())
         }
         if (iter.hasNext) {
-          if (iter.head == ''') { // end of single quoted string
+          if (iter.head == '\'') { // end of single quoted string
             consume()
             done = true
           } else if (iter.head == '\\') {
             consume()
-            if (iter.hasNext && (iter.head == '\\' || iter.head == ''')) {
+            if (iter.hasNext && (iter.head == '\\' || iter.head == '\'')) {
               sb.append(consume())
             } else throw new TPTPParseException(s"Unexpected escape character '\' within single quoted string", curLine, curOffset-sb.length()-2)
           } else throw new TPTPParseException(s"Unexpected token within single quoted string", curLine, curOffset-sb.length()-1)
