@@ -136,7 +136,7 @@ object TPTPKloeppelParser {
       else {
         val ch = consume()
         // BIG switch case over all different possibilities.
-        (ch: @switch) match {
+        ch match {
           // most frequent tokens
           case '(' => tok(LPAREN, 1)
           case ')' => tok(RPAREN, 1)
@@ -430,18 +430,18 @@ object TPTPKloeppelParser {
 
     def annotatedTHF(): Any = {
       try {
-        m(LOWERWORD)._2.asInstanceOf[String] == "thf" // ??
-        m(LPAREN)
-        val fn = name()
-        m(COMMA)
-        val fr = role()
-        m(COMMA)
-        val f = thfFormula()
-        if(om(COMMA)) {
-          annotation()
-        }
-        m(RPAREN)
-        m(DOT)
+//        m(LOWERWORD)._2.asInstanceOf[String] == "thf" // ??
+//        m(LPAREN)
+//        val fn = name()
+//        m(COMMA)
+//        val fr = role()
+//        m(COMMA)
+//        val f = thfFormula()
+//        if(om(COMMA)) {
+//          annotation()
+//        }
+//        m(RPAREN)
+//        m(DOT)
       } catch {
         case e:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
         else throw new TPTPParseException("Parse error: Unexpected end of input", lastTok._3, lastTok._4)
