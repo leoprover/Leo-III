@@ -1,6 +1,7 @@
 package leo.modules.parsers
 
-import java.io.{BufferedReader, StringReader}
+
+import java.util.NoSuchElementException
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
@@ -8,7 +9,7 @@ import leo.datastructures.tptp.tff.{LogicFormula => TFFFormula}
 import leo.datastructures.tptp.fof.{LogicFormula => FOFFormula}
 import leo.datastructures.tptp.cnf.{Formula => CNFFormula}
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 import scala.io.Source
 
 object TPTPKloeppelParser {
@@ -135,7 +136,7 @@ object TPTPKloeppelParser {
       else {
         val ch = consume()
         // BIG switch case over all different possibilities.
-        ch match {
+        (ch: @switch) match {
           // most frequent tokens
           case '(' => tok(LPAREN, 1)
           case ')' => tok(RPAREN, 1)
@@ -396,16 +397,15 @@ object TPTPKloeppelParser {
       sb.toString()
     }
   }
-
   object TPTPLexer {
     type TPTPLexerToken = (TPTPLexerTokenType, Any, LineNo, Offset) // Cast Any to whatever it should be
     type TPTPLexerTokenType = TPTPLexerTokenType.TPTPLexerTokenType
     type LineNo = Int
     type Offset = Int
 
-    object TPTPLexerTokenType extends Enumeration {
+    final object TPTPLexerTokenType extends Enumeration {
       type TPTPLexerTokenType = Value
-      val REAL, RATIONAL, INT,
+      final val REAL, RATIONAL, INT,
           DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD, LOWERWORD,
           SINGLEQUOTED, DOUBLEQUOTED,
           OR, AND, IFF, IMPL, IF,
@@ -422,5 +422,41 @@ object TPTPKloeppelParser {
     }
   }
 
+  final class TPTPParser(tokens: TPTPLexer) {
+    import TPTPLexer.TPTPLexerTokenType._
+    private[this] var lastTok: TPTPLexer.TPTPLexerToken = _
+
+    def annotatedFormula: Any = ???
+
+    def annotatedTHF(): Any = {
+      try {
+        m(LOWERWORD)._2.asInstanceOf[String] == "thf" // ??
+        m(LPAREN)
+        val fn = name()
+        m(COMMA)
+        val fr = role()
+        m(COMMA)
+        val f = thfFormula()
+        if(om(COMMA)) {
+          annotation()
+        }
+        m(RPAREN)
+        m(DOT)
+      } catch {
+        case e:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
+        else throw new TPTPParseException("Parse error: Unexpected end of input", lastTok._3, lastTok._4)
+      }
+    }
+
+    private[this] def m(tokType: TPTPLexer.TPTPLexerTokenType.Value): TPTPLexer.TPTPLexerToken = {
+      if (tokens.peek()._1 == tokType) {
+        tokens.next()
+      } else throw new TPTPParseException("asd", -1, -1)
+    }
+
+  }
+  object TPTPParser {
+
+  }
 
 }
