@@ -398,7 +398,7 @@ object TPTPKloeppelParser {
     }
   }
   object TPTPLexer {
-    type TPTPLexerToken = (TPTPLexerTokenType, Any, LineNo, Offset) // Cast Any to whatever it should be
+    type TPTPLexerToken = (TPTPLexerTokenType, String, LineNo, Offset) // Cast Any to whatever it should be
     type TPTPLexerTokenType = TPTPLexerTokenType.TPTPLexerTokenType
     type LineNo = Int
     type Offset = Int
@@ -424,34 +424,155 @@ object TPTPKloeppelParser {
 
   final class TPTPParser(tokens: TPTPLexer) {
     import TPTPLexer.TPTPLexerTokenType._
-    private[this] var lastTok: TPTPLexer.TPTPLexerToken = _
+    type Token = TPTPLexer.TPTPLexerToken
+    type TokenType = TPTPLexer.TPTPLexerTokenType.Value
+
+    private[this] var lastTok: Token = _
 
     def annotatedFormula: Any = ???
 
     def annotatedTHF(): Any = {
       try {
-//        m(LOWERWORD)._2.asInstanceOf[String] == "thf" // ??
-//        m(LPAREN)
-//        val fn = name()
-//        m(COMMA)
-//        val fr = role()
-//        m(COMMA)
-//        val f = thfFormula()
-//        if(om(COMMA)) {
-//          annotation()
-//        }
-//        m(RPAREN)
-//        m(DOT)
+        m(a(LOWERWORD), "thf")
+        a(LPAREN)
+        val n = name()
+        a(COMMA)
+        val r = a(LOWERWORD)._2
+        a(COMMA)
+        val f = a(LOWERWORD)._2 // TODO: THF Formula
+        var source: GeneralTerm = null
+        var info: Seq[GeneralTerm] = null
+        val an0 = o(COMMA, null)
+        if (an0 != null) {
+          source = generalTerm()
+          val an1 = o(COMMA, null)
+          if (an1 != null) {
+            info = generalList()
+          }
+        }
+        a(RPAREN)
+        a(DOT)
+        (n, r, f, source, info)
       } catch {
-        case e:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
-        else throw new TPTPParseException("Parse error: Unexpected end of input", lastTok._3, lastTok._4)
+        case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
+        else throw new TPTPParseException("Parse error: Unexpected end of input for annotated THF formula", lastTok._3, lastTok._4)
       }
     }
 
-    private[this] def m(tokType: TPTPLexer.TPTPLexerTokenType.Value): TPTPLexer.TPTPLexerToken = {
-      if (tokens.peek()._1 == tokType) {
-        tokens.next()
-      } else throw new TPTPParseException("asd", -1, -1)
+    def generalList(): Seq[GeneralTerm] = {
+      var result: Seq[GeneralTerm] = Seq.empty
+      a(LBRACKET)
+      var endOfList = o(RBRACKET, null)
+      while (endOfList == null) {
+        val item = generalTerm()
+        result = result :+ item
+        endOfList = o(RBRACKET, null)
+        if (endOfList == null) {
+          a(COMMA)
+        }
+      }
+      // right bracket consumed by o(RBRACKET, null)
+      result
+    }
+
+    def generalTerm(): GeneralTerm = {
+      // TODO
+      GeneralTerm(Seq(generalData()), None)
+    }
+
+    def generalData(): GeneralData = {
+      val t = peek()
+      t._1 match {
+        case LOWERWORD | SINGLEQUOTED =>
+          val function = consume()
+          val t1 = o(LPAREN, null)
+          if (t1 != null) {
+            var args: Seq[GeneralTerm] = Seq.empty
+            args = args :+ generalTerm()
+            while (o(COMMA, null) != null) {
+              args = args :+ generalTerm()
+            }
+            a(RPAREN)
+            MetaFunctionData(function._2, args)
+          } else MetaFunctionData(function._2, Seq.empty)
+        case UPPERWORD => MetaFunctionData(consume()._2, Seq.empty)
+        case DOUBLEQUOTED => DistinctObjectData(consume()._2)
+        case INT | RATIONAL | REAL => NumberData(number())
+        case DOLLARWORD => ???
+        case _ => error(Seq(INT, RATIONAL, REAL, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOUBLEQUOTED), t)
+      }
+    }
+
+    def number(): Number = {
+      val t = peek()
+      t._1 match {
+        case INT => Integer(consume()._2.toInt)
+        case RATIONAL =>
+          val numberTok = consume()
+          val split = numberTok._2.split('/')
+          val numerator = split(0).toInt
+          val denominator = split(1).toInt
+          if (denominator <= 0) throw new TPTPParseException("Denominator in rational number expression zero or negative", numberTok._3, numberTok._4)
+          else Rational(numerator, denominator)
+        case REAL =>
+          val number = consume()._2
+          val split = number.split('.')
+          val wholePart = split(0).toInt
+          val anothersplit = split(1).split(Array('E', 'e'))
+          val decimalPart = anothersplit(0).toInt
+          val exponent = if (anothersplit.length > 1) anothersplit(1).toInt else 1
+          Real(wholePart, decimalPart, exponent)
+        case _ => error(Seq(INT, RATIONAL, REAL), t)
+      }
+    }
+
+    def name(): String = {
+      val t = peek()
+      t._1 match {
+        case INT | LOWERWORD | SINGLEQUOTED => consume()._2
+        case _ => error(Seq(INT, LOWERWORD, SINGLEQUOTED), t)
+      }
+    }
+
+    def atomicWord(): String = {
+      val t = peek()
+      t._1 match {
+        case LOWERWORD | SINGLEQUOTED => consume()._2
+        case _ => error(Seq(LOWERWORD, SINGLEQUOTED), t)
+      }
+    }
+
+    def peek(): Token = tokens.peek()
+    def consume(): Token = {
+      val t = tokens.next()
+      lastTok = t
+      t
+    }
+
+    def error[A](acceptedTokens: Seq[TokenType], actual: Token): A = {
+      assert(acceptedTokens.nonEmpty)
+      if (acceptedTokens.size == 1)  throw new TPTPParseException(s"Expected ${acceptedTokens.head} but read ${actual._1}", actual._3, actual._4)
+      else throw new TPTPParseException(s"Expected one of ${acceptedTokens.mkString(",")} but read ${actual._1}", actual._3, actual._4)
+    }
+
+    private[this] def a(tokType: TokenType): Token = {
+      val t = peek()
+      if (t._1 == tokType) {
+        consume()
+      } else {
+        if (t._2 == null) throw new TPTPParseException(s"Expected ${tokType} but read ${t._1}", t._3, t._4)
+        else throw new TPTPParseException(s"Expected ${tokType} but read ${t._1} '${t._2}'", t._3, t._4)
+      }
+    }
+
+    def o(tokType: TokenType, payload: String): Token = {
+      val t = peek()
+      if (t._1 == tokType && (payload == null || t._2 == payload)) consume() else null
+    }
+
+    def m(tok: Token, payload: String): Token = {
+      if (tok._2 == payload) tok
+      else throw new TPTPParseException(s"Expected '$payload' but read ${tok._1} with value '${tok._2}'", tok._3, tok._4)
     }
 
   }
@@ -459,4 +580,26 @@ object TPTPKloeppelParser {
 
   }
 
+  sealed abstract class Number
+  case class Integer(value: Int) extends Number
+  case class Rational(numerator: Int, denominator: Int) extends Number
+  case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number
+
+  case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]])
+
+  /** General formula annotation data. Can be one of the following:
+    *   - [[MetaFunctionData]], a term-like meta expression: either a (meta-)variable,
+    *     a (meta-)function or a (meta-)constant.
+    *   - [[NumberData]], a numerical value.
+    *   - [[DistinctObjectData]], an expression that represents itself.
+    *   - [[GeneralFormulaData]], an expression that contains object-level formula expressions.
+    *
+    *   @see See [[GeneralTerm]] for some context and
+    *        [[http://tptp.org/TPTP/SyntaxBNF.html#general_term]] for a use case.
+    */
+  sealed abstract class GeneralData
+  case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData
+  case class NumberData(number: Number) extends GeneralData
+  case class DistinctObjectData(name: String) extends GeneralData
+  case class GeneralFormulaData(data: Any) extends GeneralData
 }
