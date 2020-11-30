@@ -1,32 +1,44 @@
 package leo.modules.parsers
 
-
 import java.util.NoSuchElementException
-
-import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
-import leo.datastructures.tptp.tff.{LogicFormula => TFFFormula}
-import leo.datastructures.tptp.fof.{LogicFormula => FOFFormula}
-import leo.datastructures.tptp.cnf.{Formula => CNFFormula}
-
-import scala.annotation.{switch, tailrec}
+import scala.annotation.tailrec
 import scala.io.Source
 
 object TPTPKloeppelParser {
+  import leo.datastructures.TPTPParseTree.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
+    FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
+  import leo.datastructures.TPTPParseTree.THF.{Formula => THFFormula}
+  import leo.datastructures.TPTPParseTree.TFF.{Formula => TFFFormula}
+  import leo.datastructures.TPTPParseTree.FOF.{Formula => FOFFormula}
+  import leo.datastructures.TPTPParseTree.TCF.{Formula => TCFFormula}
+  import leo.datastructures.TPTPParseTree.CNF.{Formula => CNFFormula}
+  import leo.datastructures.TPTPParseTree.TPI.{Formula => TPIFormula}
 
-  def problem(input: Source): TPTPInput = ???
-  def problem(input: String): TPTPInput = problem(io.Source.fromString(input))
+  final def problem(input: Source): Problem = {
+    val lexer = new TPTPLexer(input)
+    val parser = new TPTPParser(lexer)
+    parser.tptpFile()
+  }
+  final def problem(input: String): Problem = problem(io.Source.fromString(input))
 
-  def annotated(annotatedFormula: String): AnnotatedFormula = ???
-  def annotatedTHF(annotatedFormula: String): THFAnnotated = ???
-  def annotatedTFF(annotatedFormula: String): TFFAnnotated = ???
-  def annotatedFOF(annotatedFormula: String): FOFAnnotated = ???
-  def annotatedCNF(annotatedFormula: String): CNFAnnotated = ???
+  final def annotated(annotatedFormula: String): AnnotatedFormula = {
+    val lexer = new TPTPLexer(io.Source.fromString(annotatedFormula))
+    val parser = new TPTPParser(lexer)
+    parser.annotatedFormula()
+  }
+  final def annotatedTHF(annotatedFormula: String): THFAnnotated = ???
+  final def annotatedTFF(annotatedFormula: String): TFFAnnotated = ???
+  final def annotatedFOF(annotatedFormula: String): FOFAnnotated = ???
+  final def annotatedTCF(annotatedFormula: String): TCFAnnotated = ???
+  final def annotatedCNF(annotatedFormula: String): CNFAnnotated = ???
+  final def annotatedTPI(annotatedFormula: String): TPIAnnotated = ???
 
-  def thf(formula: String): THFFormula = ???
-  def tff(formula: String): TFFFormula = ???
-  def fof(formula: String): FOFFormula = ???
-  def cnf(formula: String): CNFFormula = ???
+  final def thf(formula: String): THFFormula = ???
+  final def tff(formula: String): TFFFormula = ???
+  final def fof(formula: String): FOFFormula = ???
+  final def tcf(formula: String): TCFFormula = ???
+  final def cnf(formula: String): CNFFormula = ???
+  final def tpi(formula: String): TPIFormula = ???
 
   class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
 
@@ -424,6 +436,7 @@ object TPTPKloeppelParser {
 
   final class TPTPParser(tokens: TPTPLexer) {
     import TPTPLexer.TPTPLexerTokenType._
+    import leo.datastructures.TPTPParseTree._
     type Token = TPTPLexer.TPTPLexerToken
     type TokenType = TPTPLexer.TPTPLexerTokenType.Value
 
@@ -435,14 +448,13 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def tptpFile(): TPTPFile = {
+    def tptpFile(): Problem = {
       if (!tokens.hasNext) {
         // OK, empty file is fine
-        TPTPFile(Seq.empty, Seq.empty)
+        Problem(Vector.empty, Vector.empty)
       } else {
-        var formulas: Seq[Any] = Seq.empty
-        var includes: Seq[(String, Seq[String])] = Seq.empty
-
+        var formulas: Seq[AnnotatedFormula] = Vector.empty
+        var includes: Seq[(String, Seq[String])] = Vector.empty
         while (tokens.hasNext) {
           val t = peek()
           t._1 match {
@@ -455,7 +467,7 @@ object TPTPKloeppelParser {
             case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
           }
         }
-        TPTPFile(includes, formulas)
+        Problem(includes, formulas)
       }
     }
 
@@ -479,7 +491,7 @@ object TPTPKloeppelParser {
       (filename, fs)
     }
 
-    def annotatedFormula(): Any = {
+    def annotatedFormula(): AnnotatedFormula = {
       val t = peek()
       t._1 match {
         case LOWERWORD =>
@@ -502,7 +514,7 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def annotatedTHF(): Any = {
+    def annotatedTHF(): THFAnnotated = {
       try {
         m(a(LOWERWORD), "thf")
         a(LPAREN)
@@ -523,12 +535,21 @@ object TPTPKloeppelParser {
         }
         a(RPAREN)
         a(DOT)
-        (n, r, f, source, info)
+        if (source == null) THFAnnotated(n, r, THF.Logical(THF.Variable(f)), None) // TODO: Replace with real formula
+        else THFAnnotated(n, r, THF.Logical(THF.Variable(f)), Some((source, Option(info))))
       } catch {
         case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
         else throw new TPTPParseException("Parse error: Unexpected end of input for annotated THF formula", lastTok._3, lastTok._4)
       }
     }
+
+    def thfAtomTyping(): Any = ???
+
+    def thfSubtype(): Any = ???
+
+    def thfSequent(): Any = ???
+
+    def thfLogicFormula(): Any = ???
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -704,93 +725,4 @@ object TPTPKloeppelParser {
   object TPTPParser {
 
   }
-
-  ////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////
-  // TPTP Parse tree structures
-  ////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////
-  final case class TPTPFile(includes: Seq[(String, Seq[String])], formulas: Seq[Any]) {
-    override def toString: Variable = {
-      val sb: StringBuilder = new StringBuilder()
-      includes.foreach { case (filename, inc) =>
-        if (inc.isEmpty) {
-          sb.append(s"include('$filename').\n")
-        } else {
-          sb.append(s"include('$filename', [${inc.map(s => s"'$s'").mkString(",")}]).\n")
-        }
-      }
-      formulas.foreach { f =>
-        sb.append(f.toString)
-        sb.append("\n")
-      }
-      if (sb.nonEmpty) sb.init.toString()
-      else sb.toString()
-    }
-  }
-
-  sealed abstract class Number
-  final case class Integer(value: Int) extends Number {
-    override def toString: String = value.toString
-  }
-  final case class Rational(numerator: Int, denominator: Int) extends Number {
-    override def toString: String = s"$numerator/$denominator"
-  }
-  final case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
-    override def toString: String = s"$wholePart.${decimalPlaces}E$exponent"
-  }
-
-  final case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]]) {
-    override def toString: String = {
-      val sb: StringBuilder = new StringBuilder()
-      if (data.nonEmpty) {
-        sb.append(data.mkString(":"))
-      }
-      if (list.isDefined) {
-        sb.append(":")
-        sb.append("[")
-        sb.append(list.get.mkString(","))
-        sb.append("]")
-      }
-      sb.toString()
-    }
-  }
-
-  /** General formula annotation data. Can be one of the following:
-    *   - [[MetaFunctionData]], a term-like meta expression: either a (meta-)function or a (meta-)constant.
-    *   - [[MetaVariable]], a term-like meta expression that captures a variable.
-    *   - [[NumberData]], a numerical value.
-    *   - [[DistinctObjectData]], an expression that represents itself.
-    *   - [[GeneralFormulaData]], an expression that contains object-level formula expressions.
-    *
-    *   @see See [[GeneralTerm]] for some context and
-    *        [[http://tptp.org/TPTP/SyntaxBNF.html#general_term]] for a use case.
-    */
-  sealed abstract class GeneralData
-  /** @see [[GeneralData]] */
-  final case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData {
-    private[this] final val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
-    override def toString: String = {
-      val escapedF = if (f.matches(simpleLowerWordRegex)) f
-      else s"'${f.replace("\\","\\\\").replace("'", "\\'")}'"
-      if (args.isEmpty) escapedF else s"$escapedF(${args.mkString(",")})"
-    }
-  }
-  /** @see [[GeneralData]] */
-  final case class MetaVariable(variable: String) extends GeneralData {
-    override def toString: String = variable
-  }
-  /** @see [[GeneralData]] */
-  final case class NumberData(number: Number) extends GeneralData {
-    override def toString: String = number.toString
-  }
-  /** @see [[GeneralData]] */
-  final case class DistinctObjectData(name: String) extends GeneralData {
-    override def toString: String = name
-  }
-  /** @see [[GeneralData]] */
-  final case class GeneralFormulaData(data: Any) extends GeneralData {
-    override def toString: String = data.toString
-  }
-
 }
