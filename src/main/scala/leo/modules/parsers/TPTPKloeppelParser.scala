@@ -476,8 +476,59 @@ object TPTPKloeppelParser {
     }
 
     def generalTerm(): GeneralTerm = {
-      // TODO
-      GeneralTerm(Seq(generalData()), None)
+      // if [, then list
+      // collect items
+      // then ]. DONE
+      // if not [, then generaldata(). Not necessarily done.
+      val t = peek()
+      t._1 match {
+        case LBRACKET => // list
+          consume()
+          val eol = o(RBRACKET, null)
+          if (eol == null) {
+            // nonempty list
+            var list: Seq[GeneralTerm] = Seq.empty
+            while (o(RBRACKET, null) == null) {
+              list = list :+ generalTerm()
+            }
+            // end of list; RBRACKET already consumed
+            GeneralTerm(Seq.empty, Some(list))
+          } else GeneralTerm(Seq.empty, Some(Seq.empty))
+        case _ => // not a list
+          var generalDataList: Seq[GeneralData] = Seq.empty
+          var generalTermList: Option[Seq[GeneralTerm]] = None
+          generalDataList = generalDataList :+ generalData()
+          // as long as ':' then repeat all of above
+          // if no ':' anymore, DONE. or if list.
+          var done = false
+          while(!done) {
+            if (o(COLON, null) != null) {
+              if (peek()._1 == LBRACKET) {
+                // end of list, with generalList coming now
+                done = true
+                consume()
+                val eol = o(RBRACKET, null)
+                if (eol == null) {
+                  // nonempty list
+                  var list: Seq[GeneralTerm] = Seq.empty
+                  while (o(RBRACKET, null) == null) {
+                    list = list :+ generalTerm()
+                  }
+                  // end of list; RBRACKET already consumed
+                  generalTermList = Some(list)
+                } else {
+                  generalTermList = Some(Seq.empty)
+                }
+              } else {
+                // maybe further
+                generalDataList = generalDataList :+ generalData()
+              }
+            } else {
+              done = true
+            }
+          }
+          GeneralTerm(generalDataList, generalTermList)
+      }
     }
 
     def generalData(): GeneralData = {
@@ -581,11 +632,31 @@ object TPTPKloeppelParser {
   }
 
   sealed abstract class Number
-  case class Integer(value: Int) extends Number
-  case class Rational(numerator: Int, denominator: Int) extends Number
-  case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number
+  case class Integer(value: Int) extends Number {
+    override def toString: String = value.toString
+  }
+  case class Rational(numerator: Int, denominator: Int) extends Number {
+    override def toString: String = s"$numerator/$denominator"
+  }
+  case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
+    override def toString: String = s"$wholePart.${decimalPlaces}E$exponent"
+  }
 
-  case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]])
+  case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]]) {
+    override def toString: String = {
+      val sb: StringBuilder = new StringBuilder()
+      if (data.nonEmpty) {
+        sb.append(data.mkString(":"))
+      }
+      if (list.isDefined) {
+        sb.append(":")
+        sb.append("[")
+        sb.append(list.get.mkString(","))
+        sb.append("]")
+      }
+      sb.toString()
+    }
+  }
 
   /** General formula annotation data. Can be one of the following:
     *   - [[MetaFunctionData]], a term-like meta expression: either a (meta-)variable,
@@ -598,8 +669,16 @@ object TPTPKloeppelParser {
     *        [[http://tptp.org/TPTP/SyntaxBNF.html#general_term]] for a use case.
     */
   sealed abstract class GeneralData
-  case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData
-  case class NumberData(number: Number) extends GeneralData
-  case class DistinctObjectData(name: String) extends GeneralData
-  case class GeneralFormulaData(data: Any) extends GeneralData
+  case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData {
+    override def toString: String = if (args.isEmpty) f else s"$f(${args.mkString(",")})"
+  }
+  case class NumberData(number: Number) extends GeneralData {
+    override def toString: String = number.toString
+  }
+  case class DistinctObjectData(name: String) extends GeneralData {
+    override def toString: String = name
+  }
+  case class GeneralFormulaData(data: Any) extends GeneralData {
+    override def toString: String = data.toString
+  }
 }
