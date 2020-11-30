@@ -435,23 +435,28 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def tptpFile(): Any = {
+    def tptpFile(): TPTPFile = {
       if (!tokens.hasNext) {
         // OK, empty file is fine
         TPTPFile(Seq.empty, Seq.empty)
       } else {
-        val t = peek()
-        t._1 match {
-          case LOWERWORD =>
-            t._2 match {
-              case "include" => include()
-              case "thf" | "tff" | "fof" | "tcf" | "cnf" | "tpi" => annotatedFormula()
-              case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
-            }
-          case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
-        }
-      }
+        var formulas: Seq[Any] = Seq.empty
+        var includes: Seq[(String, Seq[String])] = Seq.empty
 
+        while (tokens.hasNext) {
+          val t = peek()
+          t._1 match {
+            case LOWERWORD =>
+              t._2 match {
+                case "include" => includes = includes :+ include()
+                case "thf" | "tff" | "fof" | "tcf" | "cnf" | "tpi" => formulas = formulas :+ annotatedFormula()
+                case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
+              }
+            case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
+          }
+        }
+        TPTPFile(includes, formulas)
+      }
     }
 
     def include(): (String, Seq[String]) = {
@@ -532,7 +537,7 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def generalList(): Seq[GeneralTerm] = {
+    private[this] def generalList(): Seq[GeneralTerm] = {
       var result: Seq[GeneralTerm] = Seq.empty
       a(LBRACKET)
       var endOfList = o(RBRACKET, null)
@@ -548,7 +553,7 @@ object TPTPKloeppelParser {
       result
     }
 
-    def generalTerm(): GeneralTerm = {
+    private[this] def generalTerm(): GeneralTerm = {
       // if [, then list
       // collect items
       // then ]. DONE
@@ -582,7 +587,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def generalData(): GeneralData = {
+    private[this] def generalData(): GeneralData = {
       val t = peek()
       t._1 match {
         case LOWERWORD | SINGLEQUOTED =>
@@ -605,7 +610,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def number(): Number = {
+    private[this] def number(): Number = {
       val t = peek()
       t._1 match {
         case INT => Integer(consume()._2.toInt)
@@ -628,7 +633,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def name(): String = {
+    private[this] def name(): String = {
       val t = peek()
       t._1 match {
         case INT | LOWERWORD | SINGLEQUOTED => consume()._2
@@ -636,7 +641,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def atomicWord(): String = {
+    private[this] def atomicWord(): String = {
       val t = peek()
       t._1 match {
         case LOWERWORD | SINGLEQUOTED => consume()._2
@@ -650,20 +655,20 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def peek(): Token = tokens.peek()
-    def consume(): Token = {
+    @inline private[this] def peek(): Token = tokens.peek()
+    @inline private[this] def consume(): Token = {
       val t = tokens.next()
       lastTok = t
       t
     }
 
-    def error[A](acceptedTokens: Seq[TokenType], actual: Token): A = {
+    @inline private[this] def error[A](acceptedTokens: Seq[TokenType], actual: Token): A = {
       assert(acceptedTokens.nonEmpty)
       if (acceptedTokens.size == 1)  throw new TPTPParseException(s"Expected ${acceptedTokens.head} but read ${actual._1}", actual._3, actual._4)
       else throw new TPTPParseException(s"Expected one of ${acceptedTokens.mkString(",")} but read ${actual._1}", actual._3, actual._4)
     }
 
-    def error1[A](acceptedPayload: Seq[String], actual: Token): A = {
+    @inline private[this] def error1[A](acceptedPayload: Seq[String], actual: Token): A = {
       assert(acceptedPayload.nonEmpty)
       if (acceptedPayload.size == 1) {
         if (actual._2 == null) throw new TPTPParseException(s"Expected '${acceptedPayload.head}' but read ${actual._1}", actual._3, actual._4)
@@ -685,12 +690,12 @@ object TPTPKloeppelParser {
       }
     }
 
-    def o(tokType: TokenType, payload: String): Token = {
+    private[this] def o(tokType: TokenType, payload: String): Token = {
       val t = peek()
       if (t._1 == tokType && (payload == null || t._2 == payload)) consume() else null
     }
 
-    def m(tok: Token, payload: String): Token = {
+    private[this] def m(tok: Token, payload: String): Token = {
       if (tok._2 == payload) tok
       else throw new TPTPParseException(s"Expected '$payload' but read ${tok._1} with value '${tok._2}'", tok._3, tok._4)
     }
