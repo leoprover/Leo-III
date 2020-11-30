@@ -599,8 +599,8 @@ object TPTPKloeppelParser {
       if (t._1 == tokType) {
         consume()
       } else {
-        if (t._2 == null) throw new TPTPParseException(s"Expected ${tokType} but read ${t._1}", t._3, t._4)
-        else throw new TPTPParseException(s"Expected ${tokType} but read ${t._1} '${t._2}'", t._3, t._4)
+        if (t._2 == null) throw new TPTPParseException(s"Expected $tokType but read ${t._1}", t._3, t._4)
+        else throw new TPTPParseException(s"Expected $tokType but read ${t._1} '${t._2}'", t._3, t._4)
       }
     }
 
@@ -682,4 +682,5 @@ object TPTPKloeppelParser {
   final case class GeneralFormulaData(data: Any) extends GeneralData {
     override def toString: String = data.toString
   }
+  
 }
