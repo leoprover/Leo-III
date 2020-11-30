@@ -483,17 +483,17 @@ object TPTPKloeppelParser {
       val t = peek()
       t._1 match {
         case LBRACKET => // list
-          consume()
-          val eol = o(RBRACKET, null)
-          if (eol == null) {
-            // nonempty list
-            var list: Seq[GeneralTerm] = Seq.empty
-            while (o(RBRACKET, null) == null) {
-              list = list :+ generalTerm()
-            }
-            // end of list; RBRACKET already consumed
-            GeneralTerm(Seq.empty, Some(list))
-          } else GeneralTerm(Seq.empty, Some(Seq.empty))
+//          consume()
+//          val eol = o(RBRACKET, null)
+//          if (eol == null) {
+//            // nonempty list
+//            var list: Seq[GeneralTerm] = Seq.empty
+//            while (o(RBRACKET, null) == null) {
+//              list = list :+ generalTerm()
+//            }
+//            // end of list; RBRACKET already consumed
+            GeneralTerm(Seq.empty, Some(generalList()))
+//          } else GeneralTerm(Seq.empty, Some(Seq.empty))
         case _ => // not a list
           var generalDataList: Seq[GeneralData] = Seq.empty
           var generalTermList: Option[Seq[GeneralTerm]] = None
@@ -505,20 +505,8 @@ object TPTPKloeppelParser {
             if (o(COLON, null) != null) {
               if (peek()._1 == LBRACKET) {
                 // end of list, with generalList coming now
+                generalTermList = Some(generalList())
                 done = true
-                consume()
-                val eol = o(RBRACKET, null)
-                if (eol == null) {
-                  // nonempty list
-                  var list: Seq[GeneralTerm] = Seq.empty
-                  while (o(RBRACKET, null) == null) {
-                    list = list :+ generalTerm()
-                  }
-                  // end of list; RBRACKET already consumed
-                  generalTermList = Some(list)
-                } else {
-                  generalTermList = Some(Seq.empty)
-                }
               } else {
                 // maybe further
                 generalDataList = generalDataList :+ generalData()
@@ -546,7 +534,7 @@ object TPTPKloeppelParser {
             a(RPAREN)
             MetaFunctionData(function._2, args)
           } else MetaFunctionData(function._2, Seq.empty)
-        case UPPERWORD => MetaFunctionData(consume()._2, Seq.empty)
+        case UPPERWORD => MetaVariable(consume()._2)
         case DOUBLEQUOTED => DistinctObjectData(consume()._2)
         case INT | RATIONAL | REAL => NumberData(number())
         case DOLLARWORD => ???
@@ -659,8 +647,8 @@ object TPTPKloeppelParser {
   }
 
   /** General formula annotation data. Can be one of the following:
-    *   - [[MetaFunctionData]], a term-like meta expression: either a (meta-)variable,
-    *     a (meta-)function or a (meta-)constant.
+    *   - [[MetaFunctionData]], a term-like meta expression: either a (meta-)function or a (meta-)constant.
+    *   - [[MetaVariable]], a term-like meta expression that captures a variable.
     *   - [[NumberData]], a numerical value.
     *   - [[DistinctObjectData]], an expression that represents itself.
     *   - [[GeneralFormulaData]], an expression that contains object-level formula expressions.
@@ -669,16 +657,29 @@ object TPTPKloeppelParser {
     *        [[http://tptp.org/TPTP/SyntaxBNF.html#general_term]] for a use case.
     */
   sealed abstract class GeneralData
-  case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData {
-    override def toString: String = if (args.isEmpty) f else s"$f(${args.mkString(",")})"
+  /** @see [[GeneralData]] */
+  final case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData {
+    private[this] final val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
+    override def toString: String = {
+      val escapedF = if (f.matches(simpleLowerWordRegex)) f
+      else s"'${f.replace("\\","\\\\").replace("'", "\\'")}'"
+      if (args.isEmpty) escapedF else s"$escapedF(${args.mkString(",")})"
+    }
   }
-  case class NumberData(number: Number) extends GeneralData {
+  /** @see [[GeneralData]] */
+  final case class MetaVariable(variable: String) extends GeneralData {
+    override def toString: String = variable
+  }
+  /** @see [[GeneralData]] */
+  final case class NumberData(number: Number) extends GeneralData {
     override def toString: String = number.toString
   }
-  case class DistinctObjectData(name: String) extends GeneralData {
+  /** @see [[GeneralData]] */
+  final case class DistinctObjectData(name: String) extends GeneralData {
     override def toString: String = name
   }
-  case class GeneralFormulaData(data: Any) extends GeneralData {
+  /** @see [[GeneralData]] */
+  final case class GeneralFormulaData(data: Any) extends GeneralData {
     override def toString: String = data.toString
   }
 }
