@@ -429,7 +429,73 @@ object TPTPKloeppelParser {
 
     private[this] var lastTok: Token = _
 
-    def annotatedFormula: Any = ???
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // TPTP file related stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    def tptpFile(): Any = {
+      if (!tokens.hasNext) {
+        // OK, empty file is fine
+        TPTPFile(Seq.empty, Seq.empty)
+      } else {
+        val t = peek()
+        t._1 match {
+          case LOWERWORD =>
+            t._2 match {
+              case "include" => include()
+              case "thf" | "tff" | "fof" | "tcf" | "cnf" | "tpi" => annotatedFormula()
+              case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
+            }
+          case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
+        }
+      }
+
+    }
+
+    def include(): (String, Seq[String]) = {
+      m(a(LOWERWORD), "include")
+      a(LPAREN)
+      val filename = a(SINGLEQUOTED)._2
+      var fs: Seq[String] = Seq.empty
+      val fs0 = o(COMMA, null)
+      if (fs0 != null) {
+        a(LBRACKET)
+        fs = fs :+ name()
+        while (o(RBRACKET, null) == null) {
+          a(COMMA)
+          fs = fs :+ name()
+        }
+        // RBRACKET already consumed
+      }
+      a(RPAREN)
+      a(DOT)
+      (filename, fs)
+    }
+
+    def annotatedFormula(): Any = {
+      val t = peek()
+      t._1 match {
+        case LOWERWORD =>
+          t._2 match {
+            case "thf" => annotatedTHF()
+            case "tff" => ???
+            case "fof" => ???
+            case "tcf" => ???
+            case "cnf" => ???
+            case "tpi" => ???
+            case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi"), t)
+          }
+        case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi"), t)
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // THF formula stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
     def annotatedTHF(): Any = {
       try {
@@ -459,6 +525,13 @@ object TPTPKloeppelParser {
       }
     }
 
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // General TPTP language stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
     def generalList(): Seq[GeneralTerm] = {
       var result: Seq[GeneralTerm] = Seq.empty
       a(LBRACKET)
@@ -483,17 +556,7 @@ object TPTPKloeppelParser {
       val t = peek()
       t._1 match {
         case LBRACKET => // list
-//          consume()
-//          val eol = o(RBRACKET, null)
-//          if (eol == null) {
-//            // nonempty list
-//            var list: Seq[GeneralTerm] = Seq.empty
-//            while (o(RBRACKET, null) == null) {
-//              list = list :+ generalTerm()
-//            }
-//            // end of list; RBRACKET already consumed
-            GeneralTerm(Seq.empty, Some(generalList()))
-//          } else GeneralTerm(Seq.empty, Some(Seq.empty))
+          GeneralTerm(Seq.empty, Some(generalList()))
         case _ => // not a list
           var generalDataList: Seq[GeneralData] = Seq.empty
           var generalTermList: Option[Seq[GeneralTerm]] = None
@@ -581,6 +644,12 @@ object TPTPKloeppelParser {
       }
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // General purpose functions
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
     def peek(): Token = tokens.peek()
     def consume(): Token = {
       val t = tokens.next()
@@ -592,6 +661,18 @@ object TPTPKloeppelParser {
       assert(acceptedTokens.nonEmpty)
       if (acceptedTokens.size == 1)  throw new TPTPParseException(s"Expected ${acceptedTokens.head} but read ${actual._1}", actual._3, actual._4)
       else throw new TPTPParseException(s"Expected one of ${acceptedTokens.mkString(",")} but read ${actual._1}", actual._3, actual._4)
+    }
+
+    def error1[A](acceptedPayload: Seq[String], actual: Token): A = {
+      assert(acceptedPayload.nonEmpty)
+      if (acceptedPayload.size == 1) {
+        if (actual._2 == null) throw new TPTPParseException(s"Expected '${acceptedPayload.head}' but read ${actual._1}", actual._3, actual._4)
+        else throw new TPTPParseException(s"Expected '${acceptedPayload.head}' but read ${actual._1} '${actual._2}'", actual._3, actual._4)
+      }
+      else {
+        if (actual._2 == null) throw new TPTPParseException(s"Expected one of ${acceptedPayload.map(s => s"'$s'").mkString(",")} but read ${actual._1}", actual._3, actual._4)
+        else throw new TPTPParseException(s"Expected one of ${acceptedPayload.map(s => s"'$s'").mkString(",")} but read ${actual._1} '${actual._2}'", actual._3, actual._4)
+      }
     }
 
     private[this] def a(tokType: TokenType): Token = {
@@ -619,18 +700,42 @@ object TPTPKloeppelParser {
 
   }
 
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TPTP Parse tree structures
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  final case class TPTPFile(includes: Seq[(String, Seq[String])], formulas: Seq[Any]) {
+    override def toString: Variable = {
+      val sb: StringBuilder = new StringBuilder()
+      includes.foreach { case (filename, inc) =>
+        if (inc.isEmpty) {
+          sb.append(s"include('$filename').\n")
+        } else {
+          sb.append(s"include('$filename', [${inc.map(s => s"'$s'").mkString(",")}]).\n")
+        }
+      }
+      formulas.foreach { f =>
+        sb.append(f.toString)
+        sb.append("\n")
+      }
+      if (sb.nonEmpty) sb.init.toString()
+      else sb.toString()
+    }
+  }
+
   sealed abstract class Number
-  case class Integer(value: Int) extends Number {
+  final case class Integer(value: Int) extends Number {
     override def toString: String = value.toString
   }
-  case class Rational(numerator: Int, denominator: Int) extends Number {
+  final case class Rational(numerator: Int, denominator: Int) extends Number {
     override def toString: String = s"$numerator/$denominator"
   }
-  case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
+  final case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
     override def toString: String = s"$wholePart.${decimalPlaces}E$exponent"
   }
 
-  case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]]) {
+  final case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]]) {
     override def toString: String = {
       val sb: StringBuilder = new StringBuilder()
       if (data.nonEmpty) {
@@ -682,5 +787,5 @@ object TPTPKloeppelParser {
   final case class GeneralFormulaData(data: Any) extends GeneralData {
     override def toString: String = data.toString
   }
-  
+
 }
