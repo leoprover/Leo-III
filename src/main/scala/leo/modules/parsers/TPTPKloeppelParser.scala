@@ -626,7 +626,12 @@ object TPTPKloeppelParser {
         case UPPERWORD => MetaVariable(consume()._2)
         case DOUBLEQUOTED => DistinctObjectData(consume()._2)
         case INT | RATIONAL | REAL => NumberData(number())
-        case DOLLARWORD => ???
+        case DOLLARWORD => {
+          t._2 match {
+            case "$thf" => ??? // TODO
+            case _ => error1(Seq("$thf", "$tff", "$fof", "$fot", "$cnf"), t)
+          }
+        }
         case _ => error(Seq(INT, RATIONAL, REAL, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOUBLEQUOTED), t)
       }
     }

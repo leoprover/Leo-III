@@ -158,8 +158,25 @@ object TPTPParseTree {
     override def pretty: String = name
   }
   /** @see [[GeneralData]] */
-  final case class GeneralFormulaData(data: Any) extends GeneralData {
+  final case class GeneralFormulaData(data: FormulaData) extends GeneralData {
     override def pretty: String = data.toString // TODO: make Pretty
+  }
+
+  sealed abstract class FormulaData extends Pretty
+  final case class THFData(formula: THF.Formula) extends FormulaData {
+    override def pretty: String = s"$$thf(${formula.pretty})"
+  }
+  final case class TFFData(formula: TFF.Formula) extends FormulaData {
+    override def pretty: String = s"$$tff(${formula.pretty})"
+  }
+  final case class FOFData(formula: FOF.Formula) extends FormulaData {
+    override def pretty: String = s"$$fof(${formula.pretty})"
+  }
+  final case class CNFData(formula: CNF.Formula) extends FormulaData {
+    override def pretty: String = s"$$cnf(${formula.pretty})"
+  }
+  final case class FOTData(formula: FOF.Term) extends FormulaData {
+    override def pretty: String = s"$$fot(${formula.pretty})"
   }
 
 
@@ -220,6 +237,8 @@ object TPTPParseTree {
 
   object FOF {
     sealed abstract class Formula extends Pretty
+
+    abstract class Term extends Pretty
   }
 
   object TCF {
