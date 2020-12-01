@@ -543,6 +543,8 @@ object TPTPKloeppelParser {
       }
     }
 
+    def thfFormula(): THF.Formula = ???
+
     def thfAtomTyping(): Any = ???
 
     def thfSubtype(): Any = ???
@@ -626,12 +628,20 @@ object TPTPKloeppelParser {
         case UPPERWORD => MetaVariable(consume()._2)
         case DOUBLEQUOTED => DistinctObjectData(consume()._2)
         case INT | RATIONAL | REAL => NumberData(number())
-        case DOLLARWORD => {
+        case DOLLARWORD =>
           t._2 match {
-            case "$thf" => ??? // TODO
+            case "$thf" =>
+              consume()
+              a(LPAREN)
+              val f = thfFormula()
+              a(RPAREN)
+              GeneralFormulaData(THFData(f))
+            case "$tff" => ??? // TODO
+            case "$fof" => ??? // TODO
+            case "$fot" => ??? // TODO
+            case "$cnf" => ??? // TODO
             case _ => error1(Seq("$thf", "$tff", "$fof", "$fot", "$cnf"), t)
           }
-        }
         case _ => error(Seq(INT, RATIONAL, REAL, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOUBLEQUOTED), t)
       }
     }
