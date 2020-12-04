@@ -42,12 +42,13 @@ object TPTPKloeppelParser {
 
   class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
 
-  final class TPTPLexer(input: Source) extends Iterator[TPTPLexer.TPTPLexerToken] {
+  final class TPTPLexer(input: Source) extends collection.BufferedIterator[TPTPLexer.TPTPLexerToken] {
     private[this] final lazy val iter = input.buffered
     private[this] var curLine: Int = 1
     private[this] var curOffset: Int = 1
 
-    private[this] var curItem: TPTPLexer.TPTPLexerToken = _
+    private[this] var lookahead: Seq[TPTPLexer.TPTPLexerToken] = Vector.empty
+
 
     @inline private[this] def line(): Unit = { curLine += 1; curOffset = 1 }
     @inline private[this] def step(): Unit = { curOffset += 1 }
@@ -123,22 +124,40 @@ object TPTPKloeppelParser {
     }
 
     override def next(): TPTPLexer.TPTPLexerToken = {
-      if (curItem == null) {
+      if (lookahead.isEmpty) {
         getNextToken
       } else {
-        val result = curItem
-        curItem = null
+        val result = lookahead.head
+        lookahead = lookahead.init
         result
       }
     }
 
-    def peek(): TPTPLexer.TPTPLexerToken = {
-      if (curItem == null) {
-        curItem = getNextToken
-        curItem
-      } else {
-        curItem
+    override def head: TPTPLexer.TPTPLexerToken = peek()
+    def peek(): TPTPLexer.TPTPLexerToken = peek(0)
+    def peek(i: Int): TPTPLexer.TPTPLexerToken = {
+      val res = safePeek(i)
+      if (res == null) throw new NoSuchElementException("peek on not sufficiently large stream.")
+      else res
+    }
+    def safePeek(i: Int): TPTPLexer.TPTPLexerToken = {
+      val i0 = i+1
+      if (lookahead.length >= i0) lookahead(i)
+      else {
+        if(safeExpandLookahead(i0 - lookahead.length)) lookahead(i)
+        else null
       }
+    }
+
+    @tailrec
+    private[this] def safeExpandLookahead(n: Int): Boolean = {
+      if (n > 0) {
+        if (hasNext) {
+          val tok = getNextToken
+          lookahead = lookahead :+ tok
+          safeExpandLookahead(n-1)
+        } else false
+      } else true
     }
 
     private[this] def getNextToken: TPTPLexer.TPTPLexerToken = {
