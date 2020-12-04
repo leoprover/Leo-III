@@ -185,19 +185,19 @@ object TPTPAST {
     final case class Typing(atom: String, typ: Any) extends Formula {
       override def pretty: String = s"$atom: ${typ.toString}" // TODO: make pretty
     }
-    final case class Subtype(subtype: String, supertype: String) extends Formula {
-      override def pretty: String = s"$subtype << $supertype"
-    }
-    final case class Sequent(left: Seq[Term], right: Seq[Term]) extends Formula {
-      override def pretty: String = s"[${left.map(_.pretty).mkString(",")}] --> [${right.map(_.pretty).mkString(",")}]"
-    }
     final case class Logical(term: Term) extends Formula {
       override def pretty: String = term.pretty
     }
 
     sealed abstract class Term extends Pretty
+    /** Might be function or just constant. Also distinct object? */
     final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
       override def pretty: String = ???
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
     }
     final case class QuantifiedFormula(quantifier: Any, variableList: Seq[Any], body: Term) extends Term {
       override def pretty: String = ???

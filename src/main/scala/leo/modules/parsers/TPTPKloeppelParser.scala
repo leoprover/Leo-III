@@ -196,6 +196,7 @@ object TPTPKloeppelParser {
             if (iter.hasNext && iter.head == '<') {
               consume()
               tok(SUBTYPE, 2)
+              throw new TPTPParseException(s"Read token 'SUBTYPE' ('<<') that is not supported.", curLine, curOffset-2)
             } else if (iter.hasNext && iter.head == '=') {
               consume()
               if (iter.hasNext && iter.head == '>') {
@@ -292,6 +293,7 @@ object TPTPKloeppelParser {
               if (iter.hasNext && iter.head == '>') {
                 consume()
                 tok(SEQUENTARROW, 3)
+                throw new TPTPParseException(s"Read token 'SEQUENT ARROW' ('-->') that is not supported.", curLine, curOffset-3)
               } else {
                 throw new TPTPParseException(s"Unrecognized token '--'", curLine, curOffset-2)
               }
@@ -543,15 +545,30 @@ object TPTPKloeppelParser {
       }
     }
 
-    def thfFormula(): THF.Formula = ???
+    def thfFormula(): THF.Formula = {
+      import THF.{FunctionTerm, Tuple}
+
+      val formula = thfLogicFormula()
+//      if (tokens.hasNext) {
+//        val nt = tokens.peek()
+//        nt._1 match {
+//          case COLON => // May be typing, only if "simple atom" (user-specific or system-specific)
+//            consume()
+//            formula match {
+//              case ft@FunctionTerm(f, _) if ft.isConstant && !ft.isDefinedFunction =>
+//                val typ = ???
+//                THF.Typing(f, typ)
+//              case _ => ??? // TODO: Error
+//            }
+//          case _ => THF.Logical(formula)
+//        }
+//      } else THF.Logical(formula)
+???
+    }
 
     def thfAtomTyping(): Any = ???
 
-    def thfSubtype(): Any = ???
-
-    def thfSequent(): Any = ???
-
-    def thfLogicFormula(): Any = ???
+    def thfLogicFormula(): THF.Term = ???
 
 
     ////////////////////////////////////////////////////////////////////////
