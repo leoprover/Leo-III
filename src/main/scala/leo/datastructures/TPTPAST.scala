@@ -1,6 +1,6 @@
 package leo.datastructures
 
-object TPTPParseTree {
+object TPTPAST {
   type Include = (String, Seq[String])
   type Annotations = Option[(GeneralTerm, Option[Seq[GeneralTerm]])]
 

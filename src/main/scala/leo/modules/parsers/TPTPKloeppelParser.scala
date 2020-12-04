@@ -5,14 +5,14 @@ import scala.annotation.tailrec
 import scala.io.Source
 
 object TPTPKloeppelParser {
-  import leo.datastructures.TPTPParseTree.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
+  import leo.datastructures.TPTPAST.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
     FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
-  import leo.datastructures.TPTPParseTree.THF.{Formula => THFFormula}
-  import leo.datastructures.TPTPParseTree.TFF.{Formula => TFFFormula}
-  import leo.datastructures.TPTPParseTree.FOF.{Formula => FOFFormula}
-  import leo.datastructures.TPTPParseTree.TCF.{Formula => TCFFormula}
-  import leo.datastructures.TPTPParseTree.CNF.{Formula => CNFFormula}
-  import leo.datastructures.TPTPParseTree.TPI.{Formula => TPIFormula}
+  import leo.datastructures.TPTPAST.THF.{Formula => THFFormula}
+  import leo.datastructures.TPTPAST.TFF.{Formula => TFFFormula}
+  import leo.datastructures.TPTPAST.FOF.{Formula => FOFFormula}
+  import leo.datastructures.TPTPAST.TCF.{Formula => TCFFormula}
+  import leo.datastructures.TPTPAST.CNF.{Formula => CNFFormula}
+  import leo.datastructures.TPTPAST.TPI.{Formula => TPIFormula}
 
   final def problem(input: Source): Problem = {
     val lexer = new TPTPLexer(input)
@@ -436,7 +436,7 @@ object TPTPKloeppelParser {
 
   final class TPTPParser(tokens: TPTPLexer) {
     import TPTPLexer.TPTPLexerTokenType._
-    import leo.datastructures.TPTPParseTree._
+    import leo.datastructures.TPTPAST._
     type Token = TPTPLexer.TPTPLexerToken
     type TokenType = TPTPLexer.TPTPLexerTokenType.Value
 
