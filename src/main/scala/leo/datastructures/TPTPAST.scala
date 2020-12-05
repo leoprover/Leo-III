@@ -192,7 +192,10 @@ object TPTPAST {
     sealed abstract class Term extends Pretty
     /** Might be function or just constant. Also distinct object? */
     final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
-      override def pretty: String = ???
+      override def pretty: String = {
+        if (args.isEmpty) f // TODO: Escape if necessary
+        else s"f(${args.map(_.pretty).mkString(",")})"
+      }
 
       @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
       @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
