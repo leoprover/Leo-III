@@ -60,19 +60,19 @@ object TPTPKloeppelParser {
     @inline private[this] def isNonZeroNumeric(ch: Char): Boolean = ch > '0' && ch <= '9' // only select ASCII
     @inline private[this] def isAlphaNumeric(ch: Char): Boolean = isAlpha(ch) || isNumeric(ch) || ch == '_'
 
-    @tailrec
-    override def hasNext: Boolean = iter.hasNext && {
+    override def hasNext: Boolean = lookahead.nonEmpty || hasNext0
+    @tailrec  private[this] def hasNext0: Boolean = iter.hasNext && {
       val ch = iter.head
       // ignore newlines
-      if (ch == '\n') { consume(); line(); hasNext }
+      if (ch == '\n') { consume(); line(); hasNext0 }
       else if (ch == '\r') {
         consume()
         if (iter.hasNext && iter.head == '\n') consume()
         line()
-        hasNext
+        hasNext0
       }
       // ignore whitespace characters (ch.isWhitespace also matches linebreaks; so careful when re-ordering lines)
-      else if (ch.isWhitespace) { consume(); hasNext }
+      else if (ch.isWhitespace) { consume(); hasNext0 }
       // ignore block comments: consume everything until end of comment block
       else if (ch == '/') {
         consume()
@@ -106,7 +106,7 @@ object TPTPKloeppelParser {
               throw new TPTPParseException(s"Unclosed block comment", curLine, curOffset)
             }
           }
-          hasNext
+          hasNext0
         } else {
           // There cannot be a token starting with '/'
           throw new TPTPParseException(s"Unrecognized token '/${iter.head}'", curLine, curOffset-1)
@@ -117,7 +117,7 @@ object TPTPKloeppelParser {
         consume()
         while (iter.hasNext && (iter.head != '\n' && iter.head != '\r')) { consume() }
         // dont need to check rest, just pass to recursive call
-        hasNext
+        hasNext0
       }
       // everything else
       else true
@@ -128,7 +128,7 @@ object TPTPKloeppelParser {
         getNextToken
       } else {
         val result = lookahead.head
-        lookahead = lookahead.init
+        lookahead = lookahead.tail
         result
       }
     }
@@ -163,7 +163,7 @@ object TPTPKloeppelParser {
     private[this] def getNextToken: TPTPLexer.TPTPLexerToken = {
       import TPTPLexer.TPTPLexerTokenType._
 
-      if (!hasNext) throw new NoSuchElementException // also to remove ignored input such as comments etc.
+      if (!hasNext0) throw new NoSuchElementException // also to remove ignored input such as comments etc.
       else {
         val ch = consume()
         // BIG switch case over all different possibilities.
@@ -535,6 +535,9 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////////////////////
+    // Formula level
+    ////////////////////////////////////////////////////////////////////////
     def annotatedTHF(): THFAnnotated = {
       try {
         m(a(LOWERWORD), "thf")
@@ -543,7 +546,7 @@ object TPTPKloeppelParser {
         a(COMMA)
         val r = a(LOWERWORD)._2
         a(COMMA)
-        val f = a(LOWERWORD)._2 // TODO: THF Formula
+        val f = thfFormula()
         var source: GeneralTerm = null
         var info: Seq[GeneralTerm] = null
         val an0 = o(COMMA, null)
@@ -556,8 +559,8 @@ object TPTPKloeppelParser {
         }
         a(RPAREN)
         a(DOT)
-        if (source == null) THFAnnotated(n, r, THF.Logical(THF.Variable(f)), None) // TODO: Replace with real formula
-        else THFAnnotated(n, r, THF.Logical(THF.Variable(f)), Some((source, Option(info))))
+        if (source == null) THFAnnotated(n, r, f, None)
+        else THFAnnotated(n, r, f, Some((source, Option(info))))
       } catch {
         case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
         else throw new TPTPParseException("Parse error: Unexpected end of input for annotated THF formula", lastTok._3, lastTok._4)
@@ -565,36 +568,69 @@ object TPTPKloeppelParser {
     }
 
     def thfFormula(): THF.Formula = {
-      import THF.{FunctionTerm, Tuple}
-
-      val formula = thfLogicFormula()
-//      if (tokens.hasNext) {
-//        val nt = tokens.peek()
-//        nt._1 match {
-//          case COLON => // May be typing, only if "simple atom" (user-specific or system-specific)
-//            consume()
-//            formula match {
-//              case ft@FunctionTerm(f, _) if ft.isConstant && !ft.isDefinedFunction =>
-//                val typ = ???
-//                THF.Typing(f, typ)
-//              case _ => ??? // TODO: Error
-//            }
-//          case _ => THF.Logical(formula)
-//        }
-//      } else THF.Logical(formula)
-???
+      val idx = peekUnder(LPAREN)
+      val tok = peek(idx)
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARDOLLARWORD if peek(idx+1)._1 == COLON => // Typing
+          thfAtomTyping()
+        case _ =>
+          THF.Logical(thfLogicFormula())
+      }
     }
 
-    def thfAtomTyping(): Any = ???
+    def thfAtomTyping(): THF.Typing = {
+      val lp = o(LPAREN, null)
+      if (lp != null) {
+        val res = thfAtomTyping()
+        a(RPAREN)
+        res
+      } else {
+        val constant = untypedAtom()
+        a(COLON)
+        val typ = thfTopLevelType()
+        THF.Typing(constant, typ)
+      }
+    }
 
-    def thfLogicFormula(): THF.Term = ???
+    def thfLogicFormula(): THF.Term = {
+      // check if head is quantifier -> quantified formula
+      // if [ then tuple
+      // if atomic, singlequoted, dollar, dollardollar => atomic constant
+      // if number, atomicterm (number)
+      // if dollar, then defined stuff (let, conditional, general function)
+      // if dooublequited, => distinct object
+      // if ( then connective, then conn_term
+      // if uppercase, then variable
+      // if unary connective, follow up on that
 
+      // think about binary stuff, if done,while loop for further arguments.
+      // think about parentheses for equality inequality
+
+      // ((asdasd) & (asdads))
+
+      // if ( and nothing else, recurse?
+      THF.FunctionTerm(name(), Seq.empty)
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////
+    // Type level
+    ////////////////////////////////////////////////////////////////////////
+    def thfTopLevelType(): Any = ???
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     // General TPTP language stuff
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
+
+    private[this] def untypedAtom(): String = {
+      val tok = peek()
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARDOLLARWORD => consume()._2
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARDOLLARWORD), tok)
+      }
+    }
 
     private[this] def generalList(): Seq[GeneralTerm] = {
       var result: Seq[GeneralTerm] = Seq.empty
@@ -728,10 +764,17 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
 
     @inline private[this] def peek(): Token = tokens.peek()
+    @inline private[this] def peek(i: Int): Token = tokens.peek(i)
     @inline private[this] def consume(): Token = {
       val t = tokens.next()
       lastTok = t
       t
+    }
+
+    private[this] def peekUnder(tokenType: TokenType): Int = {
+      var i: Int = 0
+      while (peek(i)._1 == tokenType) { i += 1  }
+      i
     }
 
     @inline private[this] def error[A](acceptedTokens: Seq[TokenType], actual: Token): A = {
