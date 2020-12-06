@@ -181,9 +181,11 @@ object TPTPAST {
 
 
   object THF {
+    type TypedVariable = (String, Type)
+
     sealed abstract class Formula extends Pretty
-    final case class Typing(atom: String, typ: Any) extends Formula {
-      override def pretty: String = s"$atom: ${typ.toString}" // TODO: make pretty
+    final case class Typing(atom: String, typ: Type) extends Formula {
+      override def pretty: String = s"$atom: ${typ.pretty}"
     }
     final case class Logical(term: Term) extends Formula {
       override def pretty: String = term.pretty
@@ -202,17 +204,17 @@ object TPTPAST {
       @inline def isSystemFunction: Boolean = f.startsWith("$$")
       @inline def isConstant: Boolean = args.isEmpty
     }
-    final case class QuantifiedFormula(quantifier: Any, variableList: Seq[Any], body: Term) extends Term {
-      override def pretty: String = ???
+    final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[TypedVariable], body: Term) extends Term {
+      override def pretty: String = s"(${quantifier.pretty} [${variableList.map{case (n,t) => s"$n:${t.pretty}"}.mkString(",")}]: (${body.pretty}))"
     }
     final case class Variable(name: String) extends Term {
       override def pretty: String = name
     }
-    final case class UnaryFormula(connective: Any, body: Term) extends Term {
-      override def pretty: String = ???
+    final case class UnaryFormula(connective: UnaryConnective, body: Term) extends Term {
+      override def pretty: String = s"${connective.pretty} (${body.pretty})"
     }
-    final case class BinaryFormula(connective: Any, left: Term, right: Term) extends Term {
-      override def pretty: String = ???
+    final case class BinaryFormula(connective: BinaryConnective, left: Term, right: Term) extends Term {
+      override def pretty: String = s"(${left.pretty} ${connective.pretty} ${right.pretty})"
     }
     final case class Tuple(elements: Seq[Term]) extends Term {
       override def pretty: String = s"[${elements.map(_.pretty).mkString(",")}]"
@@ -220,11 +222,11 @@ object TPTPAST {
     final case class ConditionalTerm(condition: Term, thn: Term, els: Term) extends Term {
       override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
     }
-    final case class LetTerm(typing: Map[String, Any], binding: Map[Term, Term], body: Term) extends Term {
+    final case class LetTerm(typing: Map[String, Type], binding: Map[Term, Term], body: Term) extends Term {
       override def pretty: String = ???
     }
-    final case class Connective(conn: Any) extends Term {
-      override def pretty: String = ???
+    final case class ConnectiveTerm(conn: Connective) extends Term {
+      override def pretty: String = s"(${conn.pretty})"
     }
     final case class DistinctObject(name: String) extends Term {
       override def pretty: String = name
@@ -232,6 +234,42 @@ object TPTPAST {
     final case class NumberTerm(value: Number) extends Term {
       override def pretty: String = value.pretty
     }
+
+    sealed abstract class Connective extends Pretty
+    sealed abstract class UnaryConnective extends Connective
+    final case object ~ extends UnaryConnective { override def pretty: String = "~" }
+    final case object !! extends UnaryConnective { override def pretty: String = "!!" }
+    final case object ?? extends UnaryConnective { override def pretty: String = "??" }
+    final case object @@+ extends UnaryConnective { override def pretty: String = "@@+" } // Choice
+    final case object @@- extends UnaryConnective { override def pretty: String = "@@-" } // Description
+    final case object @@= extends UnaryConnective { override def pretty: String = "@@=" } // Prefix equality
+
+    sealed abstract class BinaryConnective extends Connective
+    final case object Eq extends BinaryConnective { override def pretty: String = "=" }
+    final case object Neq extends BinaryConnective { override def pretty: String = "!=" }
+    // non-assoc
+    final case object <=> extends BinaryConnective { override def pretty: String = "<=>" }
+    final case object Impl extends BinaryConnective { override def pretty: String = "=>" }
+    final case object <= extends BinaryConnective { override def pretty: String = "<=" }
+    final case object <~> extends BinaryConnective { override def pretty: String = "<~>" }
+    final case object ~| extends BinaryConnective { override def pretty: String = "~|" }
+    final case object ~& extends BinaryConnective { override def pretty: String = "~&" }
+    // assoc
+    final case object | extends BinaryConnective { override def pretty: String = "|" }
+    final case object & extends BinaryConnective { override def pretty: String = "&" }
+    final case object App extends BinaryConnective { override def pretty: String = "@" }
+
+    sealed abstract class Quantifier extends Pretty
+    final case object ! extends Quantifier { override def pretty: String = "!" } // All
+    final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
+    final case object ^ extends Quantifier { override def pretty: String = "^" } // Lambda
+    final case object !> extends Quantifier { override def pretty: String = "!>" } // Big pi
+    final case object ?* extends Quantifier { override def pretty: String = "?*" } // Big sigma
+    final case object @+ extends Quantifier { override def pretty: String = "@+" } // Choice
+    final case object @- extends Quantifier { override def pretty: String = "@-" } // Description
+
+    sealed abstract class Type extends Pretty
+    final case class BaseType(id: String) extends Type { override def pretty: String = id }
   }
 
   object TFF {
