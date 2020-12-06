@@ -593,30 +593,265 @@ object TPTPKloeppelParser {
     }
 
     def thfLogicFormula(): THF.Term = {
-      // check if head is quantifier -> quantified formula
-      // if [ then tuple
-      // if atomic, singlequoted, dollar, dollardollar => atomic constant
-      // if number, atomicterm (number)
-      // if dollar, then defined stuff (let, conditional, general function)
-      // if dooublequited, => distinct object
-      // if ( then connective, then conn_term
-      // if uppercase, then variable
-      // if unary connective, follow up on that
+      // We want to eliminate backtracking when parsing THF. So change the grammar interpretation as follows
+      // Always read units first (thats everything except binary formulas). Then check for following
+      // binary connectives and iteratively parse more units (one if non-assoc, as much as possible if assoc).
+      // Only allow equality or inequality if the formula parsed first is not a quantification (i.e.
+      // a <thf_unitary_term> but not a <thf_unitary_formula> as TPTP would put it).
+      val tok = peek()
+      val isUnitaryTerm = !isTHFQuantifier(tok._1) && !isUnaryTHFConnective(tok._1)
+      // if direct quantification, parse it (as unit f1) and remember
+      // if not: parse as unit f1
+      // then
+      //  if = or !=, and no direct quantification before, parse unitary term f2. return f1 op f2.
+      //  if binary connective non-assoc, parse unit f2. return f1 op f2.
+      //  if binary connective assoc. parse unit f2, collect f1 op f2. repeat parse unit until not same op.
+      //  if none, return f1
+      val f1 = thfUnitFormula(acceptEqualityLike = false)
+      val next = peek()
+      next._1 match {
+        case EQUALS | NOTEQUALS if isUnitaryTerm =>
+          val op = tokenToTHFEqConnective(consume())
+          val nextTok = peek()
+          if (isTHFQuantifier(nextTok._1) || isUnaryTHFConnective(nextTok._1)) {
+            // not allowed, since we are in <thf_unitary_term> here.
+            error2(s"Expected <thf_unitary_term>, but found ${nextTok._1} first. Maybe parentheses are missing around the argument of ${next._1}?", nextTok)
+          } else {
+            val f2 = thfUnitFormula(acceptEqualityLike = false)//thfUnitaryTerm()
+            THF.BinaryFormula(op, f1, f2)
+          }
+        case c if isBinaryConnective(c) =>
+          if (isBinaryAssocConnective(c)) {
+            val opTok = consume()
+            val op = tokenToTHFBinaryConnective(opTok)
+            val f2 = thfUnitFormula(acceptEqualityLike = true)
+            // collect all further formulas with same associative operator
+            var fs: Seq[THF.Term] = Vector(f1,f2)
+            while (peek()._1 == opTok._1) {
+              consume()
+              val f = thfUnitFormula(acceptEqualityLike = true)
+              fs = fs :+ f
+            }
+            fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+          } else {
+            // non-assoc; just parse one more unit and then done.
+            val op = tokenToTHFBinaryConnective(consume())
+            val f2 = thfUnitFormula(acceptEqualityLike = true)
+            THF.BinaryFormula(op, f1, f2)
+          }
+        case _ => f1
+      }
+    }
 
-      // think about binary stuff, if done,while loop for further arguments.
-      // think about parentheses for equality inequality
+    // Can use this as thfUnitaryFormula with false for call in pre_unit and also for thfUnitaryTerm if is made sure before
+    // that there is no quantifier or unary connective in peek().
+    private[this] def thfUnitFormula(acceptEqualityLike: Boolean): THF.Term = {
+      val tok = peek()
+      var feasibleForEq = false
+      val f1 = tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARDOLLARWORD => // counts as ATOM, hence + expect equality
+          feasibleForEq = true
+          val fn = consume()._2
+          var args: Seq[THF.Term] = Vector.empty
+          val lp = o(LPAREN, null)
+          if (lp != null) {
+            args = args :+ thfLogicFormula()
+            while (o(COMMA, null) != null) {
+              args = args :+ thfLogicFormula()
+            }
+            a(RPAREN)
+          }
+          THF.FunctionTerm(fn, args)
 
-      // ((asdasd) & (asdads))
+        case UPPERWORD => // + expect equality
+          feasibleForEq = true
+          val variable = consume()
+          THF.Variable(variable._2)
 
-      // if ( and nothing else, recurse?
-      THF.FunctionTerm(name(), Seq.empty)
+        case q if isTHFQuantifier(q) =>
+          val quantifier = tokenToTHFQuantifier(consume())
+          a(LBRACKET)
+          var variables: Seq[THF.TypedVariable] = Vector(typedVariable())
+          while(o(COMMA, null) != null) {
+            variables = variables :+ typedVariable()
+          }
+          a(RBRACKET)
+          a(COLON)
+          val body = thfUnitFormula(acceptEqualityLike = true)
+          THF.QuantifiedFormula(quantifier, variables, body)
+
+
+        case q if isUnaryTHFConnective(q) =>
+          val op = tokenToTHFUnaryConnective(consume())
+          var listOfUnaries: Seq[THF.UnaryConnective] = Vector(op)
+          while (isUnaryTHFConnective(peek()._1)) {
+            listOfUnaries = listOfUnaries :+ tokenToTHFUnaryConnective(consume())
+          }
+          val body = thfUnitFormula(acceptEqualityLike = false)
+          listOfUnaries.foldRight(body)((op, acc) => THF.UnaryFormula(op, acc))
+
+        case LPAREN if isTHFConnective(peek(1)._1) && peek(2)._1 == RPAREN => // counts as ATOM, hence + expect equality
+          feasibleForEq = true
+          consume()
+          val op = consume()
+          val connective: THF.Connective = if (isUnaryTHFConnective(op._1)) tokenToTHFUnaryConnective(op)
+          else if (isBinaryTHFConnective(op._1)) tokenToTHFBinaryConnective(op)
+          else {
+            assert(isEqualityLikeConnective(op._1))
+            tokenToTHFEqConnective(op)
+          }
+          a(RPAREN)
+          THF.ConnectiveTerm(connective)
+
+        case LPAREN => // + expect equality
+          feasibleForEq = true
+          consume()
+          val res = thfLogicFormula()
+          a(RPAREN)
+          res
+        case DOLLARWORD => // counts as ATOM, hence + expect equality
+          feasibleForEq = true
+          val fn = consume()._2
+          fn match {
+            case "$let" =>
+              consume()
+              a(LPAREN)
+              // ...
+              a(COMMA)
+              // ...
+              a(COMMA)
+              val body = thfLogicFormula()
+              a(RPAREN)
+              THF.LetTerm(???, ???, body)
+            case "$ite" =>
+              consume()
+              a(LPAREN)
+              val cond = thfLogicFormula()
+              a(COMMA)
+              val thn = thfLogicFormula()
+              a(COMMA)
+              val els = thfLogicFormula()
+              a(RPAREN)
+              THF.ConditionalTerm(cond, thn, els)
+            case _ => // general fof-like function
+              var args: Seq[THF.Term] = Vector.empty
+              val lp = o(LPAREN, null)
+              if (lp != null) {
+                args = args :+ thfLogicFormula()
+                while (o(COMMA, null) != null) {
+                  args = args :+ thfLogicFormula()
+                }
+                a(RPAREN)
+              }
+              THF.FunctionTerm(fn, args)
+          }
+
+        case DOUBLEQUOTED => // counts as ATOM, hence + expect equality
+          feasibleForEq = true
+          val distinctobject = consume()._2
+          THF.DistinctObject(distinctobject)
+
+        case INT | RATIONAL | REAL => // counts as ATOM, hence + expect equality
+          feasibleForEq = true
+          val n = number()
+          THF.NumberTerm(n)
+
+        case _ => error2(s"Unrecognized formula input '${tok._1}'", tok)
+      }
+      // if expect equality: do double time.
+      if (acceptEqualityLike && feasibleForEq) {
+        val tok2 = peek()
+        if (isEqualityLikeConnective(tok._1)) {
+          val op = tokenToTHFEqConnective(consume())
+          val tok3 = peek()
+          if (isTHFQuantifier(tok3._1) || isUnaryTHFConnective(tok3._1)) {
+            // not allowed, since we are in <thf_unitary_term> (simulated) here.
+            error2(s"Expected <thf_unitary_term>, but found ${tok3._1} first. Maybe parentheses are missing around the argument of ${tok3._1}?", tok3)
+          } else {
+            val f2 = thfUnitFormula(acceptEqualityLike = false)
+            THF.BinaryFormula(op, f1, f2)
+          }
+        } else f1
+      } else f1
+    }
+
+//    private[this] def thfUnitaryTerm(): THF.Term = ???
+
+    private[this] def typedVariable(): THF.TypedVariable = {
+      val variableName = variable()
+      a(COLON)
+      val typ = thfTopLevelType()
+      (variableName, typ)
+    }
+
+    @inline private[this] def isTHFConnective(tokenType: TokenType): Boolean =
+      isUnaryTHFConnective(tokenType) || isBinaryTHFConnective(tokenType) || isEqualityLikeConnective(tokenType)
+
+    @inline private[this] def isUnaryTHFConnective(tokenType: TokenType): Boolean = isUnaryConnective(tokenType) || (tokenType match {
+      case FORALLCOMB | EXISTSCOMB | DESCRIPTIONCOMB | CHOICECOMB | EQCOMB => true
+      case _ => false
+    })
+    @inline private[this] def isBinaryTHFConnective(tokenType: TokenType): Boolean = isBinaryConnective(tokenType)
+    @inline private[this] def isTHFQuantifier(tokenType: TokenType): Boolean = isQuantifier(tokenType) || (tokenType match {
+      case LAMBDA | DESCRIPTION | CHOICE | TYFORALL | TYEXISTS => true
+      case _ => false
+    })
+
+    @inline private[this] def isUnaryConnective(tokenType: TokenType): Boolean = tokenType == NOT
+    @inline private[this] def isBinaryConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || (tokenType match {
+      case IFF | IMPL | IF | NOR | NAND | NIFF => true
+      case _ => false
+    })
+    @inline private[this] def isBinaryAssocConnective(tokenType: TokenType): Boolean = tokenType == AND || tokenType == OR
+    @inline private[this] def isQuantifier(tokenType: TokenType): Boolean = tokenType == FORALL || tokenType == EXISTS
+    @inline private[this] def isEqualityLikeConnective(tokenType: TokenType): Boolean = tokenType == EQUALS || tokenType == NOTEQUALS
+
+
+    private[this] def tokenToTHFEqConnective(token: Token): THF.BinaryConnective = token._1 match {
+      case EQUALS => THF.Eq
+      case NOTEQUALS => THF.Neq
+      case _ => error(Seq(EQUALS, NOTEQUALS), token)
+    }
+    private[this] def tokenToTHFBinaryConnective(token: Token): THF.BinaryConnective = token._1 match {
+      case APP => THF.App
+      case OR => THF.|
+      case AND => THF.&
+      case IFF => THF.<=>
+      case IMPL => THF.Impl
+      case IF => THF.<=
+      case NOR => THF.~|
+      case NAND => THF.~&
+      case NIFF => THF.<~>
+      case _ => error(Seq(APP, OR, AND, IFF, IMPL, IF, NOR, NAND, NIFF), token)
+    }
+    private[this] def tokenToTHFUnaryConnective(token: Token): THF.UnaryConnective = token._1 match {
+      case NOT => THF.~
+      case FORALLCOMB => THF.!!
+      case EXISTSCOMB => THF.??
+      case CHOICECOMB => THF.@@+
+      case DESCRIPTIONCOMB => THF.@@-
+      case EQCOMB => THF.@@=
+      case _ => error(Seq(NOT, FORALLCOMB, EXISTSCOMB, CHOICECOMB, DESCRIPTIONCOMB, EQCOMB), token)
+    }
+    private[this] def tokenToTHFQuantifier(token: Token): THF.Quantifier = token._1 match {
+      case FORALL => THF.!
+      case EXISTS => THF.?
+      case LAMBDA => THF.^
+      case CHOICE => THF.@+
+      case DESCRIPTION => THF.@-
+      case TYFORALL => THF.!>
+      case TYEXISTS => THF.?*
+      case _ => error(Seq(FORALL, EXISTS, LAMBDA, CHOICE, DESCRIPTION, TYFORALL, TYEXISTS), token)
     }
 
 
     ////////////////////////////////////////////////////////////////////////
     // Type level
     ////////////////////////////////////////////////////////////////////////
-    def thfTopLevelType(): Any = ???
+    def thfTopLevelType(): THF.Type = {
+      val ty = name()
+      THF.BaseType(ty)
+    }
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -749,6 +984,14 @@ object TPTPKloeppelParser {
       }
     }
 
+    private[this] def variable(): String = {
+      val t = peek()
+      t._1 match {
+        case UPPERWORD => consume()._2
+        case _ => error(Seq(UPPERWORD), t)
+      }
+    }
+
     private[this] def atomicWord(): String = {
       val t = peek()
       t._1 match {
@@ -793,6 +1036,10 @@ object TPTPKloeppelParser {
         if (actual._2 == null) throw new TPTPParseException(s"Expected one of ${acceptedPayload.map(s => s"'$s'").mkString(",")} but read ${actual._1}", actual._3, actual._4)
         else throw new TPTPParseException(s"Expected one of ${acceptedPayload.map(s => s"'$s'").mkString(",")} but read ${actual._1} '${actual._2}'", actual._3, actual._4)
       }
+    }
+
+    @inline private[this] def error2[A](message: String, tokenReference: Token): A = {
+      throw new TPTPParseException(message, tokenReference._3, tokenReference._4)
     }
 
     private[this] def a(tokType: TokenType): Token = {
