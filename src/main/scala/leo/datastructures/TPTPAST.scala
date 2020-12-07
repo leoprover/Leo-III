@@ -186,6 +186,7 @@ object TPTPAST {
 
   object THF {
     type TypedVariable = (String, Type)
+    type Type = Term
 
     sealed abstract class Formula extends Pretty
     final case class Typing(atom: String, typ: Type) extends Formula {
@@ -195,6 +196,9 @@ object TPTPAST {
       override def pretty: String = term.pretty
     }
 
+    // Types as terms; for TH1 parsing. That's why we dont have a clean separation between terms and types here.
+    // We don't care for well-typedness etc. in parsing. We can parse syntactically correct but completely meaningless
+    // and ill-typed inputs. This will be addressed in the interpretation step.
     sealed abstract class Term extends Pretty
     /** Might be function or just constant. Also distinct object? */
     final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
@@ -227,7 +231,7 @@ object TPTPAST {
       override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
     }
     final case class LetTerm(typing: Map[String, Type], binding: Map[Term, Term], body: Term) extends Term {
-      override def pretty: String = ???
+      override def pretty: String = s"$$let(...,${body.pretty})" // TODO
     }
     final case class ConnectiveTerm(conn: Connective) extends Term {
       override def pretty: String = s"(${conn.pretty})"
@@ -238,6 +242,16 @@ object TPTPAST {
     final case class NumberTerm(value: Number) extends Term {
       override def pretty: String = value.pretty
     }
+
+//    final case class FunctionType(left: Type, right: Type) extends Term {
+//      override def pretty: String = s"((${left.pretty}) > ${right.pretty})"
+//    }
+//    final case class ProductType(left: Type, right: Type) extends Term {
+//      override def pretty: String = s"(${left.pretty} * (${right.pretty}))"
+//    }
+//    final case class UnionType(left: Type, right: Type) extends Term {
+//      override def pretty: String = s"(${left.pretty} + (${right.pretty}))"
+//    }
 
     sealed abstract class Connective extends Pretty
     sealed abstract class UnaryConnective extends Connective
@@ -262,6 +276,10 @@ object TPTPAST {
     final case object | extends BinaryConnective { override def pretty: String = "|" }
     final case object & extends BinaryConnective { override def pretty: String = "&" }
     final case object App extends BinaryConnective { override def pretty: String = "@" }
+    // term-as-type
+    final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
+    final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
+    final case object SumTyConstructor extends BinaryConnective { override def pretty: String = "+" }
 
     sealed abstract class Quantifier extends Pretty
     final case object ! extends Quantifier { override def pretty: String = "!" } // All
@@ -269,33 +287,25 @@ object TPTPAST {
     final case object ^ extends Quantifier { override def pretty: String = "^" } // Lambda
     final case object @+ extends Quantifier { override def pretty: String = "@+" } // Choice
     final case object @- extends Quantifier { override def pretty: String = "@-" } // Description
-    sealed abstract class TypeQuantifier extends Quantifier
-    final case object !> extends TypeQuantifier { override def pretty: String = "!>" } // Big pi
-    final case object ?* extends TypeQuantifier { override def pretty: String = "?*" } // Big sigma
+//    sealed abstract class TypeQuantifier extends Quantifier
+    final case object !> extends Quantifier { override def pretty: String = "!>" } // Big pi
+    final case object ?* extends Quantifier { override def pretty: String = "?*" } // Big sigma
 
-    sealed abstract class Type extends Pretty
-    final case class BaseType(id: String) extends Type { override def pretty: String = id } // defined, system and uninterpreted
-    final case class FunctionType(left: Type, right: Type) extends Type {
-      override def pretty: String = s"((${left.pretty}) > ${right.pretty})"
-    }
-    final case class ProductType(left: Type, right: Type) extends Type {
-      override def pretty: String = s"(${left.pretty} * (${right.pretty}))"
-    }
-    final case class UnionType(left: Type, right: Type) extends Type {
-      override def pretty: String = s"(${left.pretty} + (${right.pretty}))"
-    }
-    final case class TupleType(entries: Seq[Type]) extends Type {
-      override def pretty: String = s"[${entries.map(_.pretty).mkString(", ")}]"
-    }
-    final case class QuantifiedType(quantifier: TypeQuantifier, variableList: Seq[String], body: Type) extends Type {
-      override def pretty: String = s"${quantifier.pretty} [${variableList.map(s => s"$s : $$tType").mkString(",")}]: ${body.pretty}"
-    }
-    final case class TypeVariable(name: String) extends Type {
-      override def pretty: String = name
-    }
-    final case class ApplyType(left: Type, right: Type) extends Type {
-      override def pretty: String = s"(${left.pretty} @ (${right.pretty}))"
-    }
+//    sealed abstract class Type extends Pretty
+//    final case class BaseType(id: String) extends Type { override def pretty: String = id } // defined, system and uninterpreted
+
+//    final case class TupleType(entries: Seq[Type]) extends Type {
+//      override def pretty: String = s"[${entries.map(_.pretty).mkString(", ")}]"
+//    }
+//    final case class QuantifiedType(quantifier: TypeQuantifier, variableList: Seq[String], body: Type) extends Type {
+//      override def pretty: String = s"${quantifier.pretty} [${variableList.map(s => s"$s : $$tType").mkString(",")}]: ${body.pretty}"
+//    }
+//    final case class TypeVariable(name: String) extends Type {
+//      override def pretty: String = name
+//    }
+//    final case class ApplyType(left: Type, right: Type) extends Type {
+//      override def pretty: String = s"(${left.pretty} @ (${right.pretty}))"
+//    }
   }
 
   object TFF {

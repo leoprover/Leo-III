@@ -600,6 +600,7 @@ object TPTPKloeppelParser {
       // a <thf_unitary_term> but not a <thf_unitary_formula> as TPTP would put it).
       val tok = peek()
       val isUnitaryTerm = !isTHFQuantifier(tok._1) && !isUnaryTHFConnective(tok._1)
+      val isUnitaryFormula = !isUnaryTHFConnective(tok._1)
       // if direct quantification, parse it (as unit f1) and remember
       // if not: parse as unit f1
       // then
@@ -620,8 +621,8 @@ object TPTPKloeppelParser {
             val f2 = thfUnitFormula(acceptEqualityLike = false)//thfUnitaryTerm()
             THF.BinaryFormula(op, f1, f2)
           }
-        case c if isBinaryConnective(c) =>
-          if (isBinaryAssocConnective(c)) {
+        case c if isBinaryTHFConnective(c) || isBinaryTHFTypeConstructor(c) =>
+          if (isBinaryAssocTHFConnective(c)) {
             val opTok = consume()
             val op = tokenToTHFBinaryConnective(opTok)
             val f2 = thfUnitFormula(acceptEqualityLike = true)
@@ -633,6 +634,31 @@ object TPTPKloeppelParser {
               fs = fs :+ f
             }
             fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+          } else if (isBinaryTHFTypeConstructor(c)) {
+            val opTok = consume()
+            val op = tokenToTHFBinaryTypeConstructor(opTok)
+            if (isUnitaryFormula) {
+              if (isUnaryTHFConnective(peek()._1)) {
+                error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+              } else {
+                val f2 = thfUnitFormula(acceptEqualityLike = false)
+                // collect all further formulas with same associative operator
+                var fs: Seq[THF.Term] = Vector(f1,f2)
+                while (peek()._1 == opTok._1) {
+                  consume()
+                  if (!isUnaryTHFConnective(peek()._1)) {
+                    val f = thfUnitFormula(acceptEqualityLike = false)
+                    fs = fs :+ f
+                  } else {
+                    error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+                  }
+                }
+                if (op == THF.FunTyConstructor) fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+                else fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
+              }
+            } else {
+              error2("Unexpected binary type constructor after <thf_unary_formula>.", opTok)
+            }
           } else {
             // non-assoc; just parse one more unit and then done.
             val op = tokenToTHFBinaryConnective(consume())
@@ -645,6 +671,7 @@ object TPTPKloeppelParser {
 
     // Can use this as thfUnitaryFormula with false for call in pre_unit and also for thfUnitaryTerm if is made sure before
     // that there is no quantifier or unary connective in peek().
+    // Also as thfUnitaryFormula in general with argument false, if we make sure there is no unary connective in front.
     private[this] def thfUnitFormula(acceptEqualityLike: Boolean): THF.Term = {
       val tok = peek()
       var feasibleForEq = false
@@ -784,6 +811,19 @@ object TPTPKloeppelParser {
       (variableName, typ)
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    // Type level
+    ////////////////////////////////////////////////////////////////////////
+    def thfTopLevelType(): THF.Type = {
+      //      val ty = name()
+      //      THF.BaseType(ty)
+      ???
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // Other THF stuff
+    ////////////////////////////////////////////////////////////////////////
+
     @inline private[this] def isTHFConnective(tokenType: TokenType): Boolean =
       isUnaryTHFConnective(tokenType) || isBinaryTHFConnective(tokenType) || isEqualityLikeConnective(tokenType)
 
@@ -791,11 +831,13 @@ object TPTPKloeppelParser {
       case FORALLCOMB | EXISTSCOMB | DESCRIPTIONCOMB | CHOICECOMB | EQCOMB => true
       case _ => false
     })
-    @inline private[this] def isBinaryTHFConnective(tokenType: TokenType): Boolean = isBinaryConnective(tokenType)
+    @inline private[this] def isBinaryTHFConnective(tokenType: TokenType): Boolean = isBinaryConnective(tokenType) || tokenType == APP
+    @inline private[this] def isBinaryTHFTypeConstructor(tokenType: TokenType): Boolean = tokenType == STAR || tokenType == RANGLE || tokenType == PLUS
     @inline private[this] def isTHFQuantifier(tokenType: TokenType): Boolean = isQuantifier(tokenType) || (tokenType match {
       case LAMBDA | DESCRIPTION | CHOICE | TYFORALL | TYEXISTS => true
       case _ => false
     })
+    @inline private[this] def isBinaryAssocTHFConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || tokenType == APP
 
     @inline private[this] def isUnaryConnective(tokenType: TokenType): Boolean = tokenType == NOT
     @inline private[this] def isBinaryConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || (tokenType match {
@@ -824,6 +866,12 @@ object TPTPKloeppelParser {
       case NIFF => THF.<~>
       case _ => error(Seq(APP, OR, AND, IFF, IMPL, IF, NOR, NAND, NIFF), token)
     }
+    private[this] def tokenToTHFBinaryTypeConstructor(token: Token): THF.BinaryConnective = token._1 match {
+      case PLUS => THF.SumTyConstructor
+      case STAR => THF.ProductTyConstructor
+      case RANGLE => THF.FunTyConstructor
+      case _ => error(Seq(PLUS, STAR, RANGLE), token)
+    }
     private[this] def tokenToTHFUnaryConnective(token: Token): THF.UnaryConnective = token._1 match {
       case NOT => THF.~
       case FORALLCOMB => THF.!!
@@ -844,15 +892,7 @@ object TPTPKloeppelParser {
       case _ => error(Seq(FORALL, EXISTS, LAMBDA, CHOICE, DESCRIPTION, TYFORALL, TYEXISTS), token)
     }
 
-
-    ////////////////////////////////////////////////////////////////////////
-    // Type level
-    ////////////////////////////////////////////////////////////////////////
-    def thfTopLevelType(): THF.Type = {
-      val ty = name()
-      THF.BaseType(ty)
-    }
-
+    
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     // General TPTP language stuff
