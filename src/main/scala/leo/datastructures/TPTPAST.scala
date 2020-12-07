@@ -267,13 +267,35 @@ object TPTPAST {
     final case object ! extends Quantifier { override def pretty: String = "!" } // All
     final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
     final case object ^ extends Quantifier { override def pretty: String = "^" } // Lambda
-    final case object !> extends Quantifier { override def pretty: String = "!>" } // Big pi
-    final case object ?* extends Quantifier { override def pretty: String = "?*" } // Big sigma
     final case object @+ extends Quantifier { override def pretty: String = "@+" } // Choice
     final case object @- extends Quantifier { override def pretty: String = "@-" } // Description
+    sealed abstract class TypeQuantifier extends Quantifier
+    final case object !> extends TypeQuantifier { override def pretty: String = "!>" } // Big pi
+    final case object ?* extends TypeQuantifier { override def pretty: String = "?*" } // Big sigma
 
     sealed abstract class Type extends Pretty
-    final case class BaseType(id: String) extends Type { override def pretty: String = id }
+    final case class BaseType(id: String) extends Type { override def pretty: String = id } // defined, system and uninterpreted
+    final case class FunctionType(left: Type, right: Type) extends Type {
+      override def pretty: String = s"((${left.pretty}) > ${right.pretty})"
+    }
+    final case class ProductType(left: Type, right: Type) extends Type {
+      override def pretty: String = s"(${left.pretty} * (${right.pretty}))"
+    }
+    final case class UnionType(left: Type, right: Type) extends Type {
+      override def pretty: String = s"(${left.pretty} + (${right.pretty}))"
+    }
+    final case class TupleType(entries: Seq[Type]) extends Type {
+      override def pretty: String = s"[${entries.map(_.pretty).mkString(", ")}]"
+    }
+    final case class QuantifiedType(quantifier: TypeQuantifier, variableList: Seq[String], body: Type) extends Type {
+      override def pretty: String = s"${quantifier.pretty} [${variableList.map(s => s"$s : $$tType").mkString(",")}]: ${body.pretty}"
+    }
+    final case class TypeVariable(name: String) extends Type {
+      override def pretty: String = name
+    }
+    final case class ApplyType(left: Type, right: Type) extends Type {
+      override def pretty: String = s"(${left.pretty} @ (${right.pretty}))"
+    }
   }
 
   object TFF {
