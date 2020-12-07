@@ -138,10 +138,8 @@ object TPTPAST {
   sealed abstract class GeneralData extends Pretty
   /** @see [[GeneralData]] */
   final case class MetaFunctionData(f: String, args: Seq[GeneralTerm]) extends GeneralData {
-    private[this] final val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
     override def pretty: String = {
-      val escapedF = if (f.matches(simpleLowerWordRegex)) f
-      else s"'${f.replace("\\","\\\\").replace("'", "\\'")}'"
+      val escapedF = escapeAtomicWord(f)
       if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
     }
   }
@@ -159,7 +157,7 @@ object TPTPAST {
   }
   /** @see [[GeneralData]] */
   final case class GeneralFormulaData(data: FormulaData) extends GeneralData {
-    override def pretty: String = data.toString // TODO: make Pretty
+    override def pretty: String = data.pretty
   }
 
   sealed abstract class FormulaData extends Pretty
@@ -179,6 +177,12 @@ object TPTPAST {
     override def pretty: String = s"$$fot(${formula.pretty})"
   }
 
+  private def escapeAtomicWord(word: String): String = {
+    val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
+    if (word.matches(simpleLowerWordRegex)) word
+    else s"'${word.replace("\\","\\\\").replace("'", "\\'")}'"
+  }
+
 
   object THF {
     type TypedVariable = (String, Type)
@@ -195,8 +199,8 @@ object TPTPAST {
     /** Might be function or just constant. Also distinct object? */
     final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
       override def pretty: String = {
-        if (args.isEmpty) f // TODO: Escape if necessary
-        else s"f(${args.map(_.pretty).mkString(",")})"
+        val escapedF = escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
       }
 
       @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
