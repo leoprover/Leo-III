@@ -761,7 +761,7 @@ object TPTPKloeppelParser {
       // if expect equality: do double time.
       if (acceptEqualityLike && feasibleForEq) {
         val tok2 = peek()
-        if (isEqualityLikeConnective(tok._1)) {
+        if (isEqualityLikeConnective(tok2._1)) {
           val op = tokenToTHFEqConnective(consume())
           val tok3 = peek()
           if (isTHFQuantifier(tok3._1) || isUnaryTHFConnective(tok3._1)) {
