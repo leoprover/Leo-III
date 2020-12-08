@@ -7,40 +7,54 @@ import scala.io.Source
 object TPTPKloeppelParser {
   import leo.datastructures.TPTPAST.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
     FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
-  import leo.datastructures.TPTPAST.THF.{Formula => THFFormula}
+  import leo.datastructures.TPTPAST.THF.{Term => THFFormula}
   import leo.datastructures.TPTPAST.TFF.{Formula => TFFFormula}
   import leo.datastructures.TPTPAST.FOF.{Formula => FOFFormula}
   import leo.datastructures.TPTPAST.TCF.{Formula => TCFFormula}
   import leo.datastructures.TPTPAST.CNF.{Formula => CNFFormula}
   import leo.datastructures.TPTPAST.TPI.{Formula => TPIFormula}
 
+  class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
+
   final def problem(input: Source): Problem = {
-    val lexer = new TPTPLexer(input)
-    val parser = new TPTPParser(lexer)
-    parser.tptpFile()
+    val parser = new TPTPParser(new TPTPLexer(input))
+    val result = parser.tptpFile()
+    parser.EOF()
+    result
   }
-  final def problem(input: String): Problem = problem(io.Source.fromString(input))
+  @inline final def problem(input: String): Problem = problem(io.Source.fromString(input))
 
   final def annotated(annotatedFormula: String): AnnotatedFormula = {
-    val lexer = new TPTPLexer(io.Source.fromString(annotatedFormula))
-    val parser = new TPTPParser(lexer)
-    parser.annotatedFormula()
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedFormula()
+    parser.EOF()
+    result
   }
-  final def annotatedTHF(annotatedFormula: String): THFAnnotated = ???
+  final def annotatedTHF(annotatedFormula: String): THFAnnotated = {
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedTHF()
+    parser.EOF()
+    result
+  }
   final def annotatedTFF(annotatedFormula: String): TFFAnnotated = ???
   final def annotatedFOF(annotatedFormula: String): FOFAnnotated = ???
   final def annotatedTCF(annotatedFormula: String): TCFAnnotated = ???
   final def annotatedCNF(annotatedFormula: String): CNFAnnotated = ???
   final def annotatedTPI(annotatedFormula: String): TPIAnnotated = ???
 
-  final def thf(formula: String): THFFormula = ???
+  final def thf(formula: String): THFFormula = {
+    val parser = parserFromString(formula)
+    val result = parser.thfLogicFormula()
+    parser.EOF()
+    result
+  }
   final def tff(formula: String): TFFFormula = ???
   final def fof(formula: String): FOFFormula = ???
   final def tcf(formula: String): TCFFormula = ???
   final def cnf(formula: String): CNFFormula = ???
   final def tpi(formula: String): TPIFormula = ???
 
-  class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
+  @inline private[this] final def parserFromString(input: String): TPTPParser = new TPTPParser(new TPTPLexer(io.Source.fromString(input)))
 
   final class TPTPLexer(input: Source) extends collection.BufferedIterator[TPTPLexer.TPTPLexerToken] {
     private[this] final lazy val iter = input.buffered
@@ -462,6 +476,13 @@ object TPTPKloeppelParser {
     type TokenType = TPTPLexer.TPTPLexerTokenType.Value
 
     private[this] var lastTok: Token = _
+
+    def EOF(): Unit = {
+      if (tokens.hasNext) {
+        val tok = peek()
+        throw new TPTPParseException("Unconsumed input when EOF was expected.", tok._3, tok._4)
+      }
+    }
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
