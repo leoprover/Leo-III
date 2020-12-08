@@ -815,9 +815,36 @@ object TPTPKloeppelParser {
     // Type level
     ////////////////////////////////////////////////////////////////////////
     def thfTopLevelType(): THF.Type = {
-      //      val ty = name()
-      //      THF.BaseType(ty)
-      ???
+      val tok = peek()
+      val f1 = tok._1 match {
+        case c if isUnaryTHFConnective(c) => error2("Read unexpected unary connective when reading <thf_top_level_type>", tok)
+        case _ => thfUnitFormula(acceptEqualityLike = false)
+      }
+      val next = peek()
+      next._1 match {
+        case RANGLE | APP =>
+          val opTok = consume()
+          val op = tokenToTHFBinaryTypeConstructor(opTok)
+          if (isUnaryTHFConnective(peek()._1)) {
+            error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+          } else {
+            val f2 = thfUnitFormula(acceptEqualityLike = false)
+            // collect all further formulas with same associative operator
+            var fs: Seq[THF.Term] = Vector(f1,f2)
+            while (peek()._1 == opTok._1) {
+              consume()
+              if (!isUnaryTHFConnective(peek()._1)) {
+                val f = thfUnitFormula(acceptEqualityLike = false)
+                fs = fs :+ f
+              } else {
+                error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+              }
+            }
+            if (op == THF.FunTyConstructor) fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+            else fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
+          }
+        case _ => f1
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -892,7 +919,7 @@ object TPTPKloeppelParser {
       case _ => error(Seq(FORALL, EXISTS, LAMBDA, CHOICE, DESCRIPTION, TYFORALL, TYEXISTS), token)
     }
 
-    
+
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     // General TPTP language stuff
