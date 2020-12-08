@@ -106,7 +106,7 @@ object TPTPAST {
     override def pretty: String = s"$numerator/$denominator"
   }
   final case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
-    override def pretty: String = if (exponent == 1) s"$wholePart.${decimalPlaces}"
+    override def pretty: String = if (exponent == 1) s"$wholePart.$decimalPlaces"
                                   else s"$wholePart.${decimalPlaces}E$exponent"
   }
 
@@ -256,16 +256,6 @@ object TPTPAST {
       override def pretty: String = value.pretty
     }
 
-//    final case class FunctionType(left: Type, right: Type) extends Term {
-//      override def pretty: String = s"((${left.pretty}) > ${right.pretty})"
-//    }
-//    final case class ProductType(left: Type, right: Type) extends Term {
-//      override def pretty: String = s"(${left.pretty} * (${right.pretty}))"
-//    }
-//    final case class UnionType(left: Type, right: Type) extends Term {
-//      override def pretty: String = s"(${left.pretty} + (${right.pretty}))"
-//    }
-
     sealed abstract class Connective extends Pretty
     sealed abstract class UnaryConnective extends Connective
     final case object ~ extends UnaryConnective { override def pretty: String = "~" }
@@ -300,25 +290,8 @@ object TPTPAST {
     final case object ^ extends Quantifier { override def pretty: String = "^" } // Lambda
     final case object @+ extends Quantifier { override def pretty: String = "@+" } // Choice
     final case object @- extends Quantifier { override def pretty: String = "@-" } // Description
-//    sealed abstract class TypeQuantifier extends Quantifier
     final case object !> extends Quantifier { override def pretty: String = "!>" } // Big pi
     final case object ?* extends Quantifier { override def pretty: String = "?*" } // Big sigma
-
-//    sealed abstract class Type extends Pretty
-//    final case class BaseType(id: String) extends Type { override def pretty: String = id } // defined, system and uninterpreted
-
-//    final case class TupleType(entries: Seq[Type]) extends Type {
-//      override def pretty: String = s"[${entries.map(_.pretty).mkString(", ")}]"
-//    }
-//    final case class QuantifiedType(quantifier: TypeQuantifier, variableList: Seq[String], body: Type) extends Type {
-//      override def pretty: String = s"${quantifier.pretty} [${variableList.map(s => s"$s : $$tType").mkString(",")}]: ${body.pretty}"
-//    }
-//    final case class TypeVariable(name: String) extends Type {
-//      override def pretty: String = name
-//    }
-//    final case class ApplyType(left: Type, right: Type) extends Type {
-//      override def pretty: String = s"(${left.pretty} @ (${right.pretty}))"
-//    }
   }
 
   object TFF {
