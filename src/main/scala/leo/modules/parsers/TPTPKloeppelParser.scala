@@ -599,7 +599,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def thfAtomTyping(): THF.Typing = {
+    private[this] def thfAtomTyping(): THF.Typing = {
       val lp = o(LPAREN, null)
       if (lp != null) {
         val res = thfAtomTyping()
@@ -838,8 +838,6 @@ object TPTPKloeppelParser {
       } else f1
     }
 
-//    private[this] def thfUnitaryTerm(): THF.Term = ???
-
     private[this] def typedVariable(): THF.TypedVariable = {
       val variableName = variable()
       a(COLON)
@@ -850,7 +848,7 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     // Type level
     ////////////////////////////////////////////////////////////////////////
-    def thfTopLevelType(): THF.Type = {
+    private[this] def thfTopLevelType(): THF.Type = {
       val tok = peek()
       val f1 = tok._1 match {
         case c if isUnaryTHFConnective(c) => error2("Read unexpected unary connective when reading <thf_top_level_type>", tok)
