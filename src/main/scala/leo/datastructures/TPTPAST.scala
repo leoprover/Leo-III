@@ -190,7 +190,10 @@ object TPTPAST {
 
     sealed abstract class Formula extends Pretty
     final case class Typing(atom: String, typ: Type) extends Formula {
-      override def pretty: String = s"$atom: ${typ.pretty}"
+      override def pretty: String = {
+        val escapedName = if (atom.startsWith("$") || atom.startsWith("$$")) atom else escapeAtomicWord(atom)
+        s"$escapedName: ${typ.pretty}"
+      }
     }
     final case class Logical(term: Term) extends Formula {
       override def pretty: String = term.pretty
@@ -203,7 +206,7 @@ object TPTPAST {
     /** Might be function or just constant. Also distinct object? */
     final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
       override def pretty: String = {
-        val escapedF = escapeAtomicWord(f)
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
         if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
       }
 
@@ -237,7 +240,7 @@ object TPTPAST {
       override def pretty: String = s"(${conn.pretty})"
     }
     final case class DistinctObject(name: String) extends Term {
-      override def pretty: String = name
+      override def pretty: String = s""""$name""""  // stupid language
     }
     final case class NumberTerm(value: Number) extends Term {
       override def pretty: String = value.pretty
