@@ -633,7 +633,8 @@ object TPTPKloeppelParser {
               val f = thfUnitFormula(acceptEqualityLike = true)
               fs = fs :+ f
             }
-            fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+            if (op == THF.App) fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
+            else fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
           } else if (isBinaryTHFTypeConstructor(c)) {
             val opTok = consume()
             val op = tokenToTHFBinaryTypeConstructor(opTok)
@@ -782,6 +783,20 @@ object TPTPKloeppelParser {
           feasibleForEq = true
           val n = number()
           THF.NumberTerm(n)
+
+        case LBRACKET =>
+          consume()
+          val rb = o(RBRACKET, null)
+          if (rb != null) THF.Tuple(Seq.empty)
+          else {
+            val f = thfLogicFormula()
+            var fs: Seq[THF.Term] = Vector(f)
+            while (o(COMMA, null) != null) {
+              fs = fs :+ thfLogicFormula()
+            }
+            a(RBRACKET)
+            THF.Tuple(fs)
+          }
 
         case _ => error2(s"Unrecognized formula input '${tok._1}'", tok)
       }
@@ -1012,7 +1027,12 @@ object TPTPKloeppelParser {
               GeneralFormulaData(THFData(f))
             case "$tff" => ??? // TODO
             case "$fof" => ??? // TODO
-            case "$fot" => ??? // TODO
+            case "$fot" => // TODO
+              consume()
+              a(LPAREN)
+              val f = thfFormula()
+              a(RPAREN)
+              GeneralFormulaData(THFData(f))
             case "$cnf" => ??? // TODO
             case _ => error1(Seq("$thf", "$tff", "$fof", "$fot", "$cnf"), t)
           }
