@@ -106,7 +106,8 @@ object TPTPAST {
     override def pretty: String = s"$numerator/$denominator"
   }
   final case class Real(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Number {
-    override def pretty: String = s"$wholePart.${decimalPlaces}E$exponent"
+    override def pretty: String = if (exponent == 1) s"$wholePart.${decimalPlaces}"
+                                  else s"$wholePart.${decimalPlaces}E$exponent"
   }
 
   final case class GeneralTerm(data: Seq[GeneralData], list: Option[Seq[GeneralTerm]]) extends Pretty {
@@ -116,7 +117,7 @@ object TPTPAST {
         sb.append(data.map(_.pretty).mkString(":"))
       }
       if (list.isDefined) {
-        sb.append(":")
+        if(data.nonEmpty) sb.append(":")
         sb.append("[")
         sb.append(list.get.map(_.pretty).mkString(","))
         sb.append("]")
@@ -153,7 +154,10 @@ object TPTPAST {
   }
   /** @see [[GeneralData]] */
   final case class DistinctObjectData(name: String) extends GeneralData {
-    override def pretty: String = name
+    override def pretty: String = {
+      assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+      s""""${escapeDistinctObject(name.tail.init)}""""
+    }
   }
   /** @see [[GeneralData]] */
   final case class GeneralFormulaData(data: FormulaData) extends GeneralData {
@@ -181,6 +185,9 @@ object TPTPAST {
     val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
     if (word.matches(simpleLowerWordRegex)) word
     else s"'${word.replace("\\","\\\\").replace("'", "\\'")}'"
+  }
+  private def escapeDistinctObject(name: String): String = {
+    name.replace("\\","\\\\").replace("\"", "\\\"")
   }
 
 
@@ -240,7 +247,10 @@ object TPTPAST {
       override def pretty: String = s"(${conn.pretty})"
     }
     final case class DistinctObject(name: String) extends Term {
-      override def pretty: String = s""""$name""""  // stupid language
+      override def pretty: String = {
+        assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+        s""""${escapeDistinctObject(name.tail.init)}""""
+      }
     }
     final case class NumberTerm(value: Number) extends Term {
       override def pretty: String = value.pretty
@@ -278,7 +288,7 @@ object TPTPAST {
     // assoc
     final case object | extends BinaryConnective { override def pretty: String = "|" }
     final case object & extends BinaryConnective { override def pretty: String = "&" }
-    final case object App extends BinaryConnective { override def pretty: String = "@" }
+    final case object App extends BinaryConnective { override def pretty: String = "@" } // left-assoc
     // term-as-type
     final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
     final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
