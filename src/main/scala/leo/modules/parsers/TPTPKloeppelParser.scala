@@ -291,11 +291,16 @@ object TPTPKloeppelParser {
             } else if (iter.hasNext && iter.head == '-') {
               consume()
               tok(DESCRIPTION, 2)
+            } else if (iter.hasNext && iter.head == '=') {
+              consume()
+              tok(EQCOMB, 2)
             } else if (iter.hasNext && iter.head == '@') {
               consume()
               if (iter.hasNext && iter.head == '+') {
+                consume()
                 tok(CHOICECOMB, 3)
               } else if (iter.hasNext && iter.head == '-') {
+                consume()
                 tok(DESCRIPTIONCOMB, 3)
               } else {
                 throw new TPTPParseException("Unrecognized token '@@'", curLine, curOffset-2)
@@ -931,7 +936,8 @@ object TPTPKloeppelParser {
       case PLUS => THF.SumTyConstructor
       case STAR => THF.ProductTyConstructor
       case RANGLE => THF.FunTyConstructor
-      case _ => error(Seq(PLUS, STAR, RANGLE), token)
+      case APP => THF.App
+      case _ => error(Seq(PLUS, STAR, RANGLE, APP), token)
     }
     private[this] def tokenToTHFUnaryConnective(token: Token): THF.UnaryConnective = token._1 match {
       case NOT => THF.~
@@ -939,7 +945,7 @@ object TPTPKloeppelParser {
       case EXISTSCOMB => THF.??
       case CHOICECOMB => THF.@@+
       case DESCRIPTIONCOMB => THF.@@-
-      case EQCOMB => THF.@@=
+      case EQCOMB => THF.@=
       case _ => error(Seq(NOT, FORALLCOMB, EXISTSCOMB, CHOICECOMB, DESCRIPTIONCOMB, EQCOMB), token)
     }
     private[this] def tokenToTHFQuantifier(token: Token): THF.Quantifier = token._1 match {

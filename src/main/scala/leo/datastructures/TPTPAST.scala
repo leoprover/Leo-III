@@ -263,7 +263,7 @@ object TPTPAST {
     final case object ?? extends UnaryConnective { override def pretty: String = "??" }
     final case object @@+ extends UnaryConnective { override def pretty: String = "@@+" } // Choice
     final case object @@- extends UnaryConnective { override def pretty: String = "@@-" } // Description
-    final case object @@= extends UnaryConnective { override def pretty: String = "@@=" } // Prefix equality
+    final case object @= extends UnaryConnective { override def pretty: String = "@=" } // Prefix equality
 
     sealed abstract class BinaryConnective extends Connective
     final case object Eq extends BinaryConnective { override def pretty: String = "=" }
