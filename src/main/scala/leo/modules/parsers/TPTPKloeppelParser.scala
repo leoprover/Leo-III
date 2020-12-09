@@ -956,6 +956,80 @@ object TPTPKloeppelParser {
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
+    // TFF formula stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////
+    // Formula level
+    ////////////////////////////////////////////////////////////////////////
+    def annotatedTFF(): TFFAnnotated = {
+      try {
+        m(a(LOWERWORD), "tff")
+        a(LPAREN)
+        val n = name()
+        a(COMMA)
+        val r = a(LOWERWORD)._2
+        a(COMMA)
+        val f = tffFormula()
+        var source: GeneralTerm = null
+        var info: Seq[GeneralTerm] = null
+        val an0 = o(COMMA, null)
+        if (an0 != null) {
+          source = generalTerm()
+          val an1 = o(COMMA, null)
+          if (an1 != null) {
+            info = generalList()
+          }
+        }
+        a(RPAREN)
+        a(DOT)
+        if (source == null) TFFAnnotated(n, r, f, None)
+        else TFFAnnotated(n, r, f, Some((source, Option(info))))
+      } catch {
+        case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
+        else throw new TPTPParseException("Parse error: Unexpected end of input for annotated TFF formula", lastTok._3, lastTok._4)
+      }
+    }
+
+    def tffFormula(): TFF.Formula = {
+      val idx = peekUnder(LPAREN)
+      val tok = peek(idx)
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARDOLLARWORD if peek(idx+1)._1 == COLON => // Typing
+          tffAtomTyping()
+        case _ =>
+          TFF.Logical(tffLogicFormula())
+      }
+    }
+
+    private[this] def tffAtomTyping(): TFF.Typing = {
+      val lp = o(LPAREN, null)
+      if (lp != null) {
+        val res = tffAtomTyping()
+        a(RPAREN)
+        res
+      } else {
+        val constant = untypedAtom()
+        a(COLON)
+        val typ = tffTopLevelType()
+        TFF.Typing(constant, typ)
+      }
+    }
+
+    def tffLogicFormula(): TFF.Term = ???
+
+    ////////////////////////////////////////////////////////////////////////
+    // Type level
+    ////////////////////////////////////////////////////////////////////////
+    private[this] def tffTopLevelType(): TFF.Type = {
+      val tok = peek()
+      ???
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     // General TPTP language stuff
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////

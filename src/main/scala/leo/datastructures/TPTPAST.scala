@@ -295,7 +295,49 @@ object TPTPAST {
   }
 
   object TFF {
+    type TypedVariable = (String, Type)
+    type Type = Term
+
     sealed abstract class Formula extends Pretty
+    final case class Typing(atom: String, typ: Type) extends Formula {
+      override def pretty: String = {
+        val escapedName = if (atom.startsWith("$") || atom.startsWith("$$")) atom else escapeAtomicWord(atom)
+        s"$escapedName: ${typ.pretty}"
+      }
+    }
+    final case class Logical(term: Term) extends Formula {
+      override def pretty: String = term.pretty
+    }
+
+    sealed abstract class Term extends Pretty
+
+
+    sealed abstract class Connective extends Pretty
+    sealed abstract class UnaryConnective extends Connective
+    final case object ~ extends UnaryConnective { override def pretty: String = "~" }
+
+    sealed abstract class BinaryConnective extends Connective
+    final case object Eq extends BinaryConnective { override def pretty: String = "=" }
+    final case object Neq extends BinaryConnective { override def pretty: String = "!=" }
+    // non-assoc
+    final case object <=> extends BinaryConnective { override def pretty: String = "<=>" }
+    final case object Impl extends BinaryConnective { override def pretty: String = "=>" }
+    final case object <= extends BinaryConnective { override def pretty: String = "<=" }
+    final case object <~> extends BinaryConnective { override def pretty: String = "<~>" }
+    final case object ~| extends BinaryConnective { override def pretty: String = "~|" }
+    final case object ~& extends BinaryConnective { override def pretty: String = "~&" }
+    // assoc
+    final case object | extends BinaryConnective { override def pretty: String = "|" }
+    final case object & extends BinaryConnective { override def pretty: String = "&" }
+
+    sealed abstract class Quantifier extends Pretty
+    final case object ! extends Quantifier { override def pretty: String = "!" } // All
+    final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
+
+    // term-as-type
+    final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
+    final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
+    final case object SumTyConstructor extends BinaryConnective { override def pretty: String = "+" }
   }
 
   object FOF {
