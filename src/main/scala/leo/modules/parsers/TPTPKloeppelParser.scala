@@ -34,11 +34,30 @@ object TPTPKloeppelParser {
     parser.EOF()
     result
   }
-  final def annotatedTFF(annotatedFormula: String): TFFAnnotated = ???
-  final def annotatedFOF(annotatedFormula: String): FOFAnnotated = ???
-  // final def annotatedTCF(annotatedFormula: String): TCFAnnotated = ???
-  final def annotatedCNF(annotatedFormula: String): CNFAnnotated = ???
-  final def annotatedTPI(annotatedFormula: String): TPIAnnotated = ???
+  final def annotatedTFF(annotatedFormula: String): TFFAnnotated = {
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedTFF()
+    parser.EOF()
+    result
+  }
+  final def annotatedFOF(annotatedFormula: String): FOFAnnotated = {
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedFOF()
+    parser.EOF()
+    result
+  }
+  final def annotatedCNF(annotatedFormula: String): CNFAnnotated = {
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedCNF()
+    parser.EOF()
+    result
+  }
+  final def annotatedTPI(annotatedFormula: String): TPIAnnotated = {
+    val parser = parserFromString(annotatedFormula)
+    val result = parser.annotatedTPI()
+    parser.EOF()
+    result
+  }
 
   final def thf(formula: String): THFFormula = {
     val parser = parserFromString(formula)
@@ -46,11 +65,24 @@ object TPTPKloeppelParser {
     parser.EOF()
     result
   }
-  final def tff(formula: String): TFFFormula = ???
-  final def fof(formula: String): FOFFormula = ???
-  // final def tcf(formula: String): TCFFormula = ???
-  final def cnf(formula: String): CNFFormula = ???
-  final def tpi(formula: String): FOFFormula = ???
+  final def tff(formula: String): TFFFormula = {
+    val parser = parserFromString(formula)
+    val result = parser.tffLogicFormula()
+    parser.EOF()
+    result
+  }
+  final def fof(formula: String): FOFFormula = {
+    val parser = parserFromString(formula)
+    val result = parser.fofLogicFormula()
+    parser.EOF()
+    result
+  }
+  final def cnf(formula: String): CNFFormula = {
+    val parser = parserFromString(formula)
+    val result = parser.cnfLogicFormula()
+    parser.EOF()
+    result
+  }
 
   @inline private[this] final def parserFromString(input: String): TPTPParser = new TPTPParser(new TPTPLexer(io.Source.fromString(input)))
 
@@ -542,14 +574,13 @@ object TPTPKloeppelParser {
         case LOWERWORD =>
           t._2 match {
             case "thf" => annotatedTHF()
-            case "tff" => ???
-            case "fof" => ???
-            case "tcf" => ???
-            case "cnf" => ???
-            case "tpi" => ???
-            case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi"), t)
+            case "tff" => annotatedTFF()
+            case "fof" => annotatedFOF()
+            case "cnf" => annotatedCNF()
+            case "tpi" => annotatedTPI()
+            case _ => error1(Seq("thf", "tff", "fof", "cnf", "tpi"), t)
           }
-        case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi"), t)
+        case _ => error1(Seq("thf", "tff", "fof", "cnf", "tpi"), t)
       }
     }
 
@@ -1031,6 +1062,34 @@ object TPTPKloeppelParser {
       ???
     }
 
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // FOF formula stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    def annotatedFOF(): FOFAnnotated = ???
+
+    def fofLogicFormula(): FOF.Formula = ???
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // CNF formula stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    def annotatedCNF(): CNFAnnotated = ???
+
+    def cnfLogicFormula(): CNF.Formula = ???
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // TPI formula stuff
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    def annotatedTPI(): TPIAnnotated = ???
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
