@@ -4,6 +4,12 @@ object TPTPAST {
   type Include = (String, Seq[String])
   type Annotations = Option[(GeneralTerm, Option[Seq[GeneralTerm]])]
 
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TPTP problem file AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
   final case class Problem(includes: Seq[Include], formulas: Seq[AnnotatedFormula]) extends Pretty {
     override def pretty: String = {
       val sb: StringBuilder = new StringBuilder()
@@ -23,7 +29,12 @@ object TPTPAST {
     }
   }
 
-//  sealed abstract class AnnotatedFormula[+A](val name: String, val role: String, val formula: A, val annotations: Annotations)
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // Top-level annotated formula ASTs
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
   sealed abstract class AnnotatedFormula extends Pretty {
     type F
     def name: String
@@ -32,60 +43,55 @@ object TPTPAST {
     def annotations: Annotations
   }
   final case class THFAnnotated(override val name: String,
-                          override val role: String,
-                          override val formula: THF.Formula,
-                          override val annotations: Annotations) extends AnnotatedFormula {
-    type F = THF.Formula
+                                override val role: String,
+                                override val formula: THF.Statement,
+                                override val annotations: Annotations) extends AnnotatedFormula {
+    type F = THF.Statement
 
     override def pretty: String = prettifyAnnotated("thf", name, role, formula, annotations)
-//      if (annotations.isEmpty) s"thf($name, $role, ${formula.pretty})."
-//    else {
-//      if (annotations.get._2.isEmpty) s"thf($name, $role, ${formula.pretty}, ${annotations.get._1.pretty})."
-//      else s"thf($name, $role, ${formula.pretty}, ${annotations.get._1.pretty}, [${annotations.get._2.get.map(_.pretty).mkString(",")}])."
-//    }
   }
 
   final case class TFFAnnotated(override val name: String,
-                          override val role: String,
-                          override val formula: TFF.Formula,
-                          override val annotations: Annotations) extends AnnotatedFormula {
-    type F = TFF.Formula
+                                override val role: String,
+                                override val formula: TFF.Statement,
+                                override val annotations: Annotations) extends AnnotatedFormula {
+    type F = TFF.Statement
 
     override def pretty: String = prettifyAnnotated("tff", name, role, formula, annotations)
   }
 
   final case class FOFAnnotated(override val name: String,
-                          override val role: String,
-                          override val formula: FOF.Formula,
-                          override val annotations: Annotations) extends AnnotatedFormula {
-    type F = FOF.Formula
+                                override val role: String,
+                                override val formula: FOF.Statement,
+                                override val annotations: Annotations) extends AnnotatedFormula {
+    type F = FOF.Statement
 
     override def pretty: String = prettifyAnnotated("fof", name, role, formula, annotations)
   }
 
-  final case class TCFAnnotated(override val name: String,
-                          override val role: String,
-                          override val formula: TCF.Formula,
-                          override val annotations: Annotations) extends AnnotatedFormula {
-    type F = TCF.Formula
+  /*final case class TCFAnnotated(override val name: String,
+                                override val role: String,
+                                override val formula: TCF.Statement,
+                                override val annotations: Annotations) extends AnnotatedFormula {
+    type F = TCF.Statement
 
     override def pretty: String = prettifyAnnotated("tcf", name, role, formula, annotations)
-  }
+  }*/
 
   final case class CNFAnnotated(override val name: String,
-                          override val role: String,
-                          override val formula: CNF.Formula,
-                          override val annotations: Annotations) extends AnnotatedFormula {
-    type F = CNF.Formula
+                                override val role: String,
+                                override val formula: CNF.Statement,
+                                override val annotations: Annotations) extends AnnotatedFormula {
+    type F = CNF.Statement
 
     override def pretty: String = prettifyAnnotated("cnf", name, role, formula, annotations)
   }
 
   final case class TPIAnnotated(override val name: String,
                           override val role: String,
-                          override val formula: TPI.Formula,
+                          override val formula: FOF.Formula,
                           override val annotations: Annotations) extends AnnotatedFormula {
-    type F = TPI.Formula
+    type F = FOF.Formula
 
     override def pretty: String = prettifyAnnotated("tpi", name, role, formula, annotations)
   }
@@ -97,6 +103,12 @@ object TPTPAST {
       else s"$prefix($name, $role, ${formula.pretty}, ${annotations.get._1.pretty}, [${annotations.get._2.get.map(_.pretty).mkString(",")}])."
     }
   }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // General TPTP stuff AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   sealed abstract class Number extends Pretty
   final case class Integer(value: Int) extends Number {
@@ -165,16 +177,16 @@ object TPTPAST {
   }
 
   sealed abstract class FormulaData extends Pretty
-  final case class THFData(formula: THF.Formula) extends FormulaData {
+  final case class THFData(formula: THF.Statement) extends FormulaData {
     override def pretty: String = s"$$thf(${formula.pretty})"
   }
-  final case class TFFData(formula: TFF.Formula) extends FormulaData {
+  final case class TFFData(formula: TFF.Statement) extends FormulaData {
     override def pretty: String = s"$$tff(${formula.pretty})"
   }
-  final case class FOFData(formula: FOF.Formula) extends FormulaData {
+  final case class FOFData(formula: FOF.Statement) extends FormulaData {
     override def pretty: String = s"$$fof(${formula.pretty})"
   }
-  final case class CNFData(formula: CNF.Formula) extends FormulaData {
+  final case class CNFData(formula: CNF.Statement) extends FormulaData {
     override def pretty: String = s"$$cnf(${formula.pretty})"
   }
   final case class FOTData(formula: FOF.Term) extends FormulaData {
@@ -190,28 +202,33 @@ object TPTPAST {
     name.replace("\\","\\\\").replace("\"", "\\\"")
   }
 
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // THF AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   object THF {
     type TypedVariable = (String, Type)
-    type Type = Term
+    type Type = Formula
 
-    sealed abstract class Formula extends Pretty
-    final case class Typing(atom: String, typ: Type) extends Formula {
+    sealed abstract class Statement extends Pretty
+    final case class Typing(atom: String, typ: Type) extends Statement {
       override def pretty: String = {
         val escapedName = if (atom.startsWith("$") || atom.startsWith("$$")) atom else escapeAtomicWord(atom)
         s"$escapedName: ${typ.pretty}"
       }
     }
-    final case class Logical(term: Term) extends Formula {
-      override def pretty: String = term.pretty
+    final case class Logical(formula: Formula) extends Statement {
+      override def pretty: String = formula.pretty
     }
 
     // Types as terms; for TH1 parsing. That's why we dont have a clean separation between terms and types here.
     // We don't care for well-typedness etc. in parsing. We can parse syntactically correct but completely meaningless
     // and ill-typed inputs. This will be addressed in the interpretation step.
-    sealed abstract class Term extends Pretty
-    /** Might be function or just constant. Also distinct object? */
-    final case class FunctionTerm(f: String, args: Seq[Term]) extends Term  {
+    sealed abstract class Formula extends Pretty
+
+    final case class FunctionTerm(f: String, args: Seq[Formula]) extends Formula  {
       override def pretty: String = {
         val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
         if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
@@ -222,45 +239,45 @@ object TPTPAST {
       @inline def isSystemFunction: Boolean = f.startsWith("$$")
       @inline def isConstant: Boolean = args.isEmpty
     }
-    final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[TypedVariable], body: Term) extends Term {
+    final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[TypedVariable], body: Formula) extends Formula {
       override def pretty: String = s"(${quantifier.pretty} [${variableList.map{case (n,t) => s"$n:${t.pretty}"}.mkString(",")}]: (${body.pretty}))"
     }
-    final case class Variable(name: String) extends Term {
+    final case class Variable(name: String) extends Formula {
       override def pretty: String = name
     }
-    final case class UnaryFormula(connective: UnaryConnective, body: Term) extends Term {
+    final case class UnaryFormula(connective: UnaryConnective, body: Formula) extends Formula {
       override def pretty: String = s"${connective.pretty} (${body.pretty})"
     }
-    final case class BinaryFormula(connective: BinaryConnective, left: Term, right: Term) extends Term {
+    final case class BinaryFormula(connective: BinaryConnective, left: Formula, right: Formula) extends Formula {
       override def pretty: String = s"(${left.pretty} ${connective.pretty} ${right.pretty})"
     }
-    final case class Tuple(elements: Seq[Term]) extends Term {
+    final case class Tuple(elements: Seq[Formula]) extends Formula {
       override def pretty: String = s"[${elements.map(_.pretty).mkString(",")}]"
     }
-    final case class ConditionalTerm(condition: Term, thn: Term, els: Term) extends Term {
+    final case class ConditionalTerm(condition: Formula, thn: Formula, els: Formula) extends Formula {
       override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
     }
-    final case class LetTerm(typing: Map[String, Type], binding: Map[Term, Term], body: Term) extends Term {
+    final case class LetTerm(typing: Map[String, Type], binding: Map[Formula, Formula], body: Formula) extends Formula {
       override def pretty: String = s"$$let(...,${body.pretty})" // TODO
     }
-    final case class ConnectiveTerm(conn: Connective) extends Term {
+    final case class ConnectiveTerm(conn: Connective) extends Formula {
       override def pretty: String = s"(${conn.pretty})"
     }
-    final case class DistinctObject(name: String) extends Term {
+    final case class DistinctObject(name: String) extends Formula {
       override def pretty: String = {
         assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
         s""""${escapeDistinctObject(name.tail.init)}""""
       }
     }
-    final case class NumberTerm(value: Number) extends Term {
+    final case class NumberTerm(value: Number) extends Formula {
       override def pretty: String = value.pretty
     }
 
     sealed abstract class Connective extends Pretty
     sealed abstract class UnaryConnective extends Connective
     final case object ~ extends UnaryConnective { override def pretty: String = "~" }
-    final case object !! extends UnaryConnective { override def pretty: String = "!!" }
-    final case object ?? extends UnaryConnective { override def pretty: String = "??" }
+    final case object !! extends UnaryConnective { override def pretty: String = "!!" } // big pi
+    final case object ?? extends UnaryConnective { override def pretty: String = "??" } // big sigma
     final case object @@+ extends UnaryConnective { override def pretty: String = "@@+" } // Choice
     final case object @@- extends UnaryConnective { override def pretty: String = "@@-" } // Description
     final case object @= extends UnaryConnective { override def pretty: String = "@=" } // Prefix equality
@@ -290,35 +307,222 @@ object TPTPAST {
     final case object ^ extends Quantifier { override def pretty: String = "^" } // Lambda
     final case object @+ extends Quantifier { override def pretty: String = "@+" } // Choice
     final case object @- extends Quantifier { override def pretty: String = "@-" } // Description
-    final case object !> extends Quantifier { override def pretty: String = "!>" } // Big pi
-    final case object ?* extends Quantifier { override def pretty: String = "?*" } // Big sigma
+    final case object !> extends Quantifier { override def pretty: String = "!>" } // type forall
+    final case object ?* extends Quantifier { override def pretty: String = "?*" } // type exists
   }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TFF AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   object TFF {
     type TypedVariable = (String, Type)
-    type Type = Term
+    type Type = Formula
 
-    sealed abstract class Formula extends Pretty
-    final case class Typing(atom: String, typ: Type) extends Formula {
+    sealed abstract class Statement extends Pretty
+    final case class Typing(atom: String, typ: Type) extends Statement {
       override def pretty: String = {
         val escapedName = if (atom.startsWith("$") || atom.startsWith("$$")) atom else escapeAtomicWord(atom)
         s"$escapedName: ${typ.pretty}"
       }
     }
-    final case class Logical(term: Term) extends Formula {
-      override def pretty: String = term.pretty
+    final case class Logical(formula: Formula) extends Statement { override def pretty: String = formula.pretty }
+
+    sealed abstract class Formula extends Pretty
+    final case class AtomicFormula(f: String, args: Seq[Term]) extends Formula  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+    final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[TypedVariable], body: Formula) extends Formula {
+      override def pretty: String = s"(${quantifier.pretty} [${variableList.map{case (n,t) => s"$n:${t.pretty}"}.mkString(",")}]: (${body.pretty}))"
+    }
+    final case class UnaryFormula(connective: UnaryConnective, body: Formula) extends Formula {
+      override def pretty: String = s"${connective.pretty} (${body.pretty})"
+    }
+    final case class BinaryFormula(connective: BinaryConnective, left: Formula, right: Formula) extends Formula {
+      override def pretty: String = s"(${left.pretty} ${connective.pretty} ${right.pretty})"
+    }
+    final case class Equality(left: Term, right: Term) extends Formula {
+      override def pretty: String = s"(${left.pretty} = ${right.pretty})"
+    }
+    final case class Inequality(left: Term, right: Term) extends Formula {
+      override def pretty: String = s"(${left.pretty} != ${right.pretty})"
+    }
+    final case class Conditional(condition: Formula, thn: Formula, els: Formula) extends Formula {
+      override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
     }
 
     sealed abstract class Term extends Pretty
+    final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
 
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+    final case class Variable(name: String) extends Term {
+      override def pretty: String = name
+    }
+    final case class DistinctObject(name: String) extends Term {
+      override def pretty: String = {
+        assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+        s""""${escapeDistinctObject(name.tail.init)}""""
+      }
+    }
+    final case class NumberTerm(value: Number) extends Term {
+      override def pretty: String = value.pretty
+    }
+    final case class Tuple(elements: Seq[Term]) extends Formula {
+      override def pretty: String = s"[${elements.map(_.pretty).mkString(",")}]"
+    }
 
     sealed abstract class Connective extends Pretty
     sealed abstract class UnaryConnective extends Connective
     final case object ~ extends UnaryConnective { override def pretty: String = "~" }
 
     sealed abstract class BinaryConnective extends Connective
-    final case object Eq extends BinaryConnective { override def pretty: String = "=" }
-    final case object Neq extends BinaryConnective { override def pretty: String = "!=" }
+    // non-assoc
+    final case object <=> extends BinaryConnective { override def pretty: String = "<=>" }
+    final case object Impl extends BinaryConnective { override def pretty: String = "=>" }
+    final case object <= extends BinaryConnective { override def pretty: String = "<=" }
+    final case object <~> extends BinaryConnective { override def pretty: String = "<~>" }
+    final case object ~| extends BinaryConnective { override def pretty: String = "~|" }
+    final case object ~& extends BinaryConnective { override def pretty: String = "~&" }
+    // assoc
+    final case object | extends BinaryConnective { override def pretty: String = "|" }
+    final case object & extends BinaryConnective { override def pretty: String = "&" }
+    // type-as-term
+    final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
+    final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
+
+    sealed abstract class Quantifier extends Pretty
+    final case object ! extends Quantifier { override def pretty: String = "!" } // All
+    final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
+    final case object !> extends Quantifier { override def pretty: String = "!>" } // type for all
+
+
+//    sealed abstract class Type extends Pretty
+//    final case class AtomicType(name: String, args: Seq[Type]) extends Type {
+//      override def pretty: String = if (args.isEmpty) name else s"$name(${args.map(_.pretty).mkString(",")})"
+//    }
+//    final case class MappingType(left: Type, right: Type) extends Type { // right-assoc
+//      override def pretty: String = s"(${left.pretty} > ${right.pretty})"
+//    }
+//    final case class ProductType(left: Type, right: Type) extends Type { // left-assoc
+//      override def pretty: String = s"(${left.pretty} * ${right.pretty})"
+//    }
+//    // TH1
+//    final case class QuantifiedType(variables: Seq[(String, Type)], body: Type) extends Type {
+//      override def pretty: String = s""
+//    }
+//    final case class TypeVariable(name: String) extends Type { override def pretty: String = name }
+//    // TFX
+//    final case class TupleType(components: Seq[Type]) extends Type {
+//      override def pretty: String = s"[${components.map(_.pretty).mkString(",")}]"
+//    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TCF AST: TODO. Let's see if I will implement this at some point.
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+//  object TCF {
+//    sealed abstract class Statement extends Pretty
+//    final case class Typing(atom: String, typ: Type) extends Statement {
+//      override def pretty: String = {
+//        val escapedName = if (atom.startsWith("$") || atom.startsWith("$$")) atom else escapeAtomicWord(atom)
+//        s"$escapedName: ${typ.pretty}"
+//      }
+//    }
+//    final case class Logical(formula: Formula) extends Statement { override def pretty: String = formula.pretty }
+//
+//    sealed abstract class Formula extends Pretty
+//
+//  }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // FOF AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  object FOF {
+    sealed abstract class Statement extends Pretty
+    final case class Logical(formula: Formula) extends Statement { override def pretty: String = formula.pretty  }
+
+    sealed abstract class Formula extends Pretty
+    final case class AtomicFormula(f: String, args: Seq[Term]) extends Formula  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+    final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[String], body: Formula) extends Formula {
+      override def pretty: String = s"(${quantifier.pretty} [${variableList.mkString(",")}]: (${body.pretty}))"
+    }
+    final case class UnaryFormula(connective: UnaryConnective, body: Formula) extends Formula {
+      override def pretty: String = s"${connective.pretty} (${body.pretty})"
+    }
+    final case class BinaryFormula(connective: BinaryConnective, left: Formula, right: Formula) extends Formula {
+      override def pretty: String = s"(${left.pretty} ${connective.pretty} ${right.pretty})"
+    }
+    final case class Equality(left: Term, right: Term) extends Formula {
+      override def pretty: String = s"(${left.pretty} = ${right.pretty})"
+    }
+    final case class Inequality(left: Term, right: Term) extends Formula {
+      override def pretty: String = s"(${left.pretty} != ${right.pretty})"
+    }
+
+    sealed abstract class Term extends Pretty
+    final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+    final case class Variable(name: String) extends Term {
+      override def pretty: String = name
+    }
+    final case class DistinctObject(name: String) extends Term {
+      override def pretty: String = {
+        assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+        s""""${escapeDistinctObject(name.tail.init)}""""
+      }
+    }
+    final case class NumberTerm(value: Number) extends Term {
+      override def pretty: String = value.pretty
+    }
+
+    sealed abstract class Connective extends Pretty
+    sealed abstract class UnaryConnective extends Connective
+    final case object ~ extends UnaryConnective { override def pretty: String = "~" }
+
+    sealed abstract class BinaryConnective extends Connective
     // non-assoc
     final case object <=> extends BinaryConnective { override def pretty: String = "<=>" }
     final case object Impl extends BinaryConnective { override def pretty: String = "=>" }
@@ -333,28 +537,62 @@ object TPTPAST {
     sealed abstract class Quantifier extends Pretty
     final case object ! extends Quantifier { override def pretty: String = "!" } // All
     final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
-
-    // term-as-type
-    final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
-    final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
-    final case object SumTyConstructor extends BinaryConnective { override def pretty: String = "+" }
   }
 
-  object FOF {
-    sealed abstract class Formula extends Pretty
-
-    abstract class Term extends Pretty
-  }
-
-  object TCF {
-    sealed abstract class Formula extends Pretty
-  }
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // CNF AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   object CNF {
-    sealed abstract class Formula extends Pretty
-  }
+    sealed abstract class Statement extends Pretty
+    final case class Logical(formula: Formula) extends Statement {
+      override def pretty: String = formula.map(_.pretty).mkString(" | ")
+    }
 
-  object TPI {
-    sealed abstract class Formula extends Pretty
+    type Formula = Seq[Literal]
+
+    sealed abstract class Literal extends Pretty
+    final case class PositiveAtomic(formula: AtomicFormula) extends Literal {
+      override def pretty: String = formula.pretty
+    }
+    final case class NegativeAtomic(formula: AtomicFormula) extends Literal {
+      override def pretty: String = s"~ ${formula.pretty}"
+    }
+    final case class Equality(left: Term, right: Term) extends Literal {
+      override def pretty: String = s"${left.pretty} = ${right.pretty}"
+    }
+    final case class Inequality(left: Term, right: Term) extends Literal {
+      override def pretty: String = s"${left.pretty} != ${right.pretty}"
+    }
+
+    final case class AtomicFormula(f: String, args: Seq[Term]) extends Pretty  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+
+    sealed abstract class Term extends Pretty
+    final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
+      override def pretty: String = {
+        val escapedF = if (f.startsWith("$") || f.startsWith("$$")) f else escapeAtomicWord(f)
+        if (args.isEmpty) escapedF else s"$escapedF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+    }
+    final case class Variable(name: String) extends Term {
+      override def pretty: String = name
+    }
   }
 }

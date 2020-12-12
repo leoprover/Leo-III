@@ -6,13 +6,11 @@ import scala.io.Source
 
 object TPTPKloeppelParser {
   import leo.datastructures.TPTPAST.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
-    FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
-  import leo.datastructures.TPTPAST.THF.{Term => THFFormula}
+    FOFAnnotated, CNFAnnotated, TPIAnnotated}
+  import leo.datastructures.TPTPAST.THF.{Formula => THFFormula}
   import leo.datastructures.TPTPAST.TFF.{Formula => TFFFormula}
   import leo.datastructures.TPTPAST.FOF.{Formula => FOFFormula}
-  import leo.datastructures.TPTPAST.TCF.{Formula => TCFFormula}
   import leo.datastructures.TPTPAST.CNF.{Formula => CNFFormula}
-  import leo.datastructures.TPTPAST.TPI.{Formula => TPIFormula}
 
   class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
 
@@ -38,7 +36,7 @@ object TPTPKloeppelParser {
   }
   final def annotatedTFF(annotatedFormula: String): TFFAnnotated = ???
   final def annotatedFOF(annotatedFormula: String): FOFAnnotated = ???
-  final def annotatedTCF(annotatedFormula: String): TCFAnnotated = ???
+  // final def annotatedTCF(annotatedFormula: String): TCFAnnotated = ???
   final def annotatedCNF(annotatedFormula: String): CNFAnnotated = ???
   final def annotatedTPI(annotatedFormula: String): TPIAnnotated = ???
 
@@ -50,9 +48,9 @@ object TPTPKloeppelParser {
   }
   final def tff(formula: String): TFFFormula = ???
   final def fof(formula: String): FOFFormula = ???
-  final def tcf(formula: String): TCFFormula = ???
+  // final def tcf(formula: String): TCFFormula = ???
   final def cnf(formula: String): CNFFormula = ???
-  final def tpi(formula: String): TPIFormula = ???
+  final def tpi(formula: String): FOFFormula = ???
 
   @inline private[this] final def parserFromString(input: String): TPTPParser = new TPTPParser(new TPTPLexer(io.Source.fromString(input)))
 
@@ -593,7 +591,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def thfFormula(): THF.Formula = {
+    def thfFormula(): THF.Statement = {
       val idx = peekUnder(LPAREN)
       val tok = peek(idx)
       tok._1 match {
@@ -618,7 +616,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def thfLogicFormula(): THF.Term = {
+    def thfLogicFormula(): THF.Formula = {
       // We want to eliminate backtracking when parsing THF. So change the grammar interpretation as follows
       // Always read units first (thats everything except binary formulas). Then check for following
       // binary connectives and iteratively parse more units (one if non-assoc, as much as possible if assoc).
@@ -653,7 +651,7 @@ object TPTPKloeppelParser {
             val op = tokenToTHFBinaryConnective(opTok)
             val f2 = thfUnitFormula(acceptEqualityLike = true)
             // collect all further formulas with same associative operator
-            var fs: Seq[THF.Term] = Vector(f1,f2)
+            var fs: Seq[THF.Formula] = Vector(f1,f2)
             while (peek()._1 == opTok._1) {
               consume()
               val f = thfUnitFormula(acceptEqualityLike = true)
@@ -670,7 +668,7 @@ object TPTPKloeppelParser {
               } else {
                 val f2 = thfUnitFormula(acceptEqualityLike = false)
                 // collect all further formulas with same associative operator
-                var fs: Seq[THF.Term] = Vector(f1,f2)
+                var fs: Seq[THF.Formula] = Vector(f1,f2)
                 while (peek()._1 == opTok._1) {
                   consume()
                   if (!isUnaryTHFConnective(peek()._1)) {
@@ -699,14 +697,14 @@ object TPTPKloeppelParser {
     // Can use this as thfUnitaryFormula with false for call in pre_unit and also for thfUnitaryTerm if is made sure before
     // that there is no quantifier or unary connective in peek().
     // Also as thfUnitaryFormula in general with argument false, if we make sure there is no unary connective in front.
-    private[this] def thfUnitFormula(acceptEqualityLike: Boolean): THF.Term = {
+    private[this] def thfUnitFormula(acceptEqualityLike: Boolean): THF.Formula = {
       val tok = peek()
       var feasibleForEq = false
       val f1 = tok._1 match {
         case SINGLEQUOTED | LOWERWORD | DOLLARDOLLARWORD => // counts as ATOM, hence + expect equality
           feasibleForEq = true
           val fn = consume()._2
-          var args: Seq[THF.Term] = Vector.empty
+          var args: Seq[THF.Formula] = Vector.empty
           val lp = o(LPAREN, null)
           if (lp != null) {
             args = args :+ thfLogicFormula()
@@ -788,7 +786,7 @@ object TPTPKloeppelParser {
               a(RPAREN)
               THF.ConditionalTerm(cond, thn, els)
             case _ => // general fof-like function
-              var args: Seq[THF.Term] = Vector.empty
+              var args: Seq[THF.Formula] = Vector.empty
               val lp = o(LPAREN, null)
               if (lp != null) {
                 args = args :+ thfLogicFormula()
@@ -816,7 +814,7 @@ object TPTPKloeppelParser {
           if (rb != null) THF.Tuple(Seq.empty)
           else {
             val f = thfLogicFormula()
-            var fs: Seq[THF.Term] = Vector(f)
+            var fs: Seq[THF.Formula] = Vector(f)
             while (o(COMMA, null) != null) {
               fs = fs :+ thfLogicFormula()
             }
@@ -869,7 +867,7 @@ object TPTPKloeppelParser {
           } else {
             val f2 = thfUnitFormula(acceptEqualityLike = false)
             // collect all further formulas with same associative operator
-            var fs: Seq[THF.Term] = Vector(f1,f2)
+            var fs: Seq[THF.Formula] = Vector(f1,f2)
             while (peek()._1 == opTok._1) {
               consume()
               if (!isUnaryTHFConnective(peek()._1)) {
@@ -998,7 +996,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def tffFormula(): TFF.Formula = {
+    def tffFormula(): TFF.Statement = {
       val idx = peekUnder(LPAREN)
       val tok = peek(idx)
       tok._1 match {
@@ -1023,7 +1021,7 @@ object TPTPKloeppelParser {
       }
     }
 
-    def tffLogicFormula(): TFF.Term = ???
+    def tffLogicFormula(): TFF.Formula = ???
 
     ////////////////////////////////////////////////////////////////////////
     // Type level
