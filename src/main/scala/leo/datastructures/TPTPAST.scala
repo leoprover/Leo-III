@@ -89,9 +89,9 @@ object TPTPAST {
 
   final case class TPIAnnotated(override val name: String,
                           override val role: String,
-                          override val formula: FOF.Formula,
+                          override val formula: FOF.Statement,
                           override val annotations: Annotations) extends AnnotatedFormula {
-    type F = FOF.Formula
+    type F = FOF.Statement
 
     override def pretty: String = prettifyAnnotated("tpi", name, role, formula, annotations)
   }

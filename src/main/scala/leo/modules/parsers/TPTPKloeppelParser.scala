@@ -594,32 +594,27 @@ object TPTPKloeppelParser {
     // Formula level
     ////////////////////////////////////////////////////////////////////////
     def annotatedTHF(): THFAnnotated = {
-      try {
-        m(a(LOWERWORD), "thf")
-        a(LPAREN)
-        val n = name()
-        a(COMMA)
-        val r = a(LOWERWORD)._2
-        a(COMMA)
-        val f = thfFormula()
-        var source: GeneralTerm = null
-        var info: Seq[GeneralTerm] = null
-        val an0 = o(COMMA, null)
-        if (an0 != null) {
-          source = generalTerm()
-          val an1 = o(COMMA, null)
-          if (an1 != null) {
-            info = generalList()
-          }
+      m(a(LOWERWORD), "thf")
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = a(LOWERWORD)._2
+      a(COMMA)
+      val f = thfFormula()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
         }
-        a(RPAREN)
-        a(DOT)
-        if (source == null) THFAnnotated(n, r, f, None)
-        else THFAnnotated(n, r, f, Some((source, Option(info))))
-      } catch {
-        case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
-        else throw new TPTPParseException("Parse error: Unexpected end of input for annotated THF formula", lastTok._3, lastTok._4)
       }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) THFAnnotated(n, r, f, None)
+      else THFAnnotated(n, r, f, Some((source, Option(info))))
     }
 
     def thfFormula(): THF.Statement = {
@@ -999,32 +994,27 @@ object TPTPKloeppelParser {
     // Formula level
     ////////////////////////////////////////////////////////////////////////
     def annotatedTFF(): TFFAnnotated = {
-      try {
-        m(a(LOWERWORD), "tff")
-        a(LPAREN)
-        val n = name()
-        a(COMMA)
-        val r = a(LOWERWORD)._2
-        a(COMMA)
-        val f = tffFormula()
-        var source: GeneralTerm = null
-        var info: Seq[GeneralTerm] = null
-        val an0 = o(COMMA, null)
-        if (an0 != null) {
-          source = generalTerm()
-          val an1 = o(COMMA, null)
-          if (an1 != null) {
-            info = generalList()
-          }
+      m(a(LOWERWORD), "tff")
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = a(LOWERWORD)._2
+      a(COMMA)
+      val f = tffFormula()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
         }
-        a(RPAREN)
-        a(DOT)
-        if (source == null) TFFAnnotated(n, r, f, None)
-        else TFFAnnotated(n, r, f, Some((source, Option(info))))
-      } catch {
-        case _:NoSuchElementException => if (lastTok == null) throw new TPTPParseException("Parse error: Empty input", -1, -1)
-        else throw new TPTPParseException("Parse error: Unexpected end of input for annotated TFF formula", lastTok._3, lastTok._4)
       }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) TFFAnnotated(n, r, f, None)
+      else TFFAnnotated(n, r, f, Some((source, Option(info))))
     }
 
     def tffFormula(): TFF.Statement = {
@@ -1069,9 +1059,36 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def annotatedFOF(): FOFAnnotated = ???
+    def annotatedFOF(): FOFAnnotated = {
+      m(a(LOWERWORD), "fof")
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = a(LOWERWORD)._2
+      a(COMMA)
+      val f = fofFormula()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
+        }
+      }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) FOFAnnotated(n, r, f, None)
+      else FOFAnnotated(n, r, f, Some((source, Option(info))))
+    }
+
+    // Currently, no other kind of statement supported
+    @inline private[this] def fofFormula(): FOF.Statement = FOF.Logical(fofLogicFormula())
 
     def fofLogicFormula(): FOF.Formula = ???
+
+    def fofTerm(): FOF.Term = ???
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -1079,9 +1096,129 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def annotatedCNF(): CNFAnnotated = ???
+    def annotatedCNF(): CNFAnnotated = {
+      m(a(LOWERWORD), "cnf")
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = a(LOWERWORD)._2
+      a(COMMA)
+      val f = cnfFormula()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
+        }
+      }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) CNFAnnotated(n, r, f, None)
+      else CNFAnnotated(n, r, f, Some((source, Option(info))))
+    }
 
-    def cnfLogicFormula(): CNF.Formula = ???
+    // Currently, no other kind of statement supported
+    @inline private[this] def cnfFormula(): CNF.Statement = CNF.Logical(cnfLogicFormula())
+
+    def cnfLogicFormula(): CNF.Formula = {
+      val tok = peek()
+      tok._1 match {
+        case LPAREN =>
+          consume()
+          val res = cnfLogicFormula()
+          a(RPAREN)
+          res
+        case _ =>
+          val lit = cnfLiteral()
+          var lits: Seq[CNF.Literal] = Vector(lit)
+          while (o(OR, null) != null) {
+            lits = lits :+ cnfLiteral()
+          }
+          lits
+      }
+    }
+
+    private[this] def cnfLiteral(): CNF.Literal = {
+      val tok = peek()
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
+          val left = cnfAtomicFormula()
+          val tok2 = peek()
+          tok2._1 match {
+            case EQUALS =>
+              consume()
+              val right = cnfTerm()
+              CNF.Equality(CNF.AtomicTerm(left.f, left.args), right)
+            case NOTEQUALS =>
+              consume()
+              val right = cnfTerm()
+              CNF.Inequality(CNF.AtomicTerm(left.f, left.args), right)
+            case _ => CNF.PositiveAtomic(left)
+          }
+        case NOT =>
+          consume()
+          val f = cnfAtomicFormula()
+          CNF.NegativeAtomic(f)
+        case UPPERWORD => // variable, then eq/neq, then term.
+          val left = CNF.Variable(consume()._2)
+          val tok2 = peek()
+          tok2._1 match {
+            case EQUALS =>
+              consume()
+              val right = cnfTerm()
+              CNF.Equality(left, right)
+            case NOTEQUALS =>
+              consume()
+              val right = cnfTerm()
+              CNF.Inequality(left, right)
+            case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok2)
+          }
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok)
+      }
+    }
+
+    private[this] def cnfAtomicFormula(): CNF.AtomicFormula = {
+      val tok = peek()
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
+          val fn = consume()._2
+          var args: Seq[CNF.Term] = Vector.empty
+          val lp = o(LPAREN, null)
+          if (lp != null) {
+            args = args :+ cnfTerm()
+            while (o(COMMA, null) != null) {
+              args = args :+ cnfTerm()
+            }
+            a(RPAREN)
+          }
+          CNF.AtomicFormula(fn, args)
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD), tok)
+      }
+    }
+
+    private[this] def cnfTerm(): CNF.Term = {
+      val tok = peek()
+      tok._1 match {
+        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
+          val fn = consume()._2
+          var args: Seq[CNF.Term] = Vector.empty
+          val lp = o(LPAREN, null)
+          if (lp != null) {
+            args = args :+ cnfTerm()
+            while (o(COMMA, null) != null) {
+              args = args :+ cnfTerm()
+            }
+            a(RPAREN)
+          }
+          CNF.AtomicTerm(fn, args)
+        case UPPERWORD =>
+          CNF.Variable(consume()._2)
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok)
+      }
+    }
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -1089,7 +1226,29 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    def annotatedTPI(): TPIAnnotated = ???
+    def annotatedTPI(): TPIAnnotated = {
+      m(a(LOWERWORD), "tpi")
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = a(LOWERWORD)._2
+      a(COMMA)
+      val f = fofFormula()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
+        }
+      }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) TPIAnnotated(n, r, f, None)
+      else TPIAnnotated(n, r, f, Some((source, Option(info))))
+    }
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -1181,15 +1340,29 @@ object TPTPKloeppelParser {
               val f = thfFormula()
               a(RPAREN)
               GeneralFormulaData(THFData(f))
-            case "$tff" => ??? // TODO
-            case "$fof" => ??? // TODO
-            case "$fot" => // TODO
+            case "$tff" =>
               consume()
               a(LPAREN)
-              val f = thfFormula()
+              val f = tffFormula()
               a(RPAREN)
-              GeneralFormulaData(THFData(f))
-            case "$cnf" => ??? // TODO
+              GeneralFormulaData(TFFData(f))
+            case "$fof" =>
+              consume()
+              a(LPAREN)
+              val f = fofFormula()
+              a(RPAREN)
+              GeneralFormulaData(FOFData(f))
+            case "$fot" =>
+              consume()
+              a(LPAREN)
+              val f = fofTerm()
+              a(RPAREN)
+              GeneralFormulaData(FOTData(f))
+            case "$cnf" => consume()
+              a(LPAREN)
+              val f = cnfFormula()
+              a(RPAREN)
+              GeneralFormulaData(CNFData(f))
             case _ => error1(Seq("$thf", "$tff", "$fof", "$fot", "$cnf"), t)
           }
         case _ => error(Seq(INT, RATIONAL, REAL, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOUBLEQUOTED), t)
@@ -1249,8 +1422,22 @@ object TPTPKloeppelParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    @inline private[this] def peek(): Token = tokens.peek()
-    @inline private[this] def peek(i: Int): Token = tokens.peek(i)
+    @inline private[this] def peek(): Token = {
+      if (tokens.hasNext) {
+        tokens.peek()
+      } else {
+        if (lastTok == null) throw new TPTPParseException(s"Parse error: Empty input when some token was expected", -1, -1)
+        else throw new TPTPParseException(s"Parse error: Unexpected end of input when some token was expected", lastTok._3, lastTok._4)
+      }
+    }
+    @inline private[this] def peek(i: Int): Token = {
+      try {
+        tokens.peek(i)
+      } catch {
+        case _: NoSuchElementException => if (lastTok == null) throw new TPTPParseException(s"Parse error: Empty peek(.) when some token was expected", -1, -1)
+        else throw new TPTPParseException(s"Parse error: Unexpected end of input when some token was expected in peek(.)", lastTok._3, lastTok._4)
+      }
+    }
     @inline private[this] def consume(): Token = {
       val t = tokens.next()
       lastTok = t
@@ -1286,18 +1473,25 @@ object TPTPKloeppelParser {
     }
 
     private[this] def a(tokType: TokenType): Token = {
-      val t = peek()
-      if (t._1 == tokType) {
-        consume()
+      if (tokens.hasNext) {
+        val t = peek()
+        if (t._1 == tokType) {
+          consume()
+        } else {
+          if (t._2 == null) throw new TPTPParseException(s"Expected $tokType but read ${t._1}", t._3, t._4)
+          else throw new TPTPParseException(s"Expected $tokType but read ${t._1} '${t._2}'", t._3, t._4)
+        }
       } else {
-        if (t._2 == null) throw new TPTPParseException(s"Expected $tokType but read ${t._1}", t._3, t._4)
-        else throw new TPTPParseException(s"Expected $tokType but read ${t._1} '${t._2}'", t._3, t._4)
+        if (lastTok == null) throw new TPTPParseException(s"Parse error: Empty input when ${tokType} was expected", -1, -1)
+        else throw new TPTPParseException(s"Parse error: Unexpected end of input when ${tokType} was expected", lastTok._3, lastTok._4)
       }
     }
 
     private[this] def o(tokType: TokenType, payload: String): Token = {
-      val t = peek()
-      if (t._1 == tokType && (payload == null || t._2 == payload)) consume() else null
+      if (tokens.hasNext) {
+        val t = peek()
+        if (t._1 == tokType && (payload == null || t._2 == payload)) consume() else null
+      } else null
     }
 
     private[this] def m(tok: Token, payload: String): Token = {
