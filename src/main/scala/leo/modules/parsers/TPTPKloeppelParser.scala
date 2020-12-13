@@ -1143,59 +1143,34 @@ object TPTPKloeppelParser {
 
     private[this] def cnfLiteral(): CNF.Literal = {
       val tok = peek()
+
       tok._1 match {
-        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
-          val left = cnfAtomicFormula()
+        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD | DOUBLEQUOTED | UPPERWORD =>
+          // parse term. if = or != comes, take anotehr. else return (if not variable/double quoted)
+          val term1 = cnfTerm()
           val tok2 = peek()
           tok2._1 match {
             case EQUALS =>
               consume()
-              val right = cnfTerm()
-              CNF.Equality(CNF.AtomicTerm(left.f, left.args), right)
+              val term2 = cnfTerm()
+              CNF.Equality(term1, term2)
             case NOTEQUALS =>
               consume()
-              val right = cnfTerm()
-              CNF.Inequality(CNF.AtomicTerm(left.f, left.args), right)
-            case _ => CNF.PositiveAtomic(left)
+              val term2 = cnfTerm()
+              CNF.Inequality(term1, term2)
+            case _ => term1 match {
+              case CNF.AtomicTerm(f, args) => CNF.PositiveAtomic(CNF.AtomicFormula(f, args))
+              case _ => error2(s"Parse error: Unexpected term (variable or distinct object) when formula was expected", lastTok)
+            }
           }
         case NOT =>
           consume()
-          val f = cnfAtomicFormula()
-          CNF.NegativeAtomic(f)
-        case UPPERWORD => // variable, then eq/neq, then term.
-          val left = CNF.Variable(consume()._2)
-          val tok2 = peek()
-          tok2._1 match {
-            case EQUALS =>
-              consume()
-              val right = cnfTerm()
-              CNF.Equality(left, right)
-            case NOTEQUALS =>
-              consume()
-              val right = cnfTerm()
-              CNF.Inequality(left, right)
-            case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok2)
+          val formula = cnfTerm()
+          formula match {
+            case CNF.AtomicTerm(f, args) => CNF.NegativeAtomic(CNF.AtomicFormula(f, args))
+            case _ => error2(s"Parse error: Unexpected term (variable or distinct object) after negation", lastTok)
           }
-        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok)
-      }
-    }
-
-    private[this] def cnfAtomicFormula(): CNF.AtomicFormula = {
-      val tok = peek()
-      tok._1 match {
-        case SINGLEQUOTED | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
-          val fn = consume()._2
-          var args: Seq[CNF.Term] = Vector.empty
-          val lp = o(LPAREN, null)
-          if (lp != null) {
-            args = args :+ cnfTerm()
-            while (o(COMMA, null) != null) {
-              args = args :+ cnfTerm()
-            }
-            a(RPAREN)
-          }
-          CNF.AtomicFormula(fn, args)
-        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD), tok)
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, DOUBLEQUOTED, UPPERWORD, NOT), tok)
       }
     }
 
@@ -1216,7 +1191,9 @@ object TPTPKloeppelParser {
           CNF.AtomicTerm(fn, args)
         case UPPERWORD =>
           CNF.Variable(consume()._2)
-        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD), tok)
+        case DOUBLEQUOTED =>
+          CNF.DistinctObject(consume()._2)
+        case _ => error(Seq(SINGLEQUOTED, LOWERWORD, DOLLARWORD, DOLLARDOLLARWORD, UPPERWORD, DOUBLEQUOTED), tok)
       }
     }
 

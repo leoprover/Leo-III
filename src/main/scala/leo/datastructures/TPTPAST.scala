@@ -594,5 +594,11 @@ object TPTPAST {
     final case class Variable(name: String) extends Term {
       override def pretty: String = name
     }
+    final case class DistinctObject(name: String) extends Term {
+      override def pretty: String = {
+        assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+        s""""${escapeDistinctObject(name.tail.init)}""""
+      }
+    }
   }
 }
