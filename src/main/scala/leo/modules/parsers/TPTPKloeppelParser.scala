@@ -848,7 +848,7 @@ object TPTPKloeppelParser {
             THF.Tuple(fs)
           }
 
-        case _ => error2(s"Unrecognized formula input '${tok._1}'", tok)
+        case _ => error2(s"Unrecognized thf formula input '${tok._1}'", tok)
       }
       // if expect equality: do double time.
       if (acceptEqualityLike && feasibleForEq) {
@@ -1033,7 +1033,113 @@ object TPTPKloeppelParser {
       }
     }
 
-    def tffLogicFormula(): TFF.Formula = ???
+
+    def tffLogicFormula(): TFF.Formula = {
+      val f1 = tffUnitFormula()
+      val next = peek()
+      next._1 match {
+        case c if isBinaryConnective(c)  =>
+          if (isBinaryAssocConnective(c)) {
+            val opTok = consume()
+            val op = tokenToTFFBinaryConnective(opTok)
+            val f2 = tffUnitFormula()
+            // collect all further formulas with same associative operator
+            var fs: Seq[TFF.Formula] = Vector(f1,f2)
+            while (peek()._1 == opTok._1) {
+              consume()
+              val f = tffUnitFormula()
+              fs = fs :+ f
+            }
+            fs.reduceRight((x,y) => TFF.BinaryFormula(op, x, y))
+          } else {
+            // non-assoc; just parse one more unit and then done.
+            val op = tokenToTFFBinaryConnective(consume())
+            val f2 = tffUnitFormula()
+            TFF.BinaryFormula(op, f1, f2)
+          }
+        case _ => f1
+      }
+    }
+
+    private[this] def tffUnitFormula(): TFF.Formula = {
+      val tok = peek()
+
+      tok._1 match {
+        case LPAREN =>
+          consume()
+          val f = tffLogicFormula()
+          a(RPAREN)
+          f
+        case c if isUnaryConnective(c) =>
+          val connective = tokenToTFFUnaryConnective(consume())
+          val body = tffUnitFormula()
+          TFF.UnaryFormula(connective, body)
+        case q if isQuantifier(q) =>
+          val quantifier = tokenToTFFQuantifier(consume())
+          a(LBRACKET)
+          val name = typedTFFVariable()
+          var names: Seq[TFF.TypedVariable] = Vector(name)
+          while (o(COMMA, null) != null) {
+            names = names :+ typedTFFVariable()
+          }
+          a(RBRACKET)
+          a(COLON)
+          val body = tffUnitFormula()
+          TFF.QuantifiedFormula(quantifier, names, body)
+        case LOWERWORD | UPPERWORD | DOLLARWORD | DOLLARDOLLARWORD | SINGLEQUOTED | DOUBLEQUOTED | INT | RATIONAL | REAL =>
+          val term1 = tffTerm()
+          // expect = and != still
+          val nextTok = peek()
+          nextTok._1 match {
+            case EQUALS =>
+              consume()
+              val right = tffTerm()
+              TFF.Equality(term1,right)
+            case NOTEQUALS =>
+              consume()
+              val right = tffTerm()
+              TFF.Inequality(term1,right)
+            case _ =>
+              term1 match {
+                case TFF.AtomicTerm(f, args) => TFF.AtomicFormula(f, args)
+                case _ => error2("Parse error: Unexpected term at formula level", nextTok)
+              }
+          }
+        case _ => error2(s"Unrecognized tff formula input '${tok._1}'", tok)
+      }
+    }
+
+    private[this] def typedTFFVariable(): TFF.TypedVariable = {
+      val variableName = variable()
+      a(COLON)
+      val typ = tffTopLevelType()
+      (variableName, typ)
+    }
+
+    // TODO: Add tuples
+    def tffTerm(): TFF.Term = {
+      val tok = peek()
+      tok._1 match {
+        case INT | RATIONAL | REAL =>
+          TFF.NumberTerm(number())
+        case DOUBLEQUOTED =>
+          TFF.DistinctObject(consume()._2)
+        case UPPERWORD =>
+          TFF.Variable(consume()._2)
+        case LOWERWORD | SINGLEQUOTED | DOLLARWORD | DOLLARDOLLARWORD =>
+          val fn = consume()._2
+          var args: Seq[TFF.Term] = Vector()
+          if (o(LPAREN, null) != null) {
+            args = args :+ tffTerm()
+            while (o(COMMA, null) != null) {
+              args = args :+ tffTerm()
+            }
+            a(RPAREN)
+          }
+          TFF.AtomicTerm(fn, args)
+        case _ => error(Seq(INT, RATIONAL, REAL, DOUBLEQUOTED, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOLLARDOLLARWORD), tok)
+      }
+    }
 
     ////////////////////////////////////////////////////////////////////////
     // Type level
@@ -1041,6 +1147,28 @@ object TPTPKloeppelParser {
     private[this] def tffTopLevelType(): TFF.Type = {
       val tok = peek()
       ???
+    }
+
+    // Utility
+    private[this] def tokenToTFFBinaryConnective(token: Token): TFF.BinaryConnective = token._1 match {
+      case OR => TFF.|
+      case AND => TFF.&
+      case IFF => TFF.<=>
+      case IMPL => TFF.Impl
+      case IF => TFF.<=
+      case NOR => TFF.~|
+      case NAND => TFF.~&
+      case NIFF => TFF.<~>
+      case _ => error(Seq(OR, AND, IFF, IMPL, IF, NOR, NAND, NIFF), token)
+    }
+    private[this] def tokenToTFFUnaryConnective(token: Token): TFF.UnaryConnective = token._1 match {
+      case NOT => TFF.~
+      case _ => error(Seq(NOT), token)
+    }
+    private[this] def tokenToTFFQuantifier(token: Token): TFF.Quantifier = token._1 match {
+      case FORALL => TFF.!
+      case EXISTS => TFF.?
+      case _ => error(Seq(FORALL, EXISTS), token)
     }
 
 
@@ -1148,6 +1276,7 @@ object TPTPKloeppelParser {
                 case _ => error2("Parse error: Unexpected term at formula level", nextTok)
               }
           }
+        case _ => error2(s"Unrecognized fof formula input '${tok._1}'", tok)
       }
     }
 
@@ -1171,6 +1300,7 @@ object TPTPKloeppelParser {
             a(RPAREN)
           }
           FOF.AtomicTerm(fn, args)
+        case _ => error(Seq(INT, RATIONAL, REAL, DOUBLEQUOTED, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOLLARDOLLARWORD), tok)
       }
     }
 

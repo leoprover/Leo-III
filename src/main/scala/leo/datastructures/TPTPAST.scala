@@ -357,9 +357,9 @@ object TPTPAST {
     final case class Inequality(left: Term, right: Term) extends Formula {
       override def pretty: String = s"(${left.pretty} != ${right.pretty})"
     }
-    final case class Conditional(condition: Formula, thn: Formula, els: Formula) extends Formula {
-      override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
-    }
+//    final case class Conditional(condition: Formula, thn: Formula, els: Formula) extends Formula {
+//      override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
+//    }
 
     sealed abstract class Term extends Pretty
     final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
