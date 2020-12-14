@@ -929,15 +929,6 @@ object TPTPKloeppelParser {
     })
     @inline private[this] def isBinaryAssocTHFConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || tokenType == APP
 
-    @inline private[this] def isUnaryConnective(tokenType: TokenType): Boolean = tokenType == NOT
-    @inline private[this] def isBinaryConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || (tokenType match {
-      case IFF | IMPL | IF | NOR | NAND | NIFF => true
-      case _ => false
-    })
-    @inline private[this] def isBinaryAssocConnective(tokenType: TokenType): Boolean = tokenType == AND || tokenType == OR
-    @inline private[this] def isQuantifier(tokenType: TokenType): Boolean = tokenType == FORALL || tokenType == EXISTS
-    @inline private[this] def isEqualityLikeConnective(tokenType: TokenType): Boolean = tokenType == EQUALS || tokenType == NOTEQUALS
-
 
     private[this] def tokenToTHFEqConnective(token: Token): THF.BinaryConnective = token._1 match {
       case EQUALS => THF.Eq
@@ -1086,9 +1077,102 @@ object TPTPKloeppelParser {
     // Currently, no other kind of statement supported
     @inline private[this] def fofFormula(): FOF.Statement = FOF.Logical(fofLogicFormula())
 
-    def fofLogicFormula(): FOF.Formula = ???
+    def fofLogicFormula(): FOF.Formula = {
+      val f1 = fofUnitFormula()
+      val next = peek()
+      next._1 match {
+        case c if isBinaryConnective(c)  =>
+          if (isBinaryAssocConnective(c)) {
+            val opTok = consume()
+            val op = tokenToFOFBinaryConnective(opTok)
+            val f2 = fofUnitFormula()
+            // collect all further formulas with same associative operator
+            var fs: Seq[FOF.Formula] = Vector(f1,f2)
+            while (peek()._1 == opTok._1) {
+              consume()
+              val f = fofUnitFormula()
+              fs = fs :+ f
+            }
+            fs.reduceRight((x,y) => FOF.BinaryFormula(op, x, y))
+          } else {
+            // non-assoc; just parse one more unit and then done.
+            val op = tokenToFOFBinaryConnective(consume())
+            val f2 = fofUnitFormula()
+            FOF.BinaryFormula(op, f1, f2)
+          }
+        case _ => f1
+      }
+    }
 
-    def fofTerm(): FOF.Term = ???
+    def fofUnitFormula(): FOF.Formula = {
+      val tok = peek()
+
+      tok._1 match {
+        case LPAREN =>
+          consume()
+          val f = fofLogicFormula()
+          a(RPAREN)
+          f
+        case c if isUnaryConnective(c) =>
+          val connective = tokenToFOFUnaryConnective(consume())
+          val body = fofUnitFormula()
+          FOF.UnaryFormula(connective, body)
+        case q if isQuantifier(q) =>
+          val quantifier = tokenToFOFQuantifier(consume())
+          a(LBRACKET)
+          val name = variable()
+          var names: Seq[String] = Vector(name)
+          while (o(COMMA, null) != null) {
+            names = names :+ variable()
+          }
+          a(RBRACKET)
+          a(COLON)
+          val body = fofUnitFormula()
+          FOF.QuantifiedFormula(quantifier, names, body)
+        case LOWERWORD | UPPERWORD | DOLLARWORD | DOLLARDOLLARWORD | SINGLEQUOTED | DOUBLEQUOTED | INT | RATIONAL | REAL =>
+          val term1 = fofTerm()
+          // expect = and != still
+          val nextTok = peek()
+          nextTok._1 match {
+            case EQUALS =>
+              consume()
+              val right = fofTerm()
+              FOF.Equality(term1,right)
+            case NOTEQUALS =>
+              consume()
+              val right = fofTerm()
+              FOF.Inequality(term1,right)
+            case _ =>
+              term1 match {
+                case FOF.AtomicTerm(f, args) => FOF.AtomicFormula(f, args)
+                case _ => error2("Parse error: Unexpected term at formula level", nextTok)
+              }
+          }
+      }
+    }
+
+    def fofTerm(): FOF.Term = {
+      val tok = peek()
+      tok._1 match {
+        case INT | RATIONAL | REAL =>
+          FOF.NumberTerm(number())
+        case DOUBLEQUOTED =>
+          FOF.DistinctObject(consume()._2)
+        case UPPERWORD =>
+          FOF.Variable(consume()._2)
+        case LOWERWORD | SINGLEQUOTED | DOLLARWORD | DOLLARDOLLARWORD =>
+          val fn = consume()._2
+          var args: Seq[FOF.Term] = Vector()
+          if (o(LPAREN, null) != null) {
+            args = args :+ fofTerm()
+            while (o(COMMA, null) != null) {
+              args = args :+ fofTerm()
+            }
+            a(RPAREN)
+          }
+          FOF.AtomicTerm(fn, args)
+      }
+    }
 
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -1232,6 +1316,36 @@ object TPTPKloeppelParser {
     // General TPTP language stuff
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
+
+    @inline private[this] def isUnaryConnective(tokenType: TokenType): Boolean = tokenType == NOT
+    @inline private[this] def isBinaryConnective(tokenType: TokenType): Boolean = isBinaryAssocConnective(tokenType) || (tokenType match {
+      case IFF | IMPL | IF | NOR | NAND | NIFF => true
+      case _ => false
+    })
+    @inline private[this] def isBinaryAssocConnective(tokenType: TokenType): Boolean = tokenType == AND || tokenType == OR
+    @inline private[this] def isQuantifier(tokenType: TokenType): Boolean = tokenType == FORALL || tokenType == EXISTS
+    @inline private[this] def isEqualityLikeConnective(tokenType: TokenType): Boolean = tokenType == EQUALS || tokenType == NOTEQUALS
+
+    private[this] def tokenToFOFBinaryConnective(token: Token): FOF.BinaryConnective = token._1 match {
+      case OR => FOF.|
+      case AND => FOF.&
+      case IFF => FOF.<=>
+      case IMPL => FOF.Impl
+      case IF => FOF.<=
+      case NOR => FOF.~|
+      case NAND => FOF.~&
+      case NIFF => FOF.<~>
+      case _ => error(Seq(OR, AND, IFF, IMPL, IF, NOR, NAND, NIFF), token)
+    }
+    private[this] def tokenToFOFUnaryConnective(token: Token): FOF.UnaryConnective = token._1 match {
+      case NOT => FOF.~
+      case _ => error(Seq(NOT), token)
+    }
+    private[this] def tokenToFOFQuantifier(token: Token): FOF.Quantifier = token._1 match {
+      case FORALL => FOF.!
+      case EXISTS => FOF.?
+      case _ => error(Seq(FORALL, EXISTS), token)
+    }
 
     private[this] def untypedAtom(): String = {
       val tok = peek()
@@ -1394,7 +1508,7 @@ object TPTPKloeppelParser {
     }
 
     ////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////
+    /////////////////// /////////////////////////////////////////////////////
     // General purpose functions
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
