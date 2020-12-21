@@ -1773,14 +1773,6 @@ object TPTPKloeppelParser {
       }
     }
 
-    private[this] def atomicWord(): String = {
-      val t = peek()
-      t._1 match {
-        case LOWERWORD | SINGLEQUOTED => consume()._2
-        case _ => error(Seq(LOWERWORD, SINGLEQUOTED), t)
-      }
-    }
-
     ////////////////////////////////////////////////////////////////////////
     /////////////////// /////////////////////////////////////////////////////
     // General purpose functions
@@ -1847,8 +1839,8 @@ object TPTPKloeppelParser {
           else throw new TPTPParseException(s"Expected $tokType but read ${t._1} '${t._2}'", t._3, t._4)
         }
       } else {
-        if (lastTok == null) throw new TPTPParseException(s"Parse error: Empty input when ${tokType} was expected", -1, -1)
-        else throw new TPTPParseException(s"Parse error: Unexpected end of input when ${tokType} was expected", lastTok._3, lastTok._4)
+        if (lastTok == null) throw new TPTPParseException(s"Parse error: Empty input when $tokType was expected", -1, -1)
+        else throw new TPTPParseException(s"Parse error: Unexpected end of input when $tokType was expected", lastTok._3, lastTok._4)
       }
     }
 

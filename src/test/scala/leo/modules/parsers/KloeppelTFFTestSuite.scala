@@ -7,7 +7,7 @@ import java.io.File
 class KloeppelTFFTestSuite  extends LeoTestSuite {
   val tffFiles0 = new File("/home/lex/TPTP/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("_")).toList
   val tffFiles = tffFiles0.filter(_.getName != "SYN000_4.p")
-  
+
   tffFiles.foreach(f =>
     test(f.getName) {
       try {
