@@ -257,7 +257,7 @@ object TPTPAST {
     final case class ConditionalTerm(condition: Formula, thn: Formula, els: Formula) extends Formula {
       override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
     }
-    final case class LetTerm(typing: Map[String, Type], binding: Map[Formula, Formula], body: Formula) extends Formula {
+    final case class LetTerm(typing: Map[String, Type], binding: Seq[(Formula, Formula)], body: Formula) extends Formula {
       override def pretty: String = s"$$let(...,${body.pretty})" // TODO
     }
     final case class ConnectiveTerm(conn: Connective) extends Formula {

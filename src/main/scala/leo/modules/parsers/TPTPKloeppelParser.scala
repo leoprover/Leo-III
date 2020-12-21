@@ -794,13 +794,46 @@ object TPTPKloeppelParser {
             case "$let" =>
               consume()
               a(LPAREN)
-              // ...
+              // types
+              val tyMap: Map[String, THF.Type] = if (o(LBRACKET, null) == null) {
+                val typing = thfAtomTyping()
+                Map(typing.atom -> typing.typ)
+              } else {
+                var result: Map[String, THF.Type] = Map.empty
+                val typing1 = thfAtomTyping()
+                result = result + (typing1.atom -> typing1.typ)
+                while (o(COMMA, null) != null) {
+                  val typingN = thfAtomTyping()
+                  result = result + (typingN.atom -> typingN.typ)
+                }
+                a(RBRACKET)
+                result
+              }
               a(COMMA)
-              // ...
+              // bindings
+              var definitions: Seq[(THF.Formula, THF.Formula)] = Seq.empty
+              if (o(LBRACKET, null) == null) {
+                val leftSide = thfLogicFormula()
+                a(ASSIGNMENT)
+                val rightSide = thfLogicFormula()
+                definitions = definitions :+ (leftSide, rightSide)
+              } else {
+                val leftSide = thfLogicFormula()
+                a(ASSIGNMENT)
+                val rightSide = thfLogicFormula()
+                definitions = definitions :+ (leftSide, rightSide)
+                while (o(COMMA, null) != null) {
+                  val leftSideN = thfLogicFormula()
+                  a(ASSIGNMENT)
+                  val rightSideN = thfLogicFormula()
+                  definitions = definitions :+ (leftSideN, rightSideN)
+                }
+                a(RBRACKET)
+              }
               a(COMMA)
               val body = thfLogicFormula()
               a(RPAREN)
-              THF.LetTerm(???, ???, body)
+              THF.LetTerm(tyMap, definitions, body)
             case "$ite" =>
               consume()
               a(LPAREN)
