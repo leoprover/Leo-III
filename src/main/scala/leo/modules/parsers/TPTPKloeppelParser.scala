@@ -1112,11 +1112,10 @@ object TPTPKloeppelParser {
     private[this] def typedTFFVariable(): TFF.TypedVariable = {
       val variableName = variable()
       a(COLON)
-      val typ = tffTopLevelType()
+      val typ = tffAtomicType()
       (variableName, typ)
     }
 
-    // TODO: Add tuples
     def tffTerm(): TFF.Term = {
       val tok = peek()
       tok._1 match {
@@ -1128,7 +1127,7 @@ object TPTPKloeppelParser {
           TFF.Variable(consume()._2)
         case LOWERWORD | SINGLEQUOTED | DOLLARWORD | DOLLARDOLLARWORD =>
           val fn = consume()._2
-          var args: Seq[TFF.Term] = Vector()
+          var args: Seq[TFF.Term] = Vector.empty
           if (o(LPAREN, null) != null) {
             args = args :+ tffTerm()
             while (o(COMMA, null) != null) {
@@ -1137,7 +1136,20 @@ object TPTPKloeppelParser {
             a(RPAREN)
           }
           TFF.AtomicTerm(fn, args)
-        case _ => error(Seq(INT, RATIONAL, REAL, DOUBLEQUOTED, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOLLARDOLLARWORD), tok)
+        case LBRACKET => // Tuple
+          consume()
+          if (o(RBRACKET, null) == null) {
+            var entries: Seq[TFF.Term] = Vector(tffTerm())
+            while (o(COMMA, null) != null) {
+              entries = entries :+ tffTerm()
+            }
+            a(RBRACKET)
+            TFF.Tuple(entries)
+          } else {
+            // empty tuple
+            TFF.Tuple(Seq.empty)
+          }
+        case _ => error(Seq(INT, RATIONAL, REAL, DOUBLEQUOTED, UPPERWORD, LOWERWORD, SINGLEQUOTED, DOLLARWORD, DOLLARDOLLARWORD, LBRACKET), tok)
       }
     }
 
@@ -1145,8 +1157,107 @@ object TPTPKloeppelParser {
     // Type level
     ////////////////////////////////////////////////////////////////////////
     private[this] def tffTopLevelType(): TFF.Type = {
+      val idx = peekUnder(LPAREN)
+      val tok = peek(idx)
+      tok._1 match {
+        case TYFORALL => tffQuantifiedType()
+        case _ => tffUnitaryType()
+      }
+    }
+
+    private[this] def tffQuantifiedType(): TFF.Type = {
       val tok = peek()
-      ???
+      tok._1 match {
+        case LPAREN =>
+          consume()
+          val result = tffQuantifiedType()
+          a(RPAREN)
+          result
+        case TYFORALL =>
+          consume()
+          a(LBRACKET)
+          var variables: Seq[TFF.TypedVariable] = Vector(typedTFFVariable())
+          while (o(COMMA, null) != null) {
+            variables = variables :+ typedTFFVariable()
+          }
+          a(RBRACKET)
+          a(COLON)
+          val next = peek()
+          val body = next._1 match {
+            case LPAREN => tffUnitaryType() // mapping type
+            case TYFORALL => tffQuantifiedType()
+            case _ => tffAtomicType()
+          }
+          TFF.QuantifiedType(variables, body)
+        case _ => error(Seq(LPAREN, TYFORALL), tok)
+      }
+    }
+
+    private[this] def tffUnitaryType(): TFF.Type = {
+      var leftParenCount = 0
+      var productTypeEntries: Seq[TFF.Type] = Seq.empty
+      while (o(LPAREN, null) != null) {
+        leftParenCount += 1
+      }
+      var doneWithLeftSideOrMapping = false
+      while (!doneWithLeftSideOrMapping) {
+        productTypeEntries = productTypeEntries :+ tffAtomicType()
+        val tok = peek()
+        tok._1 match {
+          case RPAREN if leftParenCount > 0 =>
+            consume()
+            leftParenCount = leftParenCount - 1
+            if (leftParenCount == 0 || peek()._1 == RANGLE) doneWithLeftSideOrMapping = true
+          case STAR if leftParenCount > 0 => consume()
+          case _ =>
+            doneWithLeftSideOrMapping = true
+        }
+      }
+      val leftType = if (productTypeEntries.size == 1) productTypeEntries.head else TFF.ProductType(productTypeEntries)
+      val next = peek()
+      next._1 match {
+        case RANGLE =>
+          consume()
+          val rightType = tffAtomicType()
+          while (leftParenCount > 0) {
+            a(RPAREN)
+            leftParenCount = leftParenCount - 1
+          }
+          TFF.MappingType(leftType, rightType)
+        case _ if productTypeEntries.size == 1 => leftType
+        case _ => error2(s"Parse error: Naked product type on top-level; expected mapping type constructor '>' but found '${next._1}'", next)
+      }
+    }
+
+    private[this] def tffAtomicType(): TFF.Type = {
+      val tok = peek()
+      tok._1 match {
+        case LPAREN =>
+          consume()
+          val result = tffAtomicType()
+          a(RPAREN)
+          result
+        case UPPERWORD => TFF.TypeVariable(consume()._2)
+        case DOLLARWORD | LOWERWORD | SINGLEQUOTED =>
+          val fn = consume()._2
+          if (o(LPAREN, null) != null) {
+            var arguments: Seq[TFF.Type] = Vector(tffAtomicType())
+            while (o(COMMA, null) != null) {
+              arguments = arguments :+ tffAtomicType()
+            }
+            a(RPAREN)
+            TFF.AtomicType(fn, arguments)
+          } else TFF.AtomicType(fn, Seq.empty)
+        case LBRACKET =>
+          consume()
+          var entries: Seq[TFF.Type] = Vector(tffTopLevelType())
+          while (o(COMMA, null) != null) {
+            entries = entries :+ tffTopLevelType()
+          }
+          a(RBRACKET)
+          TFF.TupleType(entries)
+        case _ => error(Seq(LPAREN, UPPERWORD, DOLLARWORD, LOWERWORD, SINGLEQUOTED, LBRACKET), tok)
+      }
     }
 
     // Utility

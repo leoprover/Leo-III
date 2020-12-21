@@ -319,7 +319,6 @@ object TPTPAST {
 
   object TFF {
     type TypedVariable = (String, Type)
-    type Type = Formula
 
     sealed abstract class Statement extends Pretty
     final case class Typing(atom: String, typ: Type) extends Statement {
@@ -357,9 +356,8 @@ object TPTPAST {
     final case class Inequality(left: Term, right: Term) extends Formula {
       override def pretty: String = s"(${left.pretty} != ${right.pretty})"
     }
-//    final case class Conditional(condition: Formula, thn: Formula, els: Formula) extends Formula {
-//      override def pretty: String = s"$$ite(${condition.pretty}, ${thn.pretty}, ${els.pretty})"
-//    }
+    // Conditional only really makes sense in TFX. We don't support the full first-class Booleans for now.
+    // Same for let-statements.
 
     sealed abstract class Term extends Pretty
     final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
@@ -385,7 +383,7 @@ object TPTPAST {
     final case class NumberTerm(value: Number) extends Term {
       override def pretty: String = value.pretty
     }
-    final case class Tuple(elements: Seq[Term]) extends Formula {
+    final case class Tuple(elements: Seq[Term]) extends Term {
       override def pretty: String = s"[${elements.map(_.pretty).mkString(",")}]"
     }
 
@@ -404,35 +402,30 @@ object TPTPAST {
     // assoc
     final case object | extends BinaryConnective { override def pretty: String = "|" }
     final case object & extends BinaryConnective { override def pretty: String = "&" }
-    // type-as-term
-    final case object FunTyConstructor extends BinaryConnective { override def pretty: String = ">" }
-    final case object ProductTyConstructor extends BinaryConnective { override def pretty: String = "*" }
 
     sealed abstract class Quantifier extends Pretty
     final case object ! extends Quantifier { override def pretty: String = "!" } // All
     final case object ? extends Quantifier { override def pretty: String = "?" } // Exists
-    final case object !> extends Quantifier { override def pretty: String = "!>" } // type for all
 
-
-//    sealed abstract class Type extends Pretty
-//    final case class AtomicType(name: String, args: Seq[Type]) extends Type {
-//      override def pretty: String = if (args.isEmpty) name else s"$name(${args.map(_.pretty).mkString(",")})"
-//    }
-//    final case class MappingType(left: Type, right: Type) extends Type { // right-assoc
-//      override def pretty: String = s"(${left.pretty} > ${right.pretty})"
-//    }
-//    final case class ProductType(left: Type, right: Type) extends Type { // left-assoc
-//      override def pretty: String = s"(${left.pretty} * ${right.pretty})"
-//    }
-//    // TH1
-//    final case class QuantifiedType(variables: Seq[(String, Type)], body: Type) extends Type {
-//      override def pretty: String = s""
-//    }
-//    final case class TypeVariable(name: String) extends Type { override def pretty: String = name }
-//    // TFX
-//    final case class TupleType(components: Seq[Type]) extends Type {
-//      override def pretty: String = s"[${components.map(_.pretty).mkString(",")}]"
-//    }
+    sealed abstract class Type extends Pretty
+    final case class AtomicType(name: String, args: Seq[Type]) extends Type {
+      override def pretty: String = if (args.isEmpty) name else s"$name(${args.map(_.pretty).mkString(",")})"
+    }
+    final case class MappingType(left: Type, right: Type) extends Type { // right-assoc
+      override def pretty: String = s"(${left.pretty} > ${right.pretty})"
+    }
+    final case class ProductType(entries: Seq[Type]) extends Type { // left-assoc
+      override def pretty: String = s"(${entries.map(_.pretty).mkString(" * ")})"
+    }
+    // TH1
+    final case class QuantifiedType(variables: Seq[TypedVariable], body: Type) extends Type {
+      override def pretty: String = s"!> [${variables.map(v => s"${v._1}: ${v._2.pretty}").mkString(",")}]: ${body.pretty}"
+    }
+    final case class TypeVariable(name: String) extends Type { override def pretty: String = name }
+    // TFX
+    final case class TupleType(components: Seq[Type]) extends Type {
+      override def pretty: String = s"[${components.map(_.pretty).mkString(",")}]"
+    }
   }
 
   ////////////////////////////////////////////////////////////////////////
