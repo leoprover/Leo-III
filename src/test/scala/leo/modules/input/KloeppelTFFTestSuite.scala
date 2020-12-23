@@ -11,10 +11,10 @@ class KloeppelTFFTestSuite  extends LeoTestSuite {
   tffFiles.foreach(f =>
     test(f.getName) {
       try {
-        val res = TPTPKloeppelParser.problem(io.Source.fromFile(f.getAbsolutePath))
+        val res = TPTPParser.problem(io.Source.fromFile(f.getAbsolutePath))
         println(res.pretty)
       } catch {
-        case e: TPTPKloeppelParser.TPTPParseException => println(s"Parse error at ${e.line},${e.offset}: ${e.getMessage}"); throw e
+        case e: TPTPParser.TPTPParseException => println(s"Parse error at ${e.line},${e.offset}: ${e.getMessage}"); throw e
       }
     }
   )

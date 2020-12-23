@@ -4,7 +4,7 @@ import java.util.NoSuchElementException
 import scala.annotation.tailrec
 import scala.io.Source
 
-object TPTPKloeppelParser {
+object TPTPParser {
   import leo.datastructures.TPTPAST.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
     FOFAnnotated, CNFAnnotated, TPIAnnotated}
   import leo.datastructures.TPTPAST.THF.{Formula => THFFormula}
