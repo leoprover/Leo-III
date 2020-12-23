@@ -4,7 +4,7 @@ import leo.Configuration
 import leo.datastructures._
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.output.SZS_UsageError
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 import leo.modules.prover.State
 import leo.modules.{SZSException, termToClause}
 

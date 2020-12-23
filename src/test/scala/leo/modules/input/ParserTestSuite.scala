@@ -1,7 +1,7 @@
 package leo
-package modules
-package parsers
+package modules.input
 
+import leo.Ignored
 
 /**
  * This suite tests parsing of the SYN000-sample problems of the TPTP library.

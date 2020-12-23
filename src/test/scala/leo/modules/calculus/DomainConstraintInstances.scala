@@ -4,8 +4,8 @@ import leo.{Checked, LeoTestSuite}
 import leo.datastructures.{Term, Type}
 import leo.datastructures.Term.mkAtom
 import leo.modules.HOLSignature.{i, o}
-import leo.modules.parsers.Input
 import leo.modules.termToClause
+import leo.modules.input.Input
 
 /**
   * Created by mwisnie on 7/5/17.

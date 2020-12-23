@@ -4,8 +4,8 @@ import leo.{Checked, LeoTestSuite}
 import leo.datastructures.{Signature, Term, Type, Role_Plain}
 import leo.modules._
 import leo.modules.HOLSignature.{i, o}
-import leo.modules.parsers.Input
 import leo.modules.output.ToTFF
+import leo.modules.input.Input
 
 /**
   * Created by lex on 2/27/17.

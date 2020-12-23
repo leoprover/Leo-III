@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 
 import leo.modules.SZSException
 import leo.modules.output.{Output, SZS_UsageError}
-import leo.modules.parsers.CLParameterParser
+import leo.modules.input.CLParameterParser
 
 /**
  * Configuration access point where central parameter settings of Leo-III
@@ -348,7 +348,7 @@ object Configuration extends DefaultConfiguration {
   // Help output
   ///////////////
   lazy val helptext: String = {
-    val sb = StringBuilder.newBuilder
+    val sb: StringBuilder = new StringBuilder()
     sb.append("Leo III -- A Higher-Order Theorem Prover.\n")
     sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
     sb.append("Usage: leo3 problem [option ...]\n\n")

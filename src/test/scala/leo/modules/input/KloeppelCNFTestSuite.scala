@@ -1,13 +1,13 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import leo.LeoTestSuite
 
 import java.io.File
 
-class KloeppelTHFTestSuite extends LeoTestSuite {
-  val th0Files = new File("/home/lex/TPTP/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("^")).toList
+class KloeppelCNFTestSuite  extends LeoTestSuite {
+  val cnfFiles = new File("/home/lex/TPTP/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("-")).toList
 
-  th0Files.foreach(f =>
+  cnfFiles.foreach(f =>
     test(f.getName) {
       try {
         val res = TPTPKloeppelParser.problem(io.Source.fromFile(f.getAbsolutePath))

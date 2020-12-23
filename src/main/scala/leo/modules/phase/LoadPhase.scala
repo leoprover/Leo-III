@@ -11,7 +11,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.relevance_filter.AnnotatedFormulaType
 import leo.modules.output.{SZS_Error, SZS_InputError}
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 import leo.modules.SZSException
 
 class LoadPhase(problemfile: String = Configuration.PROBLEMFILE, blackboard: Blackboard, scheduler: Scheduler) extends Phase(blackboard, scheduler) {

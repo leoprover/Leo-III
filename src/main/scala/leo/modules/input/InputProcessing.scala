@@ -1,4 +1,4 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import scala.language.implicitConversions
 import leo.Out
@@ -50,13 +50,13 @@ object InputProcessing {
    * @param input The TPTP formula to process/translate
    * @return A List of tuples (name, term, role) of translated terms
    */
-  protected[parsers] final def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
+  protected[input] final def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
     input.map(process(sig)(_))
   }
 
   @inline private final def processRole(role: String): Role = Role(role)
 
-  protected[parsers] final def process(sig: Signature)(input: AnnotatedFormula): Result = {
+  protected[input] final def process(sig: Signature)(input: AnnotatedFormula): Result = {
     try {
       val p = input match {
         case _:TPIAnnotated => processTPI(sig)(input.asInstanceOf[TPIAnnotated])
@@ -84,13 +84,13 @@ object InputProcessing {
   // TPI Formula processing
   //////////////////////////
 
-  protected[parsers] final def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
+  protected[input] final def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
 
   //////////////////////////
   // THF Formula processing
   //////////////////////////
 
-  protected[parsers] final def processTHFAnnotated(sig: Signature)(input: THFAnnotated): Option[Result] = {
+  protected[input] final def processTHFAnnotated(sig: Signature)(input: THFAnnotated): Option[Result] = {
     import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Function}
 
     input.formula match {
@@ -519,7 +519,7 @@ object InputProcessing {
   // TFF Formula processing
   //////////////////////////
 
-  protected[parsers] final def processTFF(sig: Signature)(input: TFFAnnotated): Option[Result] = {
+  protected[input] final def processTFF(sig: Signature)(input: TFFAnnotated): Option[Result] = {
     import leo.datastructures.tptp.tff.{Logical, TypedAtom, Sequent}
 
     input.formula match {
@@ -726,7 +726,7 @@ object InputProcessing {
   // FOF Formula processing
   //////////////////////////
 
-  protected[parsers] final def processFOF(sig: Signature)(input: FOFAnnotated): Option[Result] = {
+  protected[input] final def processFOF(sig: Signature)(input: FOFAnnotated): Option[Result] = {
     import leo.datastructures.tptp.fof.{Logical, Sequent}
     input.formula match {
 //      case Logical(lf) if input.role == "definition" => {  // TODO: Commented out -- how do definitions look like in FOF? See COM021+1.p, RNG126+1.p
@@ -822,7 +822,7 @@ object InputProcessing {
   //////////////////////////
 
   import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula, Literal => CNFLiteral}
-  protected[parsers] final def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = {
+  protected[input] final def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = {
     val role = processRole(input.role)
     val varsInClause = input.formula.vars
     Some((input.name, processCNF0(sig)(input.formula, varsInClause), role))

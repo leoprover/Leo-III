@@ -2,8 +2,8 @@ package leo.datastructures
 
 import leo.LeoTestSuite
 import leo.modules.termToClause
-import leo.modules.parsers.Input
 import leo.modules.calculus.{freshVarGenFromBlank, freshVarGen,FullCNF,BoolExt,LiftEq}
+import leo.modules.input.Input
 
 /**
   * Created by lex on 05.04.17.

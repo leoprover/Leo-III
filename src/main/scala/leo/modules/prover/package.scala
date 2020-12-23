@@ -7,7 +7,7 @@ import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
 import leo.modules.external.TptpResult
 import leo.modules.output._
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 import scala.annotation.tailrec
 

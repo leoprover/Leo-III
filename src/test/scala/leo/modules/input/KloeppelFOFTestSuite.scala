@@ -1,14 +1,13 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import leo.LeoTestSuite
 
 import java.io.File
 
-class KloeppelTFFTestSuite  extends LeoTestSuite {
-  val tffFiles0 = new File("/home/lex/TPTP/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("_")).toList
-  val tffFiles = tffFiles0.filter(_.getName != "SYN000_4.p")
-
-  tffFiles.foreach(f =>
+class KloeppelFOFTestSuite  extends LeoTestSuite {
+  val fofFiles = new File("/home/lex/TPTP/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("+")).toList
+//  val fofFiles = Seq(new File("/home/lex/TPTP/Problems/SYN/SYN000+1.p"))
+  fofFiles.foreach(f =>
     test(f.getName) {
       try {
         val res = TPTPKloeppelParser.problem(io.Source.fromFile(f.getAbsolutePath))

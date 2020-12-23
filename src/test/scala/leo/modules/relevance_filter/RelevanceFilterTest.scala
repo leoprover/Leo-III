@@ -1,7 +1,8 @@
-package leo.modules.relevance_filter
+package leo
+package modules.relevance_filter
 
 import leo.LeoTestSuite
-import leo.modules.parsers.Input.parseAnnotated
+import leo.modules.input.Input.parseAnnotated
 
 /**
   * Created by mwisnie on 1/9/17.

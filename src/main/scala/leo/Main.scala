@@ -3,7 +3,7 @@ package leo
 import leo.modules.Modes
 import leo.modules.{SZSException, SZSResult, stackTraceAsString}
 import leo.modules.output.{SZS_Error, SZS_Forced, SZS_MemoryOut, SZS_UsageError}
-import leo.modules.parsers.{CLParameterParser, Input}
+import leo.modules.input.{CLParameterParser, Input}
 
 /**
   * Entry Point for Leo-III as an executable.
@@ -51,7 +51,7 @@ object Main {
         // none yet
       } else {
         // Functionality that need to parse the input file, do it now
-        import leo.modules.parsers.{ModalPreprocessor => Modal, DDLPreprocessor => DDL}
+        import leo.modules.input.{ModalPreprocessor => Modal, DDLPreprocessor => DDL}
         Out.info(s"Parsing problem ${Configuration.PROBLEMFILE} ...")
         // If "ddl" mode is set (dyadic deontic logic), parse with DDL pre-processor.
         val problem0 = if (Configuration.isSet("ddl")) DDL.apply(Configuration.PROBLEMFILE)

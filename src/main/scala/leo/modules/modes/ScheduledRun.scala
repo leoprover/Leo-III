@@ -3,7 +3,7 @@ package leo.modules.modes
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.control.Control
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 import leo.modules.prover.{SeqLoop, State, effectiveInput, typeCheck}
 import leo.{Configuration, Out}
 

@@ -1,7 +1,7 @@
-package leo.modules.parsers
+package leo.modules.input
 
-import antlr.tptpParser
 import leo.datastructures.tptp.Commons._
+import leo.modules.parsers.antlr.tptpParser
 
 import scala.jdk.CollectionConverters._
 /**

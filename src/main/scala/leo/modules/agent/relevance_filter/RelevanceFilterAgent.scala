@@ -9,7 +9,7 @@ import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.SZSException
 import leo.modules.calculus.CalculusRule
 import leo.modules.output.{SZS_CounterTheorem, SZS_Error}
-import leo.modules.parsers.Input.processFormula
+import leo.modules.input.Input.processFormula
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
 /**

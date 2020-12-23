@@ -13,8 +13,8 @@ trait MultiPriorityQueue[A] extends Pretty {
   type OrderingKey = Int
 
   def insert(x: A): Unit
-  def insert(xs: TraversableOnce[A]): Unit = {
-    @tailrec def loop(xs: scala.collection.LinearSeq[A]) {
+  def insert(xs: IterableOnce[A]): Unit = {
+    @tailrec def loop(xs: scala.collection.LinearSeq[A]): Unit = {
       if (xs.nonEmpty) {
         this insert xs.head
         loop(xs.tail)
@@ -22,12 +22,12 @@ trait MultiPriorityQueue[A] extends Pretty {
     }
     xs match {
       case xs: scala.collection.LinearSeq[_] => loop(xs)
-      case xs                                => xs foreach insert
+      case xs                                => xs.iterator.foreach(insert)
     }
   }
   def remove(x: A): Unit
-  def remove(xs: TraversableOnce[A]): Unit = {
-    @tailrec def loop(xs: scala.collection.LinearSeq[A]) {
+  def remove(xs: IterableOnce[A]): Unit = {
+    @tailrec def loop(xs: scala.collection.LinearSeq[A]) : Unit = {
       if (xs.nonEmpty) {
         this remove xs.head
         loop(xs.tail)
@@ -35,7 +35,7 @@ trait MultiPriorityQueue[A] extends Pretty {
     }
     xs match {
       case xs: scala.collection.LinearSeq[_] => loop(xs)
-      case xs                                => xs foreach remove
+      case xs                                => xs.iterator.foreach(remove)
     }
   }
   def addPriority(p: Ordering[A]): OrderingKey

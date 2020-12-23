@@ -4,7 +4,6 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, Configuration, LeoTestSuite}
 import leo.datastructures.AnnotatedClause
 import leo.datastructures.context.impl._
-import leo.modules.parsers.CLParameterParser
 
 /**
  * Created by ryu on 11/25/14.

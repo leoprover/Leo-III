@@ -5,7 +5,7 @@ import leo.datastructures._
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.external.{Capabilities, ExternalProver}
 import leo.modules.output.SZS_Error
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 /**
   * Created by mwisnie on 9/26/16.

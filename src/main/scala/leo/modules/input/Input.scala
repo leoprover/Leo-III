@@ -1,4 +1,4 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
@@ -337,7 +337,7 @@ object Input {
   }
 
   final private val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
-  protected[parsers] def read0(absolutePath: Path): BufferedReader = {
+  protected[input] def read0(absolutePath: Path): BufferedReader = {
     if (absolutePath.toString.matches(urlStartRegex0)) {
       // URL
       import java.net.URL

@@ -1,4 +1,4 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import leo.{Configuration, Out}
 import leo.datastructures.tptp.Commons.AnnotatedFormula

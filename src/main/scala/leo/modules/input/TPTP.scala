@@ -1,4 +1,4 @@
-package leo.modules.parsers
+package leo.modules.input
 
 import java.io.{BufferedReader, StringReader}
 
@@ -39,7 +39,7 @@ object TPTP {
     * @return A representation of the in file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
    */
-  protected[parsers] final def parseFile(input: java.io.BufferedReader): TPTPInput = {
+  protected[input] final def parseFile(input: java.io.BufferedReader): TPTPInput = {
     val inputStream = CharStreams.fromReader(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -71,7 +71,7 @@ object TPTP {
     * @return A representation of the input file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def parseFile(input: String): TPTPInput =
+  protected[input] final def parseFile(input: String): TPTPInput =
     parseFile(new BufferedReader(new StringReader(input)))
 
   /**
@@ -81,7 +81,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.thf.LogicFormula]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def apply(input: String): THFFormula = {
+  protected[input] final def apply(input: String): THFFormula = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -103,7 +103,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.Commons.AnnotatedFormula]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def annotatedFormula(input: String): AnnotatedFormula = {
+  protected[input] final def annotatedFormula(input: String): AnnotatedFormula = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -127,7 +127,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.Commons.FOFAnnotated]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def fof(input: String): FOFAnnotated = {
+  protected[input] final def fof(input: String): FOFAnnotated = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -151,7 +151,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.Commons.THFAnnotated]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def thf(input: String): THFAnnotated = {
+  protected[input] final def thf(input: String): THFAnnotated = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -175,7 +175,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.Commons.TFFAnnotated]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def tff(input: String): TFFAnnotated = {
+  protected[input] final def tff(input: String): TFFAnnotated = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
@@ -199,7 +199,7 @@ object TPTP {
     * @return A [[leo.datastructures.tptp.Commons.CNFAnnotated]] representing `input`
     * @throws leo.modules.SZSException If a parse error or AST construction error occured.
     */
-  protected[parsers] final def cnf(input: String): CNFAnnotated = {
+  protected[input] final def cnf(input: String): CNFAnnotated = {
     val inputStream = CharStreams.fromString(input)
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
