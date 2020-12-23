@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import subprocess
+import tempfile
+from enum import Enum, auto
+import re
+
+### Arg parser
+def is_valid_file(parser, arg):
+    if not os.path.isfile(arg):
+        parser.error("'%s' does not exist or is not a file." % arg)
+    else:
+        return os.path.abspath(arg)
+        
+        
+parser = argparse.ArgumentParser(description='Hello.')
+parser.add_argument('File', metavar='File',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The LTB batch specification file.')
+parser.add_argument('-v', action='store_true',
+                    help='Output some debug information.')
+
+args = parser.parse_args()
+
+inputFile = args.File
+verbose = args.v
+
+class GlobalInfo(Enum):
+  Mnemonic = auto()
+  TrainingData = auto()
+  BatchConfigDelimStart = auto()
+  BatchConfigDelimEnd = auto()
+  BatchIncludesDelimStart = auto()
+  BatchIncludesDelimEnd = auto()
+  BatchProblemsDelimStart = auto()
+  BatchProblemsDelimEnd = auto()
+class BatchInfo(Enum):
+  ExecutionOrder = auto()
+  OutputRequired = auto()
+  TimeLimitProblem = auto()
+  TimeLimit = auto()
+  Include = auto()
+  Problems = auto()
+  
+globalLines = {}
+globalLines[GlobalInfo.Mnemonic] = re.compile('^division.category ([a-zA-Z0-9_\.]+)$').match
+globalLines[GlobalInfo.TrainingData] = re.compile('^division.category.training_data ([a-zA-Z0-9_\.]+)$').match
+globalLines[GlobalInfo.BatchConfigDelimStart] = re.compile('^% SZS start BatchConfiguration$').match
+globalLines[GlobalInfo.BatchConfigDelimEnd] = re.compile('^% SZS end BatchConfiguration$').match
+globalLines[GlobalInfo.BatchIncludesDelimStart] = re.compile('^% SZS start BatchIncludes$').match
+globalLines[GlobalInfo.BatchIncludesDelimEnd] = re.compile('^% SZS end BatchIncludes$').match
+globalLines[GlobalInfo.BatchProblemsDelimStart] = re.compile('^% SZS start BatchProblems$').match
+globalLines[GlobalInfo.BatchProblemsDelimEnd] = re.compile('^% SZS end BatchProblems$').match
+batchLines = {}
+batchLines[BatchInfo.ExecutionOrder] = re.compile('^execution.order \w+$').match
+batchLines[BatchInfo.OutputRequired] = re.compile('^output.required \w+$').match
+batchLines[BatchInfo.TimeLimitProblem] = re.compile('^limit.time.problem.wc \d+$').match
+batchLines[BatchInfo.TimeLimit] = re.compile('^limit.time.overall.wc \d+$').match
+batchLines[BatchInfo.Include] = re.compile("^include('\w+').$").match
+
+globalInfo = {} # to be filled
+batchInfo = [] # to be filled
+
+def readLTBSpecification(file):
+  ####### Open file and read contents
+  with open(file,'r') as f:
+    for line in f:
+      line = line.rstrip()
+      if not line: continue
+      ## match and save specifications
+      matchAndStore(line)
+      
+def readBatchSpec():
+  return
+      
+def matchAndStore(line):
+  for i,(k,v) in enumerate(globalLines.items()):
+    match = v(line) 
+    if match:
+      if len(match.groups()) == 0:
+        if k == GlobalInfo.BatchConfigDelimStart:
+          return
+      elif len(match.groups()) > 0:
+        globalInfo[k] = match[1]
+      return
+    
+
+def main():
+  ## Read and store LTB specification
+  readLTBSpecification(inputFile)
+  if verbose:
+    print("LTB specification:")
+    print(str(globalInfo))
+  ## ...
+
+
+'''
+Batch Specification Files
+The problems for each problem category of the LTB division are listed in a batch specification file, containing global data lines and one or more batch specifications. The global data lines are:
+
+A problem category line of the form
+    division.category LTB.category_mnemonic
+The name of a .tgz file (relative to the directory holding the batch specification file) that contains training data in the form of problems in TPTP format and one or more solutions to each problem in TSTP format, in a line of the form 
+    division.category.training_data tgz_file_name
+The .tgz file expands in place to three directories: Axioms, Problems, and Solutions. Axioms contains all the axiom files that are used in the training and competition problems. Problems contains the training problems. Solutions contains a subdirectory for each of the Problems, containing TPTP format solutions to the problem. Note that the language of a solution might not be the same as the language of the problem, e.g., a proof to a THF problem might be written in FOF, or the proof of a TFF problem might be written in THF - systems taking advantage of the training data need to filter out the soutions that they can use.
+Each batch specification consists of:
+A header line % SZS start BatchConfiguration
+A specification of whether or not the problems in the batch must be attempted in order is given, in a line of the form
+    execution.order ordered/unordered
+If the batch is ordered the ATP systems may not start any attempt on a problem, including reading the problem file, before ending the attempt on the preceding problem. For CASC-27 it is
+    execution.order unordered
+A specification of what output is required from the ATP systems for each problem, in a line of the form
+    output.required space_separated_list
+where the available list values are the SZS values Assurance, Proof, Model, and Answer. For CASC-27 it is
+    output.required Proof
+The wall clock time limit for each problem, in a line of the form
+    limit.time.problem.wc limit_in_seconds
+A value of zero indicates no per-problem limit. For CASC-27 it is
+    limit.time.problem.wc 0
+The overall wall clock time limit for the batch, in a line of the form
+    limit.time.overall.wc limit_in_seconds
+A terminator line % SZS end BatchConfiguration
+A header line % SZS start BatchIncludes
+include directives that are used in every problem. All the problems in the batch have these include directives, and can also have other include directives that are not listed here. For CASC-27, see the additional notes below.
+A terminator line % SZS end BatchIncludes
+A header line % SZS start BatchProblems
+Pairs of problem file names (relative to the directory holding the batch specification file), and output file names where the output for the problem must be written. The output files must be written in the directory specified as the second argument to the starexec_run script (the first argument is the name of the batch specification file). For CASC-27, see the additional notes below.
+A terminator line % SZS end BatchProblems'''
+
+main()

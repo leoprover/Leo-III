@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import tempfile
+import itertools
+import sys
+
+from subprocess import Popen, PIPE
+
+def is_valid_file(parser, arg):
+    if not os.path.isfile(arg):
+        parser.error("'%s' does not exist or is not a file." % arg)
+    else:
+        return os.path.abspath(arg)
+
+parser = argparse.ArgumentParser(description='Runs Leo-III with a portfolio.')
+parser.add_argument('Problem', metavar='Problem',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The problem file to be used')
+parser.add_argument('Timeout', metavar='Timeout', type=int,
+                    help='The timeout.')
+
+
+args = parser.parse_args()
+
+problem = args.Problem
+timeout = args.Timeout
+
+def getSZS(output):
+    idx = output.find('% SZS status ')
+    if idx >= 0:
+        suffix = output[idx:]
+        #print(suffix)
+        suffix2 = suffix.split(' ', 4)
+        #print(suffix2)
+        result = suffix2[3]
+        #print(result)
+        return result
+    else:
+        return None
+
+def isSuccess(result):
+    if result == "Theorem":
+        return True
+    if result == "ContradictoryAxioms":
+        return True
+    return False
+
+def runleo(timeout,mode):
+    if (mode == "internal"):
+        process = Popen(['./TreeLimitedRun', str(timeout), str(timeout), './leo3-pgo', str(problem), '-t', str(timeout), '--strategy', str(mode)], stdout=PIPE, stderr=PIPE)
+    else:
+        process = Popen(['./TreeLimitedRun', str(timeout), str(timeout), './leo3-pgo', str(problem), '-t', str(timeout), '--strategy', str(mode), '--atp', 'e=../externals/eprover'], stdout=PIPE, stderr=PIPE)
+    
+    process.wait()
+    stdout, stderr = process.communicate()
+    result = stdout.strip().decode()
+    szs = getSZS(result)
+    #print(szs)
+    return (szs,result)
+    
+def runstrategy(timeout,modetimeout, modegaveup, previousresult):
+    mode = modetimeout
+    if previousresult == "GaveUp":
+        mode = modegaveup
+    print("% Trying strategy '"+ mode +"' for " + str(timeout) + "s ...")
+    (szs,output) = runleo(timeout,mode)
+    if isSuccess(szs):
+        print(output)
+        sys.exit(0)
+    return szs
+    
+def runterminalstrategy(mode):
+    print("% Trying strategy '"+ mode +"' ...")
+    (szs,output) = runleo(timeout,mode)
+    print(output)
+
+# Run default for 60s
+res = None
+res = runstrategy(10, "internal", "interal", res)
+res = runstrategy(80, "default", "default", res)
+res = runstrategy(20, "u10", "u10", res)
+res = runstrategy(20, "ps0", "complete", res)
+res = runstrategy(20, "sp18", "complete", res)
+runterminalstrategy("complete")
+
