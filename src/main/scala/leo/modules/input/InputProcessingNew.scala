@@ -2,10 +2,12 @@ package leo.modules.input
 
 import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTPAST => TPTP}
 import leo.datastructures.Term.{mkApp, mkAtom, mkBound, mkTermApp, Λ, λ}
-import leo.datastructures.Type.{mkFunType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
+import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_SyntaxError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
+
+import scala.annotation.tailrec
 
 object InputProcessingNew {
   import leo.modules.HOLSignature.{i,o, rat, int, real, LitTrue, IF_THEN_ELSE, HOLUnaryConnective, HOLBinaryConnective}
@@ -14,6 +16,12 @@ object InputProcessingNew {
   type TermOrType = Either[Term, Type]
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // Top-level processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   @inline private[this] final def processRole(role: String): Role = Role(role)
 
@@ -40,6 +48,16 @@ object InputProcessingNew {
         else (name, formula, role)
     }
   }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // THF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////
+  // Term processing
+  ////////////////////////////////////////////////////////////////////////
 
   private[this] final def processAnnotatedTHF(sig: Signature)(statement: TPTP.THFAnnotated): Option[Term] = {
     import TPTP.THF.{Logical, Typing}
@@ -107,6 +125,9 @@ object InputProcessingNew {
   }
 
   private[this] final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): TermOrType = {
+    convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty)
+  }
+  private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula, vars: Seq[String], varTypes: Seq[Type]): TermOrType = {
     import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
       Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm}
 
@@ -125,7 +146,47 @@ object InputProcessingNew {
     }
   }
 
+  ////////////////////////////////////////////////////////////////////////
+  // Type processing
+  ////////////////////////////////////////////////////////////////////////
+
   private[this] final def convertTHFType(sig: Signature)(typ: TPTP.THF.Type): TypeOrKind = {
+    import TPTP.THF.QuantifiedFormula
+
+    typ match {
+      case QuantifiedFormula(quantifier, _, _) if quantifier == TPTP.THF.!> =>
+        val (variables, body0) = collectVarsUnderTHFQuantifier(quantifier, typ)
+
+        val variablesIt = variables.iterator
+        var convertedVariables: Seq[String] = Vector.empty // We only need to store names; kind is always $tType
+        while (variablesIt.hasNext) {
+          val (name, ty) = variablesIt.next()
+          val convertedTy = convertTHFType0(sig)(ty, Seq.empty)
+          convertedTy match {
+            case Left(ty0) => throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${ty.pretty}' was given.")
+            case Right(kind) =>
+              if (!kind.isTypeKind) throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${kind.pretty}' was given.")
+          }
+          convertedVariables = convertedVariables :+ name
+        }
+
+        val convertedBody = convertTHFType0(sig)(body0, convertedVariables)
+        convertedBody match {
+          case Left(convertedBody0) => Left(mkNAryPolyType(convertedVariables.length, convertedBody0))
+          case Right(_) => throw new SZSException(SZS_TypeError, s"Body of type quantification does not yield a legal type: ${body0.pretty}")
+        }
+
+      case QuantifiedFormula(quantifier, _, _) =>
+        if (quantifier == TPTP.THF.?*)
+          throw new SZSException(SZS_Inappropriate, s"Existential types of form ?* ... not supported by Leo-III.")
+        else
+          throw new SZSException(SZS_InputError, s"Unexpected term quantification at type level.")
+
+      case _ => convertTHFType0(sig)(typ, Seq.empty)
+    }
+  }
+
+  private[this] final def convertTHFType0(sig: Signature)(typ: TPTP.THF.Type, vars: Seq[String]): TypeOrKind = {
     import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
       Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm}
 
@@ -146,17 +207,21 @@ object InputProcessingNew {
           }
         }
 
-      case QuantifiedFormula(quantifier, variableList, body) => ???
+      case QuantifiedFormula(_, _, _) => throw new SZSException(SZS_TypeError, s"Only rank-1 polymorphic types are suported; " +
+        s"but the type expression contains a quantified type at non-prefix position.")
 
-      case Variable(name) => Left(mkVarType(???))
+      case Variable(name) =>
+        val index = getDeBruijnIndexOf(vars)(name)
+        if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in type expression.")
+        else  Left(mkVarType(index))
 
       case BinaryFormula(connective, left, right) =>
         import TPTP.THF.{FunTyConstructor, ProductTyConstructor, SumTyConstructor, App}
 
         connective match {
           case FunTyConstructor | ProductTyConstructor | SumTyConstructor | App =>
-            val convertedLeft = convertTHFType(sig)(left)
-            val convertedRight = convertTHFType(sig)(right)
+            val convertedLeft = convertTHFType0(sig)(left, vars)
+            val convertedRight = convertTHFType0(sig)(right, vars)
             (convertedLeft, convertedRight) match {
               case (Left(left0), Left(right0)) =>
                 val result = (connective: @unchecked) match { // Exhaustiveness guaranteed by match-case condition a few lines above
@@ -174,21 +239,64 @@ object InputProcessingNew {
         }
 
       case Tuple(elements) =>
-        val convertedTys = elements.map(convertTHFType(sig))
+        val convertedTys = elements.map(convertTHFType0(sig)(_, vars))
         val (tys, kinds) = convertedTys.partitionMap(identity)
         if (kinds.isEmpty) {
           throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
         } else throw new SZSException(SZS_TypeError, s"Tuple type '${typ.pretty}' contains kinds (such as $$tType) which is not allowed.")
-        
+
       //      case LetTerm(typing, binding, body) => ??? // TODO: We could, in principle, allow let-terms in type expressions.
       //      case DistinctObject(name) => ??? // TODO: Can a distinct object serve as type identifier?
       case _ => throw new SZSException(SZS_InputError, s"Malformed type-expression: '${typ.pretty}'.")
     }
   }
 
+  @inline private[this] final def collectVarsUnderTHFQuantifier(quantifier: TPTP.THF.Quantifier,
+                                                                expression: TPTP.THF.Formula): (Seq[TPTP.THF.TypedVariable], TPTP.THF.Formula) = {
+    collectVarsUnderTHFQuantifier0(quantifier, expression, Vector.empty)
+  }
+
+  @tailrec
+  private[this] final def collectVarsUnderTHFQuantifier0(quantifier: TPTP.THF.Quantifier,
+                                                         expression: TPTP.THF.Formula,
+                                                         variables: Seq[TPTP.THF.TypedVariable]): (Seq[TPTP.THF.TypedVariable], TPTP.THF.Formula) = {
+    import TPTP.THF.QuantifiedFormula
+
+    expression match {
+      case QuantifiedFormula(q, varList, body) if q == quantifier => collectVarsUnderTHFQuantifier0(quantifier, body, variables ++ varList)
+      case _ => (variables, expression)
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TFF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////
+  // Term processing
+  ////////////////////////////////////////////////////////////////////////
+
   final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = ???
 
+  ////////////////////////////////////////////////////////////////////////
+  // Type processing
+  ////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // FOF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
   final def processAnnotatedFOF(sig: Signature)(statement: TPTP.FOFAnnotated): Option[Term] = ???
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // CNF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   final def processAnnotatedCNF(sig: Signature)(statement: TPTP.CNFAnnotated): Term = {
     import TPTP.CNF.Logical
@@ -200,4 +308,15 @@ object InputProcessingNew {
 
   private[this] final def processCNF(cnfFormula: TPTP.CNF.Formula): Term = ???
 
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // Auxiliary methods
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  @inline private[this] final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
+    val idx = vars.lastIndexOf(variable)
+    if (idx == -1) -1
+    else vars.length - idx
+  }
 }
