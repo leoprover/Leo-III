@@ -125,24 +125,107 @@ object InputProcessingNew {
   }
 
   private[this] final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): TermOrType = {
-    convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty)
+    convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Vector.empty)
   }
-  private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula, vars: Seq[String], varTypes: Seq[Type]): TermOrType = {
+  private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
+                                                             vars: Seq[String],
+                                                             varTypes: Seq[Type],
+                                                             tyVars: Seq[String]): TermOrType = {
     import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
       Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm}
 
     formula match {
-      case FunctionTerm(f, args) => ???
       case QuantifiedFormula(quantifier, variableList, body) => ???
-      case Variable(name) => ???
+
       case UnaryFormula(connective, body) => ???
+
       case BinaryFormula(connective, left, right) => ???
-      case Tuple(elements) => ???
-      case ConditionalTerm(condition, thn, els) => ???
+
+      case FunctionTerm(f, args) => ???
+
+      case Variable(name) => // TODO
+        val termIndex = getDeBruijnIndexOf(vars)(name)
+        val typeIndex = getDeBruijnIndexOf(tyVars)(name)
+
+        (termIndex, typeIndex) match {
+          case (-1, -1) => throw new SZSException(SZS_InputError, s"Unbound variable '$name' in formula.")
+          case (_, -1) => Left(mkBound(varTypes(varTypes.size - termIndex), termIndex))
+          case (-1, _) => Right(mkVarType(typeIndex))
+          case (n, m) => ???
+        }
+
+      case Tuple(elements) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+
+      case ConditionalTerm(condition, thn, els) =>
+        val convertedCondition = convertTHFFormula0(sig)(condition, vars, varTypes, tyVars)
+        val convertedThn = convertTHFFormula0(sig)(thn, vars, varTypes, tyVars)
+        val convertedEls = convertTHFFormula0(sig)(els, vars, varTypes, tyVars)
+
+        (convertedCondition, convertedThn, convertedEls) match {
+          case (Left(c), Left(t), Left(e)) => ???
+            if (c.ty == o) {
+              if (t.ty == e.ty) {
+                import leo.datastructures.Term.{λ, mkBound}
+                import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+                val ty = t.ty
+                Left(Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
+                  Impl(Not(c), ===(mkBound(ty, 1), e))))))
+              } else throw new SZSException(SZS_TypeError, s"Alternatives of if-then-else are not of same type.")
+            } else throw new SZSException(SZS_TypeError, s"Condition of if-then-else is not Boolean typed.")
+          case _ => throw new SZSException(SZS_TypeError, s"Arguments of if-then-else were not all recognized to be well-formed terms.")
+        }
+
       case LetTerm(typing, binding, body) => ???
-      case ConnectiveTerm(conn) => ???
-      case DistinctObject(name) => ???
+
+      case ConnectiveTerm(conn) => // This is not pretty ... but well, life is hard.
+        if (conn.isInstanceOf[TPTP.THF.UnaryConnective]) Left(convertTHFUnaryConnective(conn.asInstanceOf[TPTP.THF.UnaryConnective]))
+        else Left(convertTHFBinaryConnective(conn.asInstanceOf[TPTP.THF.BinaryConnective]))
+
+      case DistinctObject(name) =>
+        if (sig.exists(name)) Left(mkAtom(sig(name).key)(sig))
+        else Left(mkAtom(sig.addUninterpreted(name, i))(sig))
+
       case NumberTerm(value) => ???
+    }
+  }
+
+  private[this] final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
+    import leo.modules.HOLSignature.{Not => not, Forall => forall, Exists => exists, Choice => choice, Description => desc}
+
+    connective match {
+      case TPTP.THF.~ => not
+      case TPTP.THF.!! => forall
+      case TPTP.THF.?? => exists
+      case TPTP.THF.@@+ => choice
+      case TPTP.THF.@@- => desc
+      case TPTP.THF.@= => ???
+    }
+  }
+
+  ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
+  private final object @@@ extends HOLBinaryConnective {
+    val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
+    def ty: Type = null
+    override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
+  }
+  //////
+
+  private[this] final def convertTHFBinaryConnective(connective: TPTP.THF.BinaryConnective): HOLBinaryConnective = {
+    import leo.modules.HOLSignature.{Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, ===, !===}
+
+    connective match {
+      case TPTP.THF.Eq => ===
+      case TPTP.THF.Neq => !===
+      case TPTP.THF.<=> => === //equiv
+      case TPTP.THF.Impl  => impl
+      case TPTP.THF.<=    => i_f
+      case TPTP.THF.|    => or
+      case TPTP.THF.&   => and
+      case TPTP.THF.~|   => nor
+      case TPTP.THF.~&  => nand
+      case TPTP.THF.<~>  => !=== //niff
+      case TPTP.THF.App   => @@@
+      case _ => throw new SZSException(SZS_InputError, s"Unexpected symbol '${connective.pretty}' used as binary connective.")
     }
   }
 
