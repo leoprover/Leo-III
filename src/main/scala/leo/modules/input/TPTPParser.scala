@@ -947,8 +947,9 @@ object TPTPParser {
     // Other THF stuff
     ////////////////////////////////////////////////////////////////////////
 
+    // Only real connective: So no @ (application), as opposed to isBinaryTHFConnective
     @inline private[this] def isTHFConnective(tokenType: TokenType): Boolean =
-      isUnaryTHFConnective(tokenType) || isBinaryTHFConnective(tokenType) || isEqualityLikeConnective(tokenType)
+      isUnaryTHFConnective(tokenType) || isBinaryConnective(tokenType) || isEqualityLikeConnective(tokenType)
 
     @inline private[this] def isUnaryTHFConnective(tokenType: TokenType): Boolean = isUnaryConnective(tokenType) || (tokenType match {
       case FORALLCOMB | EXISTSCOMB | DESCRIPTIONCOMB | CHOICECOMB | EQCOMB => true
