@@ -1,16 +1,16 @@
 package leo.modules.input
 
 import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTPAST => TPTP}
-import leo.datastructures.Term.{mkApp, mkAtom, mkBound, mkTermApp, mkTypeApp, Λ, λ}
-import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
-import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_SyntaxError, SZS_TypeError}
+import leo.datastructures.Term.{mkAtom, mkBound, mkTermApp, mkTypeApp, Λ, λ}
+import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind}
+import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
 
 import scala.annotation.tailrec
 
 object InputProcessingNew {
-  import leo.modules.HOLSignature.{i,o, rat, int, real, LitTrue, IF_THEN_ELSE, HOLUnaryConnective, HOLBinaryConnective}
+  import leo.modules.HOLSignature.{i,o, rat, int, real, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
 
   type TypeOrKind = Either[Type, Kind]
   type TermOrType = Either[Term, Type]
@@ -39,7 +39,7 @@ object InputProcessingNew {
         case f@TFFAnnotated(_, _, _, _) => processAnnotatedTFF(sig)(f)
         case f@FOFAnnotated(_, _, _, _) => processAnnotatedFOF(sig)(f)
         case f@CNFAnnotated(_, _, _, _) => Some(processAnnotatedCNF(sig)(f))
-        case f@TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported (yet).")
+        case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported (yet).")
       }
       maybeFormula match {
         case None => (name, LitTrue, role)
@@ -49,7 +49,7 @@ object InputProcessingNew {
           else (name, formula, role)
       }
     } catch {
-      case e: SZSException => throw new SZSException(e.status, s"Interpreter error in annotated TPTP formula '${name}': ${e.getMessage}")
+      case e: SZSException => throw new SZSException(e.status, s"Interpreter error in annotated TPTP formula '$name': ${e.getMessage}")
     }
   }
 
@@ -202,7 +202,7 @@ object InputProcessingNew {
                     case Right(_) => ???
                   }
                 } catch {
-                  case e: SZSException =>
+                  case _: SZSException =>
                     val convertedRight = convertTHFType0(sig)(right, typeVars)
                     convertedRight match {
                       case Left(convertedRight0) =>
@@ -273,12 +273,13 @@ object InputProcessingNew {
               Left(mkBound(ty, index))
             case TypeVariableMarker =>
               val index = getDeBruijnIndexOf(typeVars)(name)
+              assert(false)
               Right(mkVarType(index))
           }
           case None => throw new SZSException(SZS_InputError, s"Unbound variable '$name' in formula.")
         }
 
-      case Tuple(elements) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+      case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
 
       case ConditionalTerm(condition, thn, els) =>
         val convertedCondition = convertTHFFormula0(sig)(condition, termVars, typeVars, vars)
@@ -309,7 +310,7 @@ object InputProcessingNew {
         if (sig.exists(name)) Left(mkAtom(sig(name).key)(sig))
         else Left(mkAtom(sig.addUninterpreted(name, i))(sig))
 
-      case NumberTerm(value) => throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III.")
+      case NumberTerm(_) => throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III.")
     }
   }
 
@@ -400,7 +401,7 @@ object InputProcessingNew {
           val (name, ty) = variablesIt.next()
           val convertedTy = convertTHFType0(sig)(ty, Seq.empty)
           convertedTy match {
-            case Left(ty0) => throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${ty.pretty}' was given.")
+            case Left(_) => throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${ty.pretty}' was given.")
             case Right(kind) =>
               if (!kind.isTypeKind) throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${kind.pretty}' was given.")
           }
@@ -424,8 +425,7 @@ object InputProcessingNew {
   }
 
   private[this] final def convertTHFType0(sig: Signature)(typ: TPTP.THF.Type, vars: Seq[String]): TypeOrKind = {
-    import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
-      Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm}
+    import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, BinaryFormula, Tuple}
 
     typ match {
       case FunctionTerm(f, args) =>
@@ -477,7 +477,7 @@ object InputProcessingNew {
 
       case Tuple(elements) =>
         val convertedTys = elements.map(convertTHFType0(sig)(_, vars))
-        val (tys, kinds) = convertedTys.partitionMap(identity)
+        val (_, kinds) = convertedTys.partitionMap(identity)
         if (kinds.isEmpty) {
           throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
         } else throw new SZSException(SZS_TypeError, s"Tuple type '${typ.pretty}' contains kinds (such as $$tType) which is not allowed.")
