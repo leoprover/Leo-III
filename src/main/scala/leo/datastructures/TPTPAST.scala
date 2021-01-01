@@ -246,6 +246,7 @@ object TPTPAST {
       override def pretty: String = name
     }
     final case class UnaryFormula(connective: UnaryConnective, body: Formula) extends Formula {
+      assert(connective == ~) // TODO: Ask Geoff about this.
       override def pretty: String = s"${connective.pretty} (${body.pretty})"
     }
     final case class BinaryFormula(connective: BinaryConnective, left: Formula, right: Formula) extends Formula {
