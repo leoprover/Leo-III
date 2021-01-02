@@ -296,17 +296,7 @@ object InputProcessingNew {
       case NumberTerm(number) =>
         // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
         leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
-        number match {
-        case TPTP.Integer(value) =>
-          val constName = s"$$$$int_$value"
-          mkAtom(getOrCreateSymbol(sig)(constName, int))(sig)
-        case TPTP.Rational(numerator, denominator) =>
-          val constName = s"$$$$rat_${numerator}_$denominator"
-          mkAtom(getOrCreateSymbol(sig)(constName, rat))(sig)
-        case TPTP.Real(wholePart, decimalPlaces, exponent) =>
-          val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-          mkAtom(getOrCreateSymbol(sig)(constName, real))(sig)
-      }
+        convertNumber(sig)(number)
     }
   }
 
@@ -508,11 +498,11 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
+  final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = ???
+
   ////////////////////////////////////////////////////////////////////////
   // Term processing
   ////////////////////////////////////////////////////////////////////////
-
-  final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = ???
 
   ////////////////////////////////////////////////////////////////////////
   // Type processing
@@ -524,7 +514,116 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
-  final def processAnnotatedFOF(sig: Signature)(statement: TPTP.FOFAnnotated): Option[Term] = ???
+  final def processAnnotatedFOF(sig: Signature)(statement: TPTP.FOFAnnotated): Option[Term] = {
+    import TPTP.FOF.Logical
+
+    statement.formula match {
+      case Logical(f) if statement.role == "definition" =>
+        processFOFDef(sig)(f) match {
+          case _ => // TODO: Implement definition handling
+            val res = convertFOFFormula(sig)(f)
+            Out.info(s"Definitions in FOF are currently treated as axioms.")
+            Some(res)
+        }
+      case Logical(f) => Some(convertFOFFormula(sig)(f))
+    }
+  }
+
+  @inline private[this] final def processFOFDef(sig: Signature)(formula: TPTP.FOF.Formula): Option[(String, Term)] = {
+    // TODO: Implement definition processing
+    formula match {
+      case _ => None
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  // Term processing
+  ////////////////////////////////////////////////////////////////////////
+
+  @inline private[this] final def convertFOFFormula(sig: Signature)(formula: TPTP.FOF.Formula): Term =
+    convertFOFFormula0(sig)(formula, Vector.empty)
+
+  private[this] final def convertFOFFormula0(sig: Signature)(formula: TPTP.FOF.Formula,
+                                                                     termVars: Seq[String]): Term = {
+    import TPTP.FOF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality}
+    import leo.modules.HOLSignature.{===, !===, Not}
+
+    formula match {
+      case QuantifiedFormula(quantifier, variableList, body) =>
+        val convertedQuantifier = convertFOFQuantifier(quantifier)
+        val updatedTermVars = termVars ++ variableList
+        val convertedBody = convertFOFFormula0(sig)(body, updatedTermVars)
+        variableList.foldRight(convertedBody){ (_, acc) => convertedQuantifier.apply(λ(i)(acc)) }
+
+      case UnaryFormula(connective, body) =>
+        connective match {
+          case TPTP.FOF.~ =>
+            val convertedBody = convertFOFFormula0(sig)(body, termVars)
+            Not(convertedBody)
+        }
+
+      case BinaryFormula(connective, left, right) =>
+        val convertedLeft = convertFOFFormula0(sig)(left, termVars)
+        val convertedRight = convertFOFFormula0(sig)(right, termVars)
+        convertFOFBinaryConnective(connective)(convertedLeft, convertedRight)
+
+      case Equality(left, right) =>
+        val convertedLeft = convertFOFTerm(sig)(left, termVars)
+        val convertedRight = convertFOFTerm(sig)(right, termVars)
+        ===(convertedLeft, convertedRight)
+
+      case Inequality(left, right) =>
+        val convertedLeft = convertFOFTerm(sig)(left, termVars)
+        val convertedRight = convertFOFTerm(sig)(right, termVars)
+        !===(convertedLeft, convertedRight)
+
+      case AtomicFormula(f, args) =>
+        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimplePredicateType(args.size)))(sig)
+        val convertedArgs = args.map(convertFOFTerm(sig)(_, termVars))
+        mkTermApp(convertedF, convertedArgs)
+    }
+  }
+
+  private[this] final def convertFOFTerm(sig: Signature)(term: TPTP.FOF.Term, termVars: Seq[String]): Term = {
+    import TPTP.FOF.{AtomicTerm, Variable, DistinctObject, NumberTerm}
+
+    term match {
+      case AtomicTerm(f, args) =>
+        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(sig)
+        val convertedArgs = args.map(convertFOFTerm(sig)(_, termVars))
+        mkTermApp(convertedF, convertedArgs)
+      case Variable(name) =>
+        val index = getDeBruijnIndexOf(termVars)(name)
+        if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term expression.")
+        else mkBound(i, index)
+      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
+      case NumberTerm(value) => convertNumber(sig)(value)
+    }
+  }
+
+  private[this] final def convertFOFBinaryConnective(connective: TPTP.FOF.BinaryConnective): HOLBinaryConnective = {
+    import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
+
+    connective match {
+      case TPTP.FOF.<=>   => equiv
+      case TPTP.FOF.Impl  => impl
+      case TPTP.FOF.<=    => i_f
+      case TPTP.FOF.|     => or
+      case TPTP.FOF.&     => and
+      case TPTP.FOF.~|    => nor
+      case TPTP.FOF.~&    => nand
+      case TPTP.FOF.<~>   => niff
+    }
+  }
+
+  private[this] final def convertFOFQuantifier(quantifier: TPTP.FOF.Quantifier): HOLUnaryConnective = {
+    import leo.modules.HOLSignature.{Forall, Exists}
+
+    quantifier match {
+      case TPTP.FOF.! => Forall
+      case TPTP.FOF.? => Exists
+    }
+  }
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
@@ -536,11 +635,11 @@ object InputProcessingNew {
     import TPTP.CNF.Logical
 
     statement.formula match {
-      case Logical(f) => processCNF(sig)(f) // No other kind of CNF formula exists
+      case Logical(f) => convertCNFFormula(sig)(f) // No other kind of CNF formula exists
     }
   }
 
-  @inline private[this] final def processCNF(sig: Signature)(formula: TPTP.CNF.Formula): Term = {
+  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula): Term = {
     var convertedLiterals: Seq[Term] = Vector.empty
     var termVars: Seq[String] = List.empty // We only prepend, this is more efficient in List
     // The general approach is: We don't pass through all literals before processing them (in order to collect the variables)
@@ -631,6 +730,20 @@ object InputProcessingNew {
   @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type): Signature.Key = {
     if (sig.exists(name)) sig(name).key
     else sig.addUninterpreted(name, ty)
+  }
+
+  @inline private[this] final def convertNumber(sig: Signature)(number: TPTP.Number): Term = {
+    number match {
+      case TPTP.Integer(value) =>
+        val constName = s"$$$$int_$value"
+        mkAtom(getOrCreateSymbol(sig)(constName, int))(sig)
+      case TPTP.Rational(numerator, denominator) =>
+        val constName = s"$$$$rat_${numerator}_$denominator"
+        mkAtom(getOrCreateSymbol(sig)(constName, rat))(sig)
+      case TPTP.Real(wholePart, decimalPlaces, exponent) =>
+        val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
+        mkAtom(getOrCreateSymbol(sig)(constName, real))(sig)
+    }
   }
 
   @inline private[this] final def mkSimplePredicateType(n: Int): Type = {

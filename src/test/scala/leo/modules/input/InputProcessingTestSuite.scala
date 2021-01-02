@@ -9,12 +9,15 @@ class InputProcessingTestSuite extends LeoTestSuite {
   private[this] val tptp = System.getenv("TPTP")
   private[this] val th0Files0 = new File(tptp ++ "/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("^")).toList
   private[this] val th0Files = th0Files0.filterNot(_.getName == "SYN000^2.p")
-  private[this] val cnfFiles = Seq(new File(tptp ++ "/Problems/SYN/SYN000-1.p"), new File(tptp ++ "/Problems/SYN/SYN000-2.p"))
+  private[this] val fofBasicFiles = Seq(new File(tptp ++ "/Problems/SYN/SYN000+1.p"), new File(tptp ++ "/Problems/SYN/SYN000+2.p"))
+  private[this] val fofFiles0 = new File(tptp ++ "/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("+")).toList
+  private[this] val fofFiles = fofBasicFiles // ++ fofFiles0
+  private[this] val cnfBasicFiles = Seq(new File(tptp ++ "/Problems/SYN/SYN000-1.p"), new File(tptp ++ "/Problems/SYN/SYN000-2.p"))
 
 //  val ltbFiles0 = new File("/home/lex/TPTP/CASC-2020/LTB/Problems/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("^")).toList
 //  val ltbFiles = ltbFiles0.take(10)
 
-  private[this] val allFiles =  cnfFiles ++ th0Files  //++ ltbFiles
+  private[this] val allFiles = fofFiles ++ cnfBasicFiles ++ th0Files  //++ ltbFiles
 
   allFiles.foreach(f =>
     test(f.getName) {
