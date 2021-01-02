@@ -305,11 +305,11 @@ object InputProcessingNew {
         case TPTP.Rational(numerator, denominator) =>
           val constName = s"$$$$rat_${numerator}_$denominator"
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
-          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+          else mkAtom(sig.addUninterpreted(constName, rat))(sig)
         case TPTP.Real(wholePart, decimalPlaces, exponent) =>
           val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
-          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+          else mkAtom(sig.addUninterpreted(constName, real))(sig)
       }
     }
   }
