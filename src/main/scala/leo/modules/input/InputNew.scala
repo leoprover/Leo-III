@@ -1,11 +1,11 @@
 package leo.modules.input
 
 import java.nio.file.{Files, Path, Paths}
-
 import leo.Out
 import leo.datastructures.{Role, Signature, Term, TPTPAST => TPTP}
 import leo.modules.SZSException
-import leo.modules.output.SZS_InputError
+import leo.modules.input.TPTPParser.TPTPParseException
+import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
 /**
   * This facade object publishes various methods for parsing/processing/reading
@@ -177,7 +177,12 @@ object InputNew {
     * @return The TPTP problem file in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
   def parseProblemFileShallow(file: String): TPTP.Problem = {
-    TPTPParser.problem(read0(canonicalPath(file)))
+    try {
+      TPTPParser.problem(read0(canonicalPath(file)))
+    } catch {
+      case e: TPTPParseException =>
+        throw new SZSException(SZS_SyntaxError, s"Parse error in file '$file' in line ${e.line}:${e.offset}. ${e.getMessage}")
+    }
   }
 
   /**
