@@ -317,12 +317,10 @@ object InputProcessingNew {
   ////// Little workaround to have a corresponding HOLUnaryConnective for the equality as polymorphic prefix symbol
   // Though I don't understand why it's called unary ...
   private final object ===== extends HOLUnaryConnective {
-
     import leo.modules.HOLSignature.{=== => HOLEQ}
 
     val key: Signature.Key = HOLEQ.key // Dont care, we dont want to use unapply
     def ty: Type = HOLEQ.ty
-
     override def apply(arg: Term): Term = null
   }
 
@@ -344,9 +342,7 @@ object InputProcessingNew {
   private final object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
     // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature.Key = Integer.MIN_VALUE
-
     def ty: Type = null
-
     override def apply(arg: Term): Term = arg
   }
 
@@ -367,10 +363,8 @@ object InputProcessingNew {
   private final object @@@ extends HOLBinaryConnective {
     val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
     def ty: Type = null
-
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
-
   //////
 
   private[this] final def convertTHFBinaryConnective(connective: TPTP.THF.BinaryConnective): HOLBinaryConnective = {
@@ -560,9 +554,7 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
 
   private[this] sealed abstract class VariableMarker
-
   private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
-
   private[this] case object TypeVariableMarker extends VariableMarker
 
   @inline private[this] final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
