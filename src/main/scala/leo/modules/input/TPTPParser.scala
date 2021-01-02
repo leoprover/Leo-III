@@ -1247,7 +1247,6 @@ object TPTPParser {
             doneWithLeftSideOrMapping = true
         }
       }
-      val leftType = if (productTypeEntries.size == 1) productTypeEntries.head else TFF.ProductType(productTypeEntries)
       val next = peek()
       next._1 match {
         case RANGLE =>
@@ -1257,8 +1256,8 @@ object TPTPParser {
             a(RPAREN)
             leftParenCount = leftParenCount - 1
           }
-          TFF.MappingType(leftType, rightType)
-        case _ if productTypeEntries.size == 1 => leftType
+          TFF.MappingType(productTypeEntries, rightType)
+        case _ if productTypeEntries.size == 1 => productTypeEntries.head
         case _ => error2(s"Parse error: Naked product type on top-level; expected mapping type constructor '>' but found '${next._1}'", next)
       }
     }
@@ -1788,7 +1787,7 @@ object TPTPParser {
         else throw new TPTPParseException(s"Parse error: Unexpected end of input when some token was expected", lastTok._3, lastTok._4)
       }
     }
-    @inline private[this] def peek(i: Int): Token = {
+    private[this] def peek(i: Int): Token = {
       try {
         tokens.peek(i)
       } catch {
