@@ -26,6 +26,7 @@ object InputProcessingNew {
 
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
+  type TermOrType = Either[Term, Type]
   type TypeOrKind = Either[Type, Kind]
 
   ////////////////////////////////////////////////////////////////////////
@@ -498,15 +499,350 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
-  final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = ???
+  final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = {
+    import TPTP.TFF.{Typing, Logical}
+
+    statement.formula match {
+      case Typing(atom, typ) =>
+        if (statement.role == "type") {
+          convertTFFType(sig)(typ) match {
+            case Left(ty0) => sig.addUninterpreted(atom, ty0)
+            case Right(k) => sig.addTypeConstructor(atom, k)
+          }
+          None
+        } else throw new SZSException(SZS_InputError, s"Formula ${statement.name} contains a type specification but role is not 'type'." +
+          s"This is considered an error; please check your input.")
+      case Logical(f) if statement.role == "definition" =>
+        processTFFDef(sig)(f) match {
+          case _ => // TODO: Implement definition handling
+            val res = convertTFFFormula(sig)(f)
+            Out.info(s"Definitions in FOF are currently treated as axioms.")
+            Some(res)
+        }
+      case Logical(f) => Some(convertTFFFormula(sig)(f))
+    }
+  }
+
+  @inline private[this] final def processTFFDef(sig: Signature)(formula: TPTP.TFF.Formula): Option[(String, Term)] = {
+    // TODO: Implement definition processing
+    formula match {
+      case _ => None
+    }
+  }
 
   ////////////////////////////////////////////////////////////////////////
   // Term processing
   ////////////////////////////////////////////////////////////////////////
 
+  private[this] final def convertTFFFormula(sig: Signature)(formula: TPTP.TFF.Formula): Term =
+    convertTFFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
+
+  private[this] final def convertTFFFormula0(sig: Signature)(formula: TPTP.TFF.Formula,
+                                                             termVars: Seq[String],
+                                                             typeVars: Seq[String],
+                                                             vars: Map[String, VariableMarker]): Term = {
+    import TPTP.TFF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality}
+    import leo.modules.HOLSignature.{===, !===, Not}
+
+
+    formula match {
+      case QuantifiedFormula(quantifier, variableList, body) =>
+        val convertedQuantifier = convertTFFQuantifier(quantifier)
+        val varibleListIt = variableList.iterator
+        var newTermVars: Seq[String] = termVars
+        var newTypeVars: Seq[String] = typeVars
+        var newVars: Map[String, VariableMarker] = vars
+        var localVariableMarkers: Seq[VariableMarker] = Vector.empty
+        while (varibleListIt.hasNext) {
+          val (name, typeOrKind) = varibleListIt.next()
+          val convertedTypeOrKind = convertTFFType0(sig)(typeOrKind, newTypeVars)
+          convertedTypeOrKind match {
+            case Left(convertedType) =>
+              newTermVars = newTermVars :+ name
+              val marker = TermVariableMarker(convertedType)
+              newVars = newVars + (name -> marker)
+              localVariableMarkers = localVariableMarkers :+ marker
+            case Right(convertedKind) =>
+              if (convertedKind.isTypeKind) {
+                newTypeVars = newTypeVars :+ name
+                newVars = newVars + (name -> TypeVariableMarker)
+                localVariableMarkers = localVariableMarkers :+ TypeVariableMarker
+              } else throw new SZSException(SZS_InputError, s"Type variables can only range over '$$tType' in" +
+                s" quantifications, but $name was assigned ${convertedKind.pretty}.")
+          }
+        }
+        val convertedBody = convertTFFFormula0(sig)(body, newTermVars, newTypeVars, newVars)
+        mkPolyQuantified(convertedQuantifier, localVariableMarkers, convertedBody)
+
+      case UnaryFormula(connective, body) =>
+        connective match {
+          case TPTP.TFF.~ =>
+            val convertedBody = convertTFFFormula0(sig)(body, termVars, typeVars, vars)
+            Not(convertedBody)
+        }
+
+      case BinaryFormula(connective, left, right) =>
+        val convertedLeft = convertTFFFormula0(sig)(left, termVars, typeVars, vars)
+        val convertedRight = convertTFFFormula0(sig)(right, termVars, typeVars, vars)
+        convertTFFBinaryConnective(connective)(convertedLeft, convertedRight)
+
+      case Equality(left, right) =>
+        val convertedLeft = convertTFFTerm(sig)(left, termVars, typeVars, vars)
+        val convertedRight = convertTFFTerm(sig)(right, termVars, typeVars, vars)
+        (convertedLeft, convertedRight) match {
+          case (Left(convertedLeft0), Left(convertedRight0)) => ===(convertedLeft0, convertedRight0)
+          case _ => throw new SZSException(SZS_InputError, s"Arguments of equality must both be terms: " +
+            s"At least one of '${left.pretty}' and '${right.pretty}' were recognized as a type.")
+        }
+
+
+      case Inequality(left, right) =>
+        val convertedLeft = convertTFFTerm(sig)(left, termVars, typeVars, vars)
+        val convertedRight = convertTFFTerm(sig)(right, termVars, typeVars, vars)
+        (convertedLeft, convertedRight) match {
+          case (Left(convertedLeft0), Left(convertedRight0)) => !===(convertedLeft0, convertedRight0)
+          case _ => throw new SZSException(SZS_InputError, s"Arguments of inequality must both be terms: " +
+            s"At least one of '${left.pretty}' and '${right.pretty}' were recognized as a type.")
+        }
+
+      case ft@AtomicFormula(f, args) =>
+        if (sig.exists(f)) {
+          val meta = sig(f)
+          if (ft.isConstant) {
+            mkAtom(meta.key)(sig)
+          } else {
+            val func = mkAtom(meta.key)(sig)
+            if (func.ty.isPolyType) {
+              val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+              val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
+              if (termArgs.isEmpty) {
+                val intermediate = mkTypeApp(func, typeArgs)
+                val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                if (remainingTermArgs.nonEmpty) {
+                  val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                  val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
+                  if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
+                  else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                } else intermediate
+              } else {
+                throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+              }
+            } else {
+              val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              val (convertedTermArgs, convertedTypeArgs) = convertedArgs.partitionMap(identity)
+              if (convertedTypeArgs.isEmpty) mkTermApp(func, convertedTermArgs)
+              else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in function application: ${convertedTypeArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+            }
+          }
+        } else {
+          if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
+          else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
+        }
+    }
+  }
+
+  private[this] final def convertTFFTerm(sig: Signature)(term: TPTP.TFF.Term,
+                                                         termVars: Seq[String],
+                                                         typeVars: Seq[String],
+                                                         vars: Map[String, VariableMarker]): TermOrType = {
+    import TPTP.TFF.{AtomicTerm, Variable, DistinctObject, NumberTerm, Tuple}
+
+    term match {
+      case ft@AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
+        if (sig.exists(f)) {
+          val meta = sig(f)
+          if (meta.isTypeConstructor) {
+            val result = if (args.isEmpty) Type.mkType(meta.key)
+            else {
+              val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              val (termArgs, typeArgs) = convertedArgs.partitionMap(identity)
+              if (termArgs.isEmpty) Type.mkType(meta.key, typeArgs)
+              else throw new SZSException(SZS_TypeError, s"Unexpected term arguments in type constructor application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+            }
+            Right(result)
+          } else {
+            assert(meta.isTermSymbol)
+            val result = if (args.isEmpty) mkAtom(meta.key)(sig)
+            else {
+              val func = mkAtom(meta.key)(sig)
+              if (func.ty.isPolyType) {
+                val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+                val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
+                if (termArgs.isEmpty) {
+                  val intermediate = mkTypeApp(func, typeArgs)
+                  val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                  if (remainingTermArgs.nonEmpty) {
+                    val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                    val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
+                    if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
+                    else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                  } else intermediate
+                } else {
+                  throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                }
+              } else {
+                val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                val (convertedTermArgs, convertedTypeArgs) = convertedArgs.partitionMap(identity)
+                if (convertedTypeArgs.isEmpty) mkTermApp(func, convertedTermArgs)
+                else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in function application: ${convertedTypeArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+              }
+            }
+            Left(result)
+          }
+        } else {
+          if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
+          else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
+        }
+
+      case Variable(name) =>
+        if (vars.isDefinedAt(name)) {
+          vars(name) match {
+            case TypeVariableMarker => Right(mkVarType(getDeBruijnIndexOf(typeVars)(name)))
+            case TermVariableMarker(typ) => Left(mkBound(typ, getDeBruijnIndexOf(termVars)(name)))
+          }
+        } else throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term.")
+
+      case DistinctObject(name) => Left(mkAtom(getOrCreateSymbol(sig)(name, i))(sig))
+
+      case NumberTerm(number) =>
+        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
+        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+        Left(convertNumber(sig)(number))
+
+      case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+    }
+  }
+
+
+  private[this] final def convertTFFBinaryConnective(connective: TPTP.TFF.BinaryConnective): HOLBinaryConnective = {
+    import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
+
+    connective match {
+      case TPTP.TFF.<=>   => equiv
+      case TPTP.TFF.Impl  => impl
+      case TPTP.TFF.<=    => i_f
+      case TPTP.TFF.|     => or
+      case TPTP.TFF.&     => and
+      case TPTP.TFF.~|    => nor
+      case TPTP.TFF.~&    => nand
+      case TPTP.TFF.<~>   => niff
+    }
+  }
+
+  private[this] final def convertTFFQuantifier(quantifier: TPTP.TFF.Quantifier): HOLUnaryConnective = {
+    import leo.modules.HOLSignature.{Forall, Exists}
+
+    quantifier match {
+      case TPTP.TFF.! => Forall
+      case TPTP.TFF.? => Exists
+    }
+  }
+
   ////////////////////////////////////////////////////////////////////////
   // Type processing
   ////////////////////////////////////////////////////////////////////////
+
+  private[this] final def convertTFFType(sig: Signature)(typ: TPTP.TFF.Type): TypeOrKind = {
+    import TPTP.TFF.QuantifiedType
+
+    typ match {
+      case QuantifiedType(_, _) =>
+        val (variables, body0) = collectVarsUnderTFFTypeForall(typ)
+
+        val variablesIt = variables.iterator
+        var convertedVariables: Seq[String] = Vector.empty // We only need to store names; kind is always $tType
+        while (variablesIt.hasNext) {
+          val (name, ty) = variablesIt.next()
+          val convertedTy = convertTFFType0(sig)(ty, Seq.empty)
+          convertedTy match {
+            case Left(_) => throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${ty.pretty}' was given.")
+            case Right(kind) =>
+              if (!kind.isTypeKind) throw new SZSException(SZS_TypeError, s"In type quantification, only '$$tType' is allowed as type/kind, but '${kind.pretty}' was given.")
+          }
+          convertedVariables = convertedVariables :+ name
+        }
+
+        val convertedBody = convertTFFType0(sig)(body0, convertedVariables)
+        convertedBody match {
+          case Left(convertedBody0) => Left(mkNAryPolyType(convertedVariables.length, convertedBody0))
+          case Right(_) => throw new SZSException(SZS_TypeError, s"Body of type quantification does not yield a legal type: ${body0.pretty}")
+        }
+      case _ => convertTFFType0(sig)(typ, Vector.empty)
+    }
+  }
+
+
+  private[this] final def convertTFFType0(sig: Signature)(typ: TPTP.TFF.Type,
+                                                         typeVars: Seq[String]): TypeOrKind = {
+    import TPTP.TFF.{AtomicType, MappingType, QuantifiedType, TypeVariable, TupleType}
+
+    typ match {
+      case QuantifiedType(_, _) => throw new SZSException(SZS_TypeError, s"Only rank-1 polymorphic types are suported; " +
+        s"but the type expression contains a quantified type at non-prefix position.")
+
+      case TypeVariable(name) =>
+        val index = getDeBruijnIndexOf(typeVars)(name)
+        if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in type expression.")
+        else Left(mkVarType(index))
+
+      case AtomicType("$tType", Seq()) => Right(typeKind)
+
+      case AtomicType(name, args) =>
+        if (sig.exists(name)) {
+          val convertedArgs = args.map(convertTFFType0(sig)(_, typeVars))
+          val (convertedTypeArgs, convertedKindArgs) = convertedArgs.partitionMap(identity)
+          if (convertedKindArgs.isEmpty) {
+            Left(mkType(sig(name).key, convertedTypeArgs))
+          } else {
+            throw new SZSException(SZS_TypeError, s"Unexpected type argument: Only proper types are allowed, but ${convertedKindArgs.map(_.pretty).mkString(", ")} were found.")
+          }
+        } else {
+          if (name.startsWith("$$")) throw new SZSException(SZS_InputError, s"Unknown system type or system type constructor '$name'.")
+          else if (name.startsWith("$")) throw new SZSException(SZS_InputError, s"Unsupported TPTP type or TPTP type constructor '$name'.")
+          else throw new SZSException(SZS_InputError, s"Unknown type or type constructor '$name'. Please specify its kind first.")
+        }
+
+      case mt@MappingType(left, right) =>
+        val convertedLeft = left.map(convertTFFType0(sig)(_, typeVars))
+        val convertedRight = convertTFFType0(sig)(right, typeVars)
+
+        val (convertedLeftTypeArgs, convertedLeftKindArgs) = convertedLeft.partitionMap(identity)
+        if (convertedLeftTypeArgs.nonEmpty && convertedLeftKindArgs.isEmpty) {
+          // all types: function type
+          convertedRight match {
+            case Left(convertedRight0) => Left(mkFunType(convertedLeftTypeArgs, convertedRight0))
+            case _ => throw new SZSException(SZS_TypeError, s"Unexpected kind on right-hand side of mapping type '${mt.pretty}'" +
+              s" when all left-hand sides were types.")
+          }
+        } else if (convertedLeftTypeArgs.isEmpty && convertedLeftKindArgs.nonEmpty) {
+          // all kinds: type constructtor
+          convertedRight match {
+            case Right(convertedRight0) => Right(Kind.mkFunKind(convertedLeftKindArgs, convertedRight0))
+            case _ => throw new SZSException(SZS_TypeError, s"Unexpected type on right-hand side of mapping type '${mt.pretty}'" +
+              s" when all left-hand sides were kinds.")
+          }
+        } else throw new SZSException(SZS_TypeError, s"Unexpected mixed types and kinds on left-hand side of mapping type '${mt.pretty}'. ")
+
+      case TupleType(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+    }
+  }
+
+  @inline private[this] final def collectVarsUnderTFFTypeForall(typ: TPTP.TFF.Type): (Seq[TPTP.TFF.TypedVariable], TPTP.TFF.Type) = {
+    collectVarsUnderTFFTypeForall0(typ, Vector.empty)
+  }
+
+  @tailrec
+  private[this] final def collectVarsUnderTFFTypeForall0(typ: TPTP.TFF.Type,
+                                                         variables: Seq[TPTP.TFF.TypedVariable]): (Seq[TPTP.TFF.TypedVariable], TPTP.TFF.Type) = {
+    import TPTP.TFF.QuantifiedType
+
+    typ match {
+      case QuantifiedType(varList, body) => collectVarsUnderTFFTypeForall0(body, variables ++ varList)
+      case _ => (variables, typ)
+    }
+  }
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
