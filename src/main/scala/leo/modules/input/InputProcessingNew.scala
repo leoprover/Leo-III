@@ -10,14 +10,23 @@ import leo.datastructures.TPTPAST.THF
 
 import scala.annotation.tailrec
 
+/**
+  * Processing module for TPTP input:
+  * Declarations are inserted into the given Signature,
+  * terms are converted into internal term representation.
+  *
+  * @author Alexander Steen
+  * @since 18.06.2014
+  * @note Substantially revised in Dec 2020/Jan 2021
+  * @see [[Term]]
+  * @see [[Signature]]
+  */
 object InputProcessingNew {
-
   import leo.modules.HOLSignature.{i, o, rat, int, real, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
 
-  type TypeOrKind = Either[Type, Kind]
-  type TermOrType = Either[Term, Type]
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
+  type TypeOrKind = Either[Type, Kind]
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
@@ -222,7 +231,24 @@ object InputProcessingNew {
             mkAtom(meta.key)(sig)
           } else {
             val func = mkAtom(meta.key)(sig)
-            ???
+            if (func.ty.isPolyType) {
+             val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+             val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTHFType0(sig)(_, typeVars))
+             val (typeArgs, kindArgs) = expectedTypeArgs.partitionMap(identity)
+             if (kindArgs.isEmpty) {
+               val intermediate = mkTypeApp(func, typeArgs)
+               val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+               if (remainingTermArgs.size > 0) {
+                 val expectedTermArgs = remainingTermArgs.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
+                 mkTermApp(intermediate, expectedTermArgs)
+               } else intermediate
+             } else {
+               throw new SZSException(SZS_InputError, s"Unexpected kind-like type arguments in function expression.")
+             }
+            } else {
+              val convertedArgs = args.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
+              mkTermApp(func, convertedArgs)
+            }
           }
         } else {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
@@ -258,7 +284,7 @@ object InputProcessingNew {
           } else throw new SZSException(SZS_TypeError, s"Alternatives of if-then-else are not of same type.")
         } else throw new SZSException(SZS_TypeError, s"Condition of if-then-else is not Boolean typed.")
 
-      case LetTerm(typing, binding, body) => ???
+      case LetTerm(_, _, _) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support let bindings.")
 
       case ConnectiveTerm(conn) =>
         conn match {
@@ -286,7 +312,6 @@ object InputProcessingNew {
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
           else mkAtom(sig.addUninterpreted(constName, int))(sig)
       }
-      //throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III."
     }
   }
 
