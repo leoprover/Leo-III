@@ -6,6 +6,7 @@ import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, m
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
+import leo.datastructures.TPTPAST.THF
 
 import scala.annotation.tailrec
 
@@ -80,39 +81,21 @@ object InputProcessingNew {
             if (sig.exists(name)) {
               val meta = sig(name)
               if (meta.isUninterpreted) {
-                //                definition match {
-                //                  case Left(def0) =>
                 if (meta._ty == definition.ty) sig.addDefinition(meta.key, definition.betaNormalize.etaExpand)
                 else throw new SZSException(SZS_InputError, s"Trying to provide definition for symbol '$name', but type of definition " +
                   s"(${definition.ty.pretty(sig)}) does not match type declaration of symbol (${meta._ty.pretty}).")
-                //                  case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
-                //                }
               } else throw new SZSException(SZS_InputError, s"Trying to provide a definition for interpreted/defined symbol '$name'.")
             } else {
-              //              definition match {
-              //                case Left(def0) =>
               sig.addDefined(name, definition.betaNormalize.etaExpand, definition.ty)
-              //                case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
-              //              }
             }
             None
           case None =>
             val res = convertTHFFormula(sig)(formula)
-            //            res match {
-            //              case Left(axiom) =>
             Out.info(s"No direction of definition ${statement.name} detected. Treating as axiom ...")
             Some(res)
-          //              case Right(_) => throw new SZSException(SZS_InputError, s"Definition ${statement.name} contains a type statement on top-level, where a formula was expected.")
-          //            }
         }
 
-      case Logical(formula) =>
-        //        val res =
-        Some(convertTHFFormula(sig)(formula))
-      //        res match {
-      //          case Left(formula0) => Some(formula0)
-      //          case Right(_) => throw new SZSException(SZS_InputError, s"${statement.name} contains a type statement on top-level, where a formula was expected.")
-      //        }
+      case Logical(formula) => Some(convertTHFFormula(sig)(formula))
     }
   }
 
@@ -202,7 +185,7 @@ object InputProcessingNew {
                   case Left(convertedRight0) =>
                     Left(mkTypeApp(convertedLeft, convertedRight0))
                     mkTypeApp(convertedLeft, convertedRight0)
-                  case Right(_) => ???
+                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
                 }
             }
 
@@ -216,7 +199,7 @@ object InputProcessingNew {
             val convertedRight = convertTHFType0(sig)(right, typeVars)
             convertedRight match {
               case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
-              case Right(_) => ???
+              case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
             }
           }
         } else {
@@ -277,15 +260,33 @@ object InputProcessingNew {
 
       case LetTerm(typing, binding, body) => ???
 
-      case ConnectiveTerm(conn) => // This is not pretty ... but well, life is hard.
-        if (conn.isInstanceOf[TPTP.THF.UnaryConnective]) (convertTHFUnaryConnective(conn.asInstanceOf[TPTP.THF.UnaryConnective]))
-        else (convertTHFBinaryConnective(conn.asInstanceOf[TPTP.THF.BinaryConnective]))
+      case ConnectiveTerm(conn) =>
+        conn match {
+          case unaryConnective: THF.UnaryConnective => convertTHFUnaryConnective(unaryConnective)
+          case binaryConnective: THF.BinaryConnective => convertTHFBinaryConnective(binaryConnective)
+        }
 
       case DistinctObject(name) =>
         if (sig.exists(name)) (mkAtom(sig(name).key)(sig))
         else (mkAtom(sig.addUninterpreted(name, i))(sig))
 
-      case NumberTerm(_) => throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III.")
+      case NumberTerm(number) =>
+        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+        number match {
+        case TPTP.Integer(value) =>
+          val constName = s"$$$$int_$value"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+        case TPTP.Rational(numerator, denominator) =>
+          val constName = s"$$$$rat_${numerator}_$denominator"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+        case TPTP.Real(wholePart, decimalPlaces, exponent) =>
+          val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_${exponent}"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+      }
+      //throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III."
     }
   }
 
