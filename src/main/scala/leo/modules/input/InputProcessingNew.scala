@@ -224,7 +224,7 @@ object InputProcessingNew {
         val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
         convertedConnective.apply(convertedLeft, convertedRight)
 
-      case ft@FunctionTerm(f, args) => {
+      case ft@FunctionTerm(f, args) =>
         if (sig.exists(f)) {
           val meta = sig(f)
           if (ft.isConstant) {
@@ -238,7 +238,7 @@ object InputProcessingNew {
              if (kindArgs.isEmpty) {
                val intermediate = mkTypeApp(func, typeArgs)
                val remainingTermArgs = args.drop(expectedTypeArgumentCount)
-               if (remainingTermArgs.size > 0) {
+               if (remainingTermArgs.nonEmpty) {
                  val expectedTermArgs = remainingTermArgs.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
                  mkTermApp(intermediate, expectedTermArgs)
                } else intermediate
@@ -254,7 +254,6 @@ object InputProcessingNew {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
           else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
         }
-      }
 
       case Variable(name) =>
         vars.get(name) match {
@@ -293,8 +292,8 @@ object InputProcessingNew {
         }
 
       case DistinctObject(name) =>
-        if (sig.exists(name)) (mkAtom(sig(name).key)(sig))
-        else (mkAtom(sig.addUninterpreted(name, i))(sig))
+        if (sig.exists(name)) mkAtom(sig(name).key)(sig)
+        else mkAtom(sig.addUninterpreted(name, i))(sig)
 
       case NumberTerm(number) =>
         leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
@@ -308,7 +307,7 @@ object InputProcessingNew {
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
           else mkAtom(sig.addUninterpreted(constName, int))(sig)
         case TPTP.Real(wholePart, decimalPlaces, exponent) =>
-          val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_${exponent}"
+          val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
           else mkAtom(sig.addUninterpreted(constName, int))(sig)
       }
