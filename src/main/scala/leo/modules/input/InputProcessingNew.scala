@@ -291,25 +291,21 @@ object InputProcessingNew {
           case binaryConnective: THF.BinaryConnective => convertTHFBinaryConnective(binaryConnective)
         }
 
-      case DistinctObject(name) =>
-        if (sig.exists(name)) mkAtom(sig(name).key)(sig)
-        else mkAtom(sig.addUninterpreted(name, i))(sig)
+      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
 
       case NumberTerm(number) =>
+        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
         leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
         number match {
         case TPTP.Integer(value) =>
           val constName = s"$$$$int_$value"
-          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
-          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+          mkAtom(getOrCreateSymbol(sig)(constName, int))(sig)
         case TPTP.Rational(numerator, denominator) =>
           val constName = s"$$$$rat_${numerator}_$denominator"
-          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
-          else mkAtom(sig.addUninterpreted(constName, rat))(sig)
+          mkAtom(getOrCreateSymbol(sig)(constName, rat))(sig)
         case TPTP.Real(wholePart, decimalPlaces, exponent) =>
           val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
-          else mkAtom(sig.addUninterpreted(constName, real))(sig)
+          mkAtom(getOrCreateSymbol(sig)(constName, real))(sig)
       }
     }
   }
@@ -323,7 +319,6 @@ object InputProcessingNew {
     def ty: Type = HOLEQ.ty
     override def apply(arg: Term): Term = null
   }
-
   //////
 
   private[this] final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
@@ -541,11 +536,87 @@ object InputProcessingNew {
     import TPTP.CNF.Logical
 
     statement.formula match {
-      case Logical(f) => processCNF(f) // No other kind of CNF formula exists
+      case Logical(f) => processCNF(sig)(f) // No other kind of CNF formula exists
     }
   }
 
-  private[this] final def processCNF(cnfFormula: TPTP.CNF.Formula): Term = ???
+  @inline private[this] final def processCNF(sig: Signature)(formula: TPTP.CNF.Formula): Term = {
+    var convertedLiterals: Seq[Term] = Vector.empty
+    var termVars: Seq[String] = List.empty // We only prepend, this is more efficient in List
+    // The general approach is: We don't pass through all literals before processing them (in order to collect the variables)
+    // as this might be inefficient in very large formulas.
+    // Instead, we keep track of all already seen variables in an explicit argument 'termVars'
+    // which is also returned by the convertCNFX functions (containing the updated list of variables).
+    // As we don't want to change already converted variables, new variables are prepended (i.e., incremented de Bruijn index).
+    formula.foreach { lit =>
+      val (convertedLiteral, updatedTermVars) = convertCNFLiteral(sig)(lit, termVars)
+      convertedLiterals = convertedLiterals :+ convertedLiteral
+      termVars = updatedTermVars
+    }
+    leo.datastructures.mkDisjunction(convertedLiterals)
+  }
+
+  private[this] final def convertCNFLiteral(sig: Signature)(literal: TPTP.CNF.Literal,
+                                                            termVars: Seq[String]): (Term, Seq[String]) = {
+    import TPTP.CNF.{PositiveAtomic, NegativeAtomic, Equality, Inequality}
+    import leo.modules.HOLSignature.{===, !===, Not}
+
+    literal match {
+      case PositiveAtomic(formula) => convertCNFAtomicFormula(sig)(formula, termVars)
+      case NegativeAtomic(formula) =>
+        val (result, updatedTermVars) = convertCNFAtomicFormula(sig)(formula, termVars)
+        (Not(result), updatedTermVars)
+      case Equality(left, right) =>
+        val (convertedLeft, updatedTermVars) = convertCNFTerm(sig)(left, termVars)
+        val (convertedRight, updatedTermVars2) = convertCNFTerm(sig)(right, updatedTermVars)
+        (===(convertedLeft, convertedRight), updatedTermVars2)
+      case Inequality(left, right) =>
+        val (convertedLeft, updatedTermVars) = convertCNFTerm(sig)(left, termVars)
+        val (convertedRight, updatedTermVars2) = convertCNFTerm(sig)(right, updatedTermVars)
+        (!===(convertedLeft, convertedRight), updatedTermVars2)
+    }
+  }
+
+  private[this] final def convertCNFAtomicFormula(sig: Signature)(term: TPTP.CNF.AtomicFormula,
+                                                                  termVars: Seq[String]): (Term, Seq[String]) = {
+    val convertedFunc = mkAtom(getOrCreateSymbol(sig)(term.f, mkSimplePredicateType(term.args.size)))(sig)
+    var convertedArgs: Seq[Term] = Vector.empty
+    var termVars0 = termVars
+    term.args.foreach { t =>
+      val (convertedT, updatedTermVars) = convertCNFTerm(sig)(t, termVars0)
+      convertedArgs = convertedArgs :+ convertedT
+      termVars0 = updatedTermVars
+    }
+    (mkTermApp(convertedFunc, convertedArgs), termVars0)
+  }
+
+  private[this] final def convertCNFTerm(sig: Signature)(term: TPTP.CNF.Term,
+                                                                 termVars: Seq[String]): (Term, Seq[String]) = {
+    import TPTP.CNF.{AtomicTerm, Variable, DistinctObject}
+
+    term match {
+      case AtomicTerm(f, args) =>
+        val convertedFunc = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(sig)
+        var convertedArgs: Seq[Term] = Vector.empty
+        var termVars0 = termVars
+        args.foreach { t =>
+          val (convertedT, updatedTermVars) = convertCNFTerm(sig)(t, termVars0)
+          convertedArgs = convertedArgs :+ convertedT
+          termVars0 = updatedTermVars
+        }
+        (mkTermApp(convertedFunc, convertedArgs), termVars0)
+      case Variable(name) => // Check if already seen before or if new: Add to termVars in the latter case.
+        val index = getDeBruijnIndexOf(termVars)(name)
+        var updatedTermVars = termVars
+        val result = if (index == -1) {
+          updatedTermVars = name +: termVars
+          mkBound(i, getDeBruijnIndexOf(updatedTermVars)(name))
+        } else mkBound(i, index)
+        (result, updatedTermVars)
+      case DistinctObject(name) =>
+        (mkAtom(getOrCreateSymbol(sig)(name, i))(sig), termVars)
+    }
+  }
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
@@ -556,6 +627,21 @@ object InputProcessingNew {
   private[this] sealed abstract class VariableMarker
   private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
   private[this] case object TypeVariableMarker extends VariableMarker
+
+  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type): Signature.Key = {
+    if (sig.exists(name)) sig(name).key
+    else sig.addUninterpreted(name, ty)
+  }
+
+  @inline private[this] final def mkSimplePredicateType(n: Int): Type = {
+    val from = Seq.fill(n)(i)
+    mkFunType(from, o)
+  }
+
+  @inline private[this] final def mkSimpleFunctionType(n: Int): Type = {
+    val from = Seq.fill(n)(i)
+    mkFunType(from, i)
+  }
 
   @inline private[this] final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
     val idx = vars.lastIndexOf(variable)
