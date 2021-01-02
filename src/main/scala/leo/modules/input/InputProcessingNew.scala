@@ -10,7 +10,8 @@ import leo.Out
 import scala.annotation.tailrec
 
 object InputProcessingNew {
-  import leo.modules.HOLSignature.{i,o, rat, int, real, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
+
+  import leo.modules.HOLSignature.{i, o, rat, int, real, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
 
   type TypeOrKind = Either[Type, Kind]
   type TermOrType = Either[Term, Type]
@@ -59,7 +60,7 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] final def processAnnotatedTHF(sig: Signature)(statement: TPTP.THFAnnotated): Option[Term] = {
+  final def processAnnotatedTHF(sig: Signature)(statement: TPTP.THFAnnotated): Option[Term] = {
     import TPTP.THF.{Logical, Typing}
 
     statement.formula match {
@@ -79,41 +80,43 @@ object InputProcessingNew {
             if (sig.exists(name)) {
               val meta = sig(name)
               if (meta.isUninterpreted) {
-                definition match {
-                  case Left(def0) =>
-                    if (meta._ty == def0.ty) sig.addDefinition(meta.key, def0.betaNormalize.etaExpand)
-                    else throw new SZSException(SZS_InputError, s"Trying to provide definition for symbol '$name', but type of definition " +
-                      s"(${def0.ty.pretty(sig)}) does not match type declaration of symbol (${meta._ty.pretty}).")
-                  case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
-                }
+                //                definition match {
+                //                  case Left(def0) =>
+                if (meta._ty == definition.ty) sig.addDefinition(meta.key, definition.betaNormalize.etaExpand)
+                else throw new SZSException(SZS_InputError, s"Trying to provide definition for symbol '$name', but type of definition " +
+                  s"(${definition.ty.pretty(sig)}) does not match type declaration of symbol (${meta._ty.pretty}).")
+                //                  case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
+                //                }
               } else throw new SZSException(SZS_InputError, s"Trying to provide a definition for interpreted/defined symbol '$name'.")
             } else {
-              definition match {
-                case Left(def0) => sig.addDefined(name, def0.betaNormalize.etaExpand, def0.ty)
-                case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
-              }
+              //              definition match {
+              //                case Left(def0) =>
+              sig.addDefined(name, definition.betaNormalize.etaExpand, definition.ty)
+              //                case Right(_) => throw new SZSException(SZS_InputError, s"Type definition in formula ${statement.name} is not supported, yet.")
+              //              }
             }
             None
           case None =>
             val res = convertTHFFormula(sig)(formula)
-            res match {
-              case Left(axiom) =>
-                Out.info(s"No direction of definition ${statement.name} detected. Treating as axiom ...")
-                Some(axiom)
-              case Right(_) => throw new SZSException(SZS_InputError, s"Definition ${statement.name} contains a type statement on top-level, where a formula was expected.")
-            }
+            //            res match {
+            //              case Left(axiom) =>
+            Out.info(s"No direction of definition ${statement.name} detected. Treating as axiom ...")
+            Some(res)
+          //              case Right(_) => throw new SZSException(SZS_InputError, s"Definition ${statement.name} contains a type statement on top-level, where a formula was expected.")
+          //            }
         }
 
       case Logical(formula) =>
-        val res = convertTHFFormula(sig)(formula)
-        res match {
-          case Left(formula0) => Some(formula0)
-          case Right(_) => throw new SZSException(SZS_InputError, s"${statement.name} contains a type statement on top-level, where a formula was expected.")
-        }
+        //        val res =
+        Some(convertTHFFormula(sig)(formula))
+      //        res match {
+      //          case Left(formula0) => Some(formula0)
+      //          case Right(_) => throw new SZSException(SZS_InputError, s"${statement.name} contains a type statement on top-level, where a formula was expected.")
+      //        }
     }
   }
 
-  @inline private[this] final def processTHFDef(sig: Signature)(formula: TPTP.THF.Formula): Option[(String, TermOrType)] = {
+  @inline private[this] final def processTHFDef(sig: Signature)(formula: TPTP.THF.Formula): Option[(String, Term)] = {
     import TPTP.THF.{BinaryFormula, Eq, FunctionTerm}
 
     formula match {
@@ -128,15 +131,18 @@ object InputProcessingNew {
   // Term processing
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): TermOrType = {
+  final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): Term = {
     convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
   }
+
   private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
                                                              termVars: Seq[String],
                                                              typeVars: Seq[String],
-                                                             vars: Map[String, VariableMarker]): TermOrType = {
-    import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
-      Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm}
+                                                             vars: Map[String, VariableMarker]): Term = {
+    import TPTP.THF.{
+      FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
+      Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm
+    }
 
     formula match {
       case QuantifiedFormula(quantifier, variableList, body) =>
@@ -165,78 +171,58 @@ object InputProcessingNew {
           }
         }
         val convertedBody = convertTHFFormula0(sig)(body, newTermVars, newTypeVars, newVars)
-        convertedBody match {
-          case Left(convertedBody0) => Left(mkPolyQuantified(convertedQuantifier, localVariableMarkers, convertedBody0))
-          case Right(_) => throw new SZSException(SZS_InputError, s"Body of quantification not recognized as well-formed formula.")
-        }
+        mkPolyQuantified(convertedQuantifier, localVariableMarkers, convertedBody)
 
       case UnaryFormula(connective, body) =>
         val convertedConnective = convertTHFUnaryConnective(connective)
         assert(convertedConnective == leo.modules.HOLSignature.Not, s"Unexpected error: Expected to translate unary connective ~, but saw '${convertedConnective.pretty(sig)}' instead.")
         val convertedBody = convertTHFFormula0(sig)(body, termVars, typeVars, vars)
-        convertedBody match {
-          case Left(convertedBody0) => Left(convertedConnective.apply(convertedBody0))
-          case Right(_) => throw new SZSException(SZS_InputError, s"Term expected in unary formula but type expressions found.")
-        }
+        convertedConnective.apply(convertedBody)
 
       case BinaryFormula(TPTP.THF.App, left, right) => // handle specially, as there might be polymoprhic symbols involved
         val convertedLeft = convertTHFFormula0(sig)(left, termVars, typeVars, vars)
-        convertedLeft match {
-          case Left(convertedLeft0) =>
-            if (convertedLeft0.ty.isPolyType) {
-              import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
-              // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
-              // explicitly as it is not expected to be given by the user.
-              // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
-              // For the TH1 function @=, this needs to be given explicitly by the user
-              // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
-              // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
-              if (convertedLeft0 == HOLBinaryConnective.toTerm(EQ)) {
-                // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
-                try {
-                  val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-                  convertedRight match {
-                    case Left(convertedRight0) =>
-                      val intermediate = mkTypeApp(convertedLeft0, convertedRight0.ty)
-                      Left(mkTermApp(intermediate, convertedRight0))
-                    case Right(_) => ???
-                  }
-                } catch {
-                  case _: SZSException =>
-                    val convertedRight = convertTHFType0(sig)(right, typeVars)
-                    convertedRight match {
-                      case Left(convertedRight0) =>
-                        Left(mkTypeApp(convertedLeft0, convertedRight0))
-                      case Right(_) => ???
-                    }
-                }
-
-              } else if (convertedLeft0 == HOLBinaryConnective.toTerm(NEQ)) {
-                // Special case 2: Non-equality -- Fill implicit type argument manually
-                val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-                convertedRight match {
-                  case Left(convertedRight0) =>
-                    val intermediate = mkTypeApp(convertedLeft0, convertedRight0.ty)
-                    Left(mkTermApp(intermediate, convertedRight0))
-                  case Right(_) => ???
-                }
-              } else {
-                // Standard polymorphic case: Expect type argument
+        if (convertedLeft.ty.isPolyType) {
+          import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
+          // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
+          // explicitly as it is not expected to be given by the user.
+          // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
+          // For the TH1 function @=, this needs to be given explicitly by the user
+          // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
+          // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
+          if (convertedLeft == HOLBinaryConnective.toTerm(EQ)) {
+            // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
+            try {
+              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+              val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+              mkTermApp(intermediate, convertedRight)
+            } catch {
+              case _: SZSException =>
                 val convertedRight = convertTHFType0(sig)(right, typeVars)
                 convertedRight match {
-                  case Left(convertedRight0) => Left(mkTypeApp(convertedLeft0, convertedRight0))
+                  case Left(convertedRight0) =>
+                    Left(mkTypeApp(convertedLeft, convertedRight0))
+                    mkTypeApp(convertedLeft, convertedRight0)
                   case Right(_) => ???
                 }
-              }
-            } else {
-              // Standard monomorphic case: Expect term argument
-              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-              convertedRight match {
-                case Left(convertedRight0) => Left(mkTermApp(convertedLeft0, convertedRight0))
-                case Right(_) => ???
-              }
             }
-          case Right(_) => throw new SZSException(SZS_InputError, s"Found an application with type expression as left-side argument at formula-level.")
+
+          } else if (convertedLeft == HOLBinaryConnective.toTerm(NEQ)) {
+            // Special case 2: Non-equality -- Fill implicit type argument manually
+            val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+            val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+            mkTermApp(intermediate, convertedRight)
+          } else {
+            // Standard polymorphic case: Expect type argument
+            val convertedRight = convertTHFType0(sig)(right, typeVars)
+            convertedRight match {
+              case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
+              case Right(_) => ???
+            }
+          }
+        } else {
+          // Standard monomorphic case: Expect term argument
+          val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+          mkTermApp(convertedLeft, convertedRight)
         }
 
       case BinaryFormula(connective, left, right) =>
@@ -244,17 +230,13 @@ object InputProcessingNew {
         val convertedConnective = convertTHFBinaryConnective(connective)
         val convertedLeft = convertTHFFormula0(sig)(left, termVars, typeVars, vars)
         val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-        (convertedLeft, convertedRight) match {
-          case (Left(convertedLeft0), Left(convertedRight0)) => Left(convertedConnective.apply(convertedLeft0, convertedRight0))
-          case _ => throw new SZSException(SZS_InputError, s"Terms expected in binary formula but type expressions found.")
-        }
+        convertedConnective.apply(convertedLeft, convertedRight)
 
       case ft@FunctionTerm(f, args) => {
         if (sig.exists(f)) {
           val meta = sig(f)
           if (ft.isConstant) {
-            val func = mkAtom(meta.key)(sig)
-            Left(func)
+            mkAtom(meta.key)(sig)
           } else {
             val func = mkAtom(meta.key)(sig)
             ???
@@ -270,11 +252,9 @@ object InputProcessingNew {
           case Some(marker) => marker match {
             case TermVariableMarker(ty) =>
               val index = getDeBruijnIndexOf(termVars)(name)
-              Left(mkBound(ty, index))
+              mkBound(ty, index)
             case TypeVariableMarker =>
-              val index = getDeBruijnIndexOf(typeVars)(name)
-              assert(false)
-              Right(mkVarType(index))
+              throw new SZSException(SZS_InputError, s"Unexpected type variable '$name' found in formula context.")
           }
           case None => throw new SZSException(SZS_InputError, s"Unbound variable '$name' in formula.")
         }
@@ -282,33 +262,28 @@ object InputProcessingNew {
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
 
       case ConditionalTerm(condition, thn, els) =>
-        val convertedCondition = convertTHFFormula0(sig)(condition, termVars, typeVars, vars)
-        val convertedThn = convertTHFFormula0(sig)(thn, termVars, typeVars, vars)
-        val convertedEls = convertTHFFormula0(sig)(els, termVars, typeVars, vars)
+        val c = convertTHFFormula0(sig)(condition, termVars, typeVars, vars)
+        val t = convertTHFFormula0(sig)(thn, termVars, typeVars, vars)
+        val e = convertTHFFormula0(sig)(els, termVars, typeVars, vars)
 
-        (convertedCondition, convertedThn, convertedEls) match {
-          case (Left(c), Left(t), Left(e)) =>
-            if (c.ty == o) {
-              if (t.ty == e.ty) {
-                import leo.datastructures.Term.{λ, mkBound}
-                import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
-                val ty = t.ty
-                Left(Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
-                  Impl(Not(c), ===(mkBound(ty, 1), e))))))
-              } else throw new SZSException(SZS_TypeError, s"Alternatives of if-then-else are not of same type.")
-            } else throw new SZSException(SZS_TypeError, s"Condition of if-then-else is not Boolean typed.")
-          case _ => throw new SZSException(SZS_TypeError, s"Arguments of if-then-else were not all recognized to be well-formed terms.")
-        }
+        if (c.ty == o) {
+          if (t.ty == e.ty) {
+            import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+            val ty = t.ty
+            Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
+              Impl(Not(c), ===(mkBound(ty, 1), e)))))
+          } else throw new SZSException(SZS_TypeError, s"Alternatives of if-then-else are not of same type.")
+        } else throw new SZSException(SZS_TypeError, s"Condition of if-then-else is not Boolean typed.")
 
       case LetTerm(typing, binding, body) => ???
 
       case ConnectiveTerm(conn) => // This is not pretty ... but well, life is hard.
-        if (conn.isInstanceOf[TPTP.THF.UnaryConnective]) Left(convertTHFUnaryConnective(conn.asInstanceOf[TPTP.THF.UnaryConnective]))
-        else Left(convertTHFBinaryConnective(conn.asInstanceOf[TPTP.THF.BinaryConnective]))
+        if (conn.isInstanceOf[TPTP.THF.UnaryConnective]) (convertTHFUnaryConnective(conn.asInstanceOf[TPTP.THF.UnaryConnective]))
+        else (convertTHFBinaryConnective(conn.asInstanceOf[TPTP.THF.BinaryConnective]))
 
       case DistinctObject(name) =>
-        if (sig.exists(name)) Left(mkAtom(sig(name).key)(sig))
-        else Left(mkAtom(sig.addUninterpreted(name, i))(sig))
+        if (sig.exists(name)) (mkAtom(sig(name).key)(sig))
+        else (mkAtom(sig.addUninterpreted(name, i))(sig))
 
       case NumberTerm(_) => throw new SZSException(SZS_Inappropriate, s"Arithmetic not supported by Leo-III.")
     }
@@ -317,11 +292,15 @@ object InputProcessingNew {
   ////// Little workaround to have a corresponding HOLUnaryConnective for the equality as polymorphic prefix symbol
   // Though I don't understand why it's called unary ...
   private final object ===== extends HOLUnaryConnective {
+
     import leo.modules.HOLSignature.{=== => HOLEQ}
+
     val key: Signature.Key = HOLEQ.key // Dont care, we dont want to use unapply
     def ty: Type = HOLEQ.ty
+
     override def apply(arg: Term): Term = null
   }
+
   //////
 
   private[this] final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
@@ -340,7 +319,9 @@ object InputProcessingNew {
   private final object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
     // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature.Key = Integer.MIN_VALUE
+
     def ty: Type = null
+
     override def apply(arg: Term): Term = arg
   }
 
@@ -361,8 +342,10 @@ object InputProcessingNew {
   private final object @@@ extends HOLBinaryConnective {
     val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
     def ty: Type = null
+
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
+
   //////
 
   private[this] final def convertTHFBinaryConnective(connective: TPTP.THF.BinaryConnective): HOLBinaryConnective = {
@@ -372,14 +355,14 @@ object InputProcessingNew {
       case TPTP.THF.Eq => ===
       case TPTP.THF.Neq => !===
       case TPTP.THF.<=> => === //equiv
-      case TPTP.THF.Impl  => impl
-      case TPTP.THF.<=    => i_f
-      case TPTP.THF.|    => or
-      case TPTP.THF.&   => and
-      case TPTP.THF.~|   => nor
-      case TPTP.THF.~&  => nand
-      case TPTP.THF.<~>  => !=== //niff
-      case TPTP.THF.App   => @@@
+      case TPTP.THF.Impl => impl
+      case TPTP.THF.<= => i_f
+      case TPTP.THF.| => or
+      case TPTP.THF.& => and
+      case TPTP.THF.~| => nor
+      case TPTP.THF.~& => nand
+      case TPTP.THF.<~> => !=== //niff
+      case TPTP.THF.App => @@@
       case _ => throw new SZSException(SZS_InputError, s"Unexpected symbol '${connective.pretty}' used as binary connective.")
     }
   }
@@ -450,7 +433,7 @@ object InputProcessingNew {
       case Variable(name) =>
         val index = getDeBruijnIndexOf(vars)(name)
         if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in type expression.")
-        else  Left(mkVarType(index))
+        else Left(mkVarType(index))
 
       case BinaryFormula(connective, left, right) =>
         import TPTP.THF.{FunTyConstructor, ProductTyConstructor, SumTyConstructor, App}
@@ -552,7 +535,9 @@ object InputProcessingNew {
   ////////////////////////////////////////////////////////////////////////
 
   private[this] sealed abstract class VariableMarker
+
   private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
+
   private[this] case object TypeVariableMarker extends VariableMarker
 
   @inline private[this] final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
@@ -567,8 +552,9 @@ object InputProcessingNew {
       case TermVariableMarker(ty) => q.apply(λ(ty)(b))
       case TypeVariableMarker if q == Forall => TyForall(Λ(b))
       case TypeVariableMarker if q == HOLLambda => Λ(b)
-      case _       => throw new IllegalArgumentException(s"Formalization of kinds other than * and ${q.pretty} not yet implemented.")
+      case _ => throw new IllegalArgumentException(s"Formalization of kinds other than * and ${q.pretty} not yet implemented.")
     }
+
     variableMarkers.foldRight(body)(mkPolyHelper)
   }
 }
