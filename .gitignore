@@ -34,3 +34,6 @@ ext_config
 
 # PicoSAT
 src/native/picosat-965
+
+# Leo-III StarExec image
+contrib/leo3_starexec.tar.gz
