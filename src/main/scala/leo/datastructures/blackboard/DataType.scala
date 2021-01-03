@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard
 
 import leo.datastructures.{AnnotatedClause, ClauseProxy}
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, StatusSZS}
 

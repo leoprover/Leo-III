@@ -1,7 +1,7 @@
 package leo.modules.control
 
 import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.prover.{Interaction, RunStrategy, State}
 import leo.modules.{FVState, GeneralState, myAssert}
 import leo.{Configuration, Out}

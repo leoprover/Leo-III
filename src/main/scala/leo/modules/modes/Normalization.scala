@@ -2,7 +2,7 @@ package leo.modules.modes
 
 import leo.Configuration
 import leo.datastructures._
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.output.SZS_UsageError
 import leo.modules.input.Input
 import leo.modules.prover.State
@@ -159,7 +159,7 @@ object Normalization {
         case Role_Definition.pretty =>
           import leo.datastructures.Term.Symbol
           import leo.modules.HOLSignature.===
-          import TPTPAST.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated}
+          import TPTP.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated}
           val alteredFormula: AnnotatedFormula = formula match {
             case THFAnnotated(name, _, formula, annotations) => THFAnnotated(name, "axiom", formula, annotations)
             case TFFAnnotated(name, _, formula, annotations) => TFFAnnotated(name, "axiom", formula, annotations)

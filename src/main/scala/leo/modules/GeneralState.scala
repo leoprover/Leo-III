@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures._
-import TPTPAST.AnnotatedFormula
+import TPTP.AnnotatedFormula
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.prover.{FVIndex, RunStrategy}

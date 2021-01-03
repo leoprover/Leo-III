@@ -5,12 +5,12 @@ import scala.annotation.tailrec
 import scala.io.Source
 
 object TPTPParser {
-  import leo.datastructures.TPTPAST.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
+  import leo.datastructures.TPTP.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
     FOFAnnotated, CNFAnnotated, TPIAnnotated}
-  import leo.datastructures.TPTPAST.THF.{Formula => THFFormula}
-  import leo.datastructures.TPTPAST.TFF.{Formula => TFFFormula}
-  import leo.datastructures.TPTPAST.FOF.{Formula => FOFFormula}
-  import leo.datastructures.TPTPAST.CNF.{Formula => CNFFormula}
+  import leo.datastructures.TPTP.THF.{Formula => THFFormula}
+  import leo.datastructures.TPTP.TFF.{Formula => TFFFormula}
+  import leo.datastructures.TPTP.FOF.{Formula => FOFFormula}
+  import leo.datastructures.TPTP.CNF.{Formula => CNFFormula}
 
   class TPTPParseException(message: String, val line: Int, val offset: Int) extends RuntimeException(message)
 
@@ -506,7 +506,7 @@ object TPTPParser {
 
   final class TPTPParser(tokens: TPTPLexer) {
     import TPTPLexer.TPTPLexerTokenType._
-    import leo.datastructures.TPTPAST._
+    import leo.datastructures.TPTP._
     type Token = TPTPLexer.TPTPLexerToken
     type TokenType = TPTPLexer.TPTPLexerTokenType.Value
 

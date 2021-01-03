@@ -2,7 +2,7 @@ package leo.modules.input
 
 import java.nio.file.Paths
 
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 object DDLPreprocessor {
 

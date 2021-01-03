@@ -1,6 +1,6 @@
 package leo.datastructures
 
-object TPTPAST {
+object TPTP {
   type Include = (String, Seq[String])
   type Annotations = Option[(GeneralTerm, Option[Seq[GeneralTerm]])]
 

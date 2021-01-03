@@ -2,7 +2,7 @@ package leo.modules.input
 
 import java.nio.file.{Files, Path, Paths}
 import leo.Out
-import leo.datastructures.{Role, Signature, Term, TPTPAST => TPTP}
+import leo.datastructures.{Role, Signature, Term, TPTP}
 import leo.modules.SZSException
 import leo.modules.input.TPTPParser.TPTPParseException
 import leo.modules.output.{SZS_InputError, SZS_SyntaxError}

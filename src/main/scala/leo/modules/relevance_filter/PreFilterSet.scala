@@ -1,7 +1,7 @@
 package leo.modules.relevance_filter
 
 import leo.datastructures.{Role_Definition}
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 /**
   *
@@ -141,7 +141,7 @@ object PreFilterSet {
 
 
   private def isDefinition(formula : AnnotatedFormula) : Option[String] = {
-    import leo.datastructures.TPTPAST.{THFAnnotated, TFFAnnotated, THF, TFF}
+    import leo.datastructures.TPTP.{THFAnnotated, TFFAnnotated, THF, TFF}
 
     if(formula.role != Role_Definition.pretty) None
     else {

@@ -4,7 +4,7 @@ import leo.agents.Agent
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.agent.rules.control_rules.AnnotatedClauseGraph
 import leo.modules.control.Control
 import leo.modules.prover._

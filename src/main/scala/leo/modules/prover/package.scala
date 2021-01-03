@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, TPTPAST => TPTP}
+import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, TPTP}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
 import leo.modules.external.TptpResult

@@ -1,7 +1,7 @@
 package leo.modules.relevance_filter
 
 import leo.Configuration
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 /**
   *

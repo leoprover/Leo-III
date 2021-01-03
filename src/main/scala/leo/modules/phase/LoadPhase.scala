@@ -8,7 +8,7 @@ import leo.agents.Agent
 import leo.datastructures.blackboard.{Blackboard}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.agent.relevance_filter.AnnotatedFormulaType
 import leo.modules.output.{SZS_Error, SZS_InputError}
 import leo.modules.input.Input

@@ -1,12 +1,12 @@
 package leo.modules.input
 
-import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTPAST => TPTP}
+import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTP}
 import leo.datastructures.Term.{mkAtom, mkBound, mkTermApp, mkTypeApp, Λ, λ}
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
-import leo.datastructures.TPTPAST.THF
+import leo.datastructures.TPTP.THF
 
 import scala.annotation.tailrec
 

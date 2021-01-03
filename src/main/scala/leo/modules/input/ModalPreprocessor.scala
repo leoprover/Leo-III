@@ -1,7 +1,7 @@
 package leo.modules.input
 
 import leo.{Configuration, Out}
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import transformation.{Wrappers => ModalProcessing}
 import transformation.ModalTransformator.TransformationParameter
 

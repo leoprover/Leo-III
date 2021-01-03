@@ -6,7 +6,7 @@ import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
 import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
 import leo.modules.output.SZS_CounterTheorem
 import leo.modules.input.Input.processFormula

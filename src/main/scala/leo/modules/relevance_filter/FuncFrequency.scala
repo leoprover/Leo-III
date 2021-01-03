@@ -1,6 +1,6 @@
 package leo.modules.relevance_filter
 
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 import scala.collection.mutable._
 

@@ -6,7 +6,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.context.Context
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules._
 import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._

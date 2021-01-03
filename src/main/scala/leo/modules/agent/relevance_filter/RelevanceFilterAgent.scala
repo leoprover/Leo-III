@@ -5,7 +5,7 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.datastructures.TPTPAST.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.SZSException
 import leo.modules.calculus.CalculusRule
 import leo.modules.output.{SZS_CounterTheorem, SZS_Error}
