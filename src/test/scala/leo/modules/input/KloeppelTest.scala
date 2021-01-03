@@ -3,8 +3,6 @@ package leo.modules.input
 import java.nio.file.{Files, Paths}
 
 import leo.LeoTestSuite
-import leo.modules.parsers.antlr.tptpLexer
-import org.antlr.v4.runtime.CharStreams
 
 class KloeppelTest extends LeoTestSuite {
   test("Lexer stream test 1") {
