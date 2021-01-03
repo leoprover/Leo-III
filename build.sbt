@@ -14,12 +14,11 @@ lazy val commonSettings = Seq(
 
 
 lazy val leo = (project in file(".")).
-//  enablePlugins(JniNative).
   settings(commonSettings:_*).
   settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.1.0" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
     mainClass in (Compile, run) := Some("leo.Main"),
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
@@ -27,30 +26,7 @@ lazy val leo = (project in file(".")).
     javaOptions += "-Xss4m",
     parallelExecution in Test := false,
     assemblyJarName in assembly := "leo3.jar",
-    exportJars := true,
-    // options for native bindings
-//    target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
-    // antlr related stuff
-    excludeFilter in unmanagedJars := HiddenFileFilter,
-    antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
-    buildParser := {
-      val log = streams.value.log
-      val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
-        in =>
-          print("Generating parser from tptp grammar ...")
-          val target = (javaSource in Compile).value / "leo" / "modules" / "parsers" / "antlr"
-          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr-4.7.2-complete.jar")),
-            "org.antlr.v4.Tool",
-            "-o", target.toString) ++ in.map(_.toString)
-          val exitCode = Process("java", args) ! log
-          if (exitCode != 0) sys.error(s"ANTLR build failed") else println("successful!")
-          print("Cleaning temporary files ...")
-          val exitCode2 = Process("rm", Seq((target / "tptp.tokens").toString, (target / "tptpLexer.tokens").toString)) ! log 
-          if (exitCode2 != 0) println("cleanup failed.") else println("done!")
-          (target ** "*.java").get.toSet
-      }
-      cachedBuild(Set(antlrFile.value))
-    }
+    exportJars := true
   )
 
 // The following are new commands to allow build with debug output
@@ -74,4 +50,3 @@ def assemblyCommand(name: String, level: Int) =
   }
 commands += assemblyCommand("debug", 0)
 //commands += compileCommand("prod", 1000)
-
