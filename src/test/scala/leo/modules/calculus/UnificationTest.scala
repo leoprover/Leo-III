@@ -27,7 +27,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
-    val ((termSub, typeSub), _) = result.next
+    val ((termSub, typeSub), _) = result.next()
     assert(!result.hasNext)
     println(termSub.pretty)
     assert (t1.substitute(termSub).betaNormalize.equals (t2.substitute(termSub).betaNormalize))
@@ -50,7 +50,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     // should have 4 unifiers, we need to check they are different from each other
     for( a <- 1 to 4) {
-      val ((termSub, typeSub), _) = result.next
+      val ((termSub, typeSub), _) = result.next()
       assert (t1.substitute(termSub).betaNormalize.equals (t2))
     }
     assert (result.isEmpty)
@@ -74,7 +74,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     // should have inf many unifiers, we limit here to 5 since standard unification depth is quite low
     for( a <- 1 to 5) {
-      val ((termSub, typeSub), _) = result.next
+      val ((termSub, typeSub), _) = result.next()
       assert (t1.substitute(termSub).betaNormalize.equals(t2.substitute(termSub).betaNormalize))
     }
   }
@@ -97,7 +97,7 @@ class UnificationTestSuite extends LeoTestSuite {
     // Does it have only 6 unifiers?!
     for( a <- 1 to 1) { // the 7th substitutions fails from some reason
       // reduced to one because of low standard unification depth
-    val ((termSub, typeSub), _) = result.next
+    val ((termSub, typeSub), _) = result.next()
       assert (t1.substitute(termSub).betaNormalize.equals(t2.substitute(termSub).betaNormalize))
     }
   }
@@ -120,7 +120,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     for( a <- 1 to 2) { // fails for 30 pre-unifiers!
       //reduced to two because of low standard unification depth
-      val ((termSub, typeSub), _) = result.next
+      val ((termSub, typeSub), _) = result.next()
       assert (t1.substitute(termSub).betaNormalize.equals(t2.substitute(termSub).betaNormalize))
     }
   }
@@ -144,7 +144,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?
-    val ((termSub, typeSub), _) = result.next
+    val ((termSub, typeSub), _) = result.next()
     println("unifier: " + termSub.pretty)
 
 
@@ -168,7 +168,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?
-    val ((termSub, typeSub), _) = result.next
+    val ((termSub, typeSub), _) = result.next()
     println("unifier: " + termSub.pretty)
     println(t1.substitute(termSub, typeSub).pretty(s))
     println(t2.substitute(termSub, typeSub).pretty(s))

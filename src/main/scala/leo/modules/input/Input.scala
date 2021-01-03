@@ -1,14 +1,11 @@
 package leo.modules.input
 
-import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
-
 import leo.Out
-import leo.datastructures.tptp.Commons
-import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
-import leo.datastructures.{Role, Signature, Term}
+import leo.datastructures.{Role, Signature, Term, TPTPAST => TPTP}
 import leo.modules.SZSException
-import leo.modules.output.SZS_InputError
+import leo.modules.input.TPTPParser.TPTPParseException
+import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
 /**
   * This facade object publishes various methods for parsing/processing/reading
@@ -31,7 +28,7 @@ import leo.modules.output.SZS_InputError
   * @note Updated February 2017: Overhaul
   * @see [[leo.datastructures.tptp]]
   * @see [[leo.datastructures.Term]]
- */
+  */
 object Input {
 
   /** Reads the `TPTP` environment variable, e.g. used
@@ -68,18 +65,18 @@ object Input {
     *                   includes.
     * @return The sequence of annotated TPTP formulae.
     */
-  def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+  def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[TPTP.AnnotatedFormula] = {
     // FIXME Assume Read should be a shared between the calls (Dependencies between siblings not detected)
-    var result: Seq[Commons.AnnotatedFormula] = Seq.empty
+    var result: Seq[TPTP.AnnotatedFormula] = Seq.empty
     val canonicalFile = if (file == "-") canonicalPath(".") else canonicalPath(file) // to allow inputs from CWD if file is stdin
     var assumeRead0 = assumeRead
     Out.trace(s"assumeRead0: ${assumeRead0.map(_.toString).mkString(",")}")
     Out.trace(s"canonicalFile: ${canonicalFile.toString}")
     if (!assumeRead0.contains(canonicalFile)) {
       Out.debug(s"Parsing $file ...")
-      val problem: Commons.TPTPInput = parseProblemFileShallow(file)
+      val problem: TPTP.Problem = parseProblemFileShallow(file)
       assumeRead0 += canonicalFile
-      val includes = problem.getIncludes
+      val includes = problem.includes
       val includesIt = includes.iterator
       Out.trace(s"Found ${includes.size} include(s): ${includes.map(ax => s"'${ax._1}'").mkString(",")}")
       while (includesIt.hasNext) {
@@ -118,7 +115,7 @@ object Input {
             }
         }
       }
-      result ++= problem.getFormulae
+      result ++= problem.formulas
       result
     } else {
       Out.info(s"File '$file' was already parsed, skipping. Maybe it was included multiple times?")
@@ -142,9 +139,9 @@ object Input {
     *                   includes.
     * @return The sequence of annotated TPTP formulae.
     */
-  def parseProblem(problem: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
-    val p: Commons.TPTPInput = TPTP.parseFile(problem)
-    val includes = p.getIncludes
+  def parseProblem(problem: String, assumeRead: Set[Path] = Set()): Seq[TPTP.AnnotatedFormula] = {
+    val p: TPTP.Problem = TPTPParser.problem(problem)
+    val includes = p.includes
 
     // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
     val pIncludes = includes.map{case (inc, _) =>
@@ -163,7 +160,7 @@ object Input {
           }
       }
     }
-    pIncludes.flatten ++ p.getFormulae
+    pIncludes.flatten ++ p.formulas
   }
 
   /**
@@ -179,8 +176,13 @@ object Input {
     * @param file The absolute or relative path to the problem file.
     * @return The TPTP problem file in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
-  def parseProblemFileShallow(file: String): Commons.TPTPInput = {
-    TPTP.parseFile(read0(canonicalPath(file)))
+  def parseProblemFileShallow(file: String): TPTP.Problem = {
+    try {
+      TPTPParser.problem(read0(canonicalPath(file)))
+    } catch {
+      case e: TPTPParseException =>
+        throw new SZSException(SZS_SyntaxError, s"Parse error in file '$file' in line ${e.line}:${e.offset}. ${e.getMessage}")
+    }
   }
 
   /**
@@ -192,8 +194,8 @@ object Input {
     * @param formula The formula to be parsed
     * @return The input formula in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
-  def parseAnnotated(formula: String): Commons.AnnotatedFormula = {
-    TPTP.annotatedFormula(formula)
+  def parseAnnotated(formula: String): TPTP.AnnotatedFormula = {
+    TPTPParser.annotated(formula)
   }
 
   /**
@@ -207,8 +209,8 @@ object Input {
     * @return The input formula in internal [[leo.datastructures.tptp.thf.LogicFormula]] representation
     * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
     */
-  def parseFormula(formula: String): THFFormula = {
-    TPTP(formula)
+  def parseFormula(formula: String): TPTP.THF.Formula = {
+    TPTPParser.thf(formula)
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -232,7 +234,7 @@ object Input {
     *         [[leo.datastructures.Role_Type]] are returned as triples
     *         `(id, LitTrue, role)` with their respective identifier and role.
     */
-  def processProblem(problem: Seq[Commons.AnnotatedFormula])(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
+  def processProblem(problem: Seq[TPTP.AnnotatedFormula])(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
     InputProcessing.processAll(sig)(problem)
   }
   /**
@@ -247,7 +249,7 @@ object Input {
     *         [[leo.datastructures.Role_Type]] are returned as triples
     *         `(id, LitTrue, role)` with their respective identifier and role.
     */
-  def processFormula(formula: Commons.AnnotatedFormula)(implicit sig: Signature): (FormulaId, Term, Role) = {
+  def processFormula(formula: TPTP.AnnotatedFormula)(implicit sig: Signature): (FormulaId, Term, Role) = {
     InputProcessing.process(sig)(formula)
   }
 
@@ -311,10 +313,8 @@ object Input {
     * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
     */
   def readFormula(formula: String)(implicit sig: Signature): Term = {
-    val parsed = TPTP(formula)
-    val result = InputProcessing.processTHF(sig)(parsed)
-    if (result.isLeft) result.left.get
-    else throw new IllegalArgumentException
+    val parsed = parseFormula(formula)
+    InputProcessing.convertTHFFormula(sig)(parsed)
   }
   /** Synonym for [[leo.modules.parsers.Input#readFormula]]. */
   def apply(formula: String)(implicit sig: Signature): Term = readFormula(formula)
@@ -337,19 +337,22 @@ object Input {
   }
 
   final private val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
-  protected[input] def read0(absolutePath: Path): BufferedReader = {
+  protected[input] def read0(absolutePath: Path): io.Source = {
     if (absolutePath.toString.matches(urlStartRegex0)) {
       // URL
-      import java.net.URL
-      val url = new URL(absolutePath.toString.replaceFirst(":/","://"))
-      new BufferedReader(new InputStreamReader(url.openStream()))
+//      import java.net.URL
+//      val url = new URL(absolutePath.toString.replaceFirst(":/","://"))
+//      new BufferedReader(new InputStreamReader(url.openStream()))
+      io.Source.fromURL(absolutePath.toString.replaceFirst(":/","://"))
     } else {
       if (absolutePath.toString == "-") {
-        new BufferedReader(new InputStreamReader(System.in))
+//        new BufferedReader(new InputStreamReader(System.in))
+        io.Source.stdin
       } else if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
         throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist or cannot be read.")
       } else {
-        Files.newBufferedReader(absolutePath)
+//        Files.newBufferedReader(absolutePath)
+        io.Source.fromFile(absolutePath.toFile)
       }
     }
   }

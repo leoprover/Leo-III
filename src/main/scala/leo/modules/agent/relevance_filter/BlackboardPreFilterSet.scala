@@ -1,7 +1,7 @@
 package leo.modules.agent.relevance_filter
 
 import leo.datastructures.blackboard._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.relevance_filter.PreFilterSet
 
 /**

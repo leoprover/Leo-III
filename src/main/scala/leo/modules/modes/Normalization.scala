@@ -2,7 +2,7 @@ package leo.modules.modes
 
 import leo.Configuration
 import leo.datastructures._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.output.SZS_UsageError
 import leo.modules.input.Input
 import leo.modules.prover.State
@@ -145,7 +145,7 @@ object Normalization {
     (newC, additionalAxioms.map(Literal.asTerm).toSet)
   }
 
-  private final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula])
+  private final def effectiveInput(input: Seq[AnnotatedFormula])
                                   (implicit sig: Signature): (Set[Definition], Set[Axiom], Conjecture) = {
     var definitions: Set[Definition] = Set.empty
     var axioms: Set[Axiom] = Set.empty
@@ -159,7 +159,14 @@ object Normalization {
         case Role_Definition.pretty =>
           import leo.datastructures.Term.Symbol
           import leo.modules.HOLSignature.===
-          val alteredFormula = formula.updateRole("axiom")
+          import TPTPAST.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated}
+          val alteredFormula: AnnotatedFormula = formula match {
+            case THFAnnotated(name, _, formula, annotations) => THFAnnotated(name, "axiom", formula, annotations)
+            case TFFAnnotated(name, _, formula, annotations) => TFFAnnotated(name, "axiom", formula, annotations)
+            case FOFAnnotated(name, _, formula, annotations) => FOFAnnotated(name, "axiom", formula, annotations)
+            case CNFAnnotated(name, _, formula, annotations) => CNFAnnotated(name, "axiom", formula, annotations)
+            case TPIAnnotated(name, _, formula, annotations) => TPIAnnotated(name, "axiom", formula, annotations)
+          }
           val (_, f, _) =  Input.processFormula(alteredFormula)(sig)
           f match {
             case ===(Symbol(id), definition) => definitions = definitions + ((id, definition))

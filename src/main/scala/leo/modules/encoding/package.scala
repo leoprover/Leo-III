@@ -35,12 +35,12 @@ package object encoding {
   @inline protected[encoding] final def escape(name: String): String = {
     if (name.isEmpty) ""
     else {
-      if (name.charAt(0) == escapeChar) escapeChar + name
+      if (name.charAt(0) == escapeChar) s"$escapeChar$name"
       else name
     }
   }
 
-  @inline protected[encoding] final def safeName(name: String): String = escapeChar + name
+  @inline protected[encoding] final def safeName(name: String): String = s"$escapeChar$name"
   @inline protected[encoding] final def deSafeName(name: String): String = {
     if (name.startsWith(escapeChar.toString)) name.tail
     else throw new IllegalArgumentException

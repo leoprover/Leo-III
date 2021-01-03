@@ -28,7 +28,7 @@ trait TaskSelection {
   protected val taskTakenFactor: Int = 2
 
   protected def sendDoneEvents(): Unit = {
-    val ra = agents.toIterator
+    val ra = agents.iterator
     while (ra.hasNext) {
       val a = ra.next()
       taskSet.submit(a.filter(DoneEvent))
@@ -239,7 +239,7 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
     }
   }
 
-  def addAgent(a: Agent) {
+  def addAgent(a: Agent): Unit = {
     this.synchronized(regAgents.put(a, AGENT_SALARY))
     this.synchronized(taskSet.addAgent(a))
   }
@@ -305,7 +305,7 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1 + t.writeSet.size) }.reverse.toIterator // TODO Order in reverse directly
+          val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1 + t.writeSet.size) }.reverse.iterator // TODO Order in reverse directly
           //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
 
           var openSlots = scheduler.numberOfThreads * taskTakenFactor - scheduler.openTasks

@@ -1,6 +1,7 @@
 package leo.modules.control
 
 import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.prover.{Interaction, RunStrategy, State}
 import leo.modules.{FVState, GeneralState, myAssert}
 import leo.{Configuration, Out}
@@ -79,8 +80,8 @@ object Control {
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
 
   // Relevance filtering
-  @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjectures: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula])(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
-  @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
+  @inline final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(implicit sig: Signature): Seq[AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
+  @inline final def relevanceFilterAdd(formula: AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
 
   // External prover call
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
@@ -1703,7 +1704,7 @@ package inferenceControl {
       val clIt = cls.iterator
 
       while(clIt.hasNext) {
-        val cl = clIt.next
+        val cl = clIt.next()
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
         leo.Out.finest(s"${cl.pretty(sig)}")
@@ -2666,7 +2667,6 @@ package indexingControl {
   }
 
   object RelevanceFilterControl {
-    import leo.datastructures.tptp.Commons.AnnotatedFormula
     import leo.modules.relevance_filter._
 
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(sig: Signature): Seq[AnnotatedFormula] = {

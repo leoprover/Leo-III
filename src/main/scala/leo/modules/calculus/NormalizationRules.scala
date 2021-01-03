@@ -785,7 +785,7 @@ object Simp extends CalculusRule {
     val fvs = prefvs.map(_._1).distinct.sortWith {case (a,b) => a > b}
     val tyFVs = lits.flatMap(_.tyFV).distinct.sortWith {case (a,b) => a > b}
 
-    Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
+    Out.finest(s"PREFVS:\n\t${prefvs.map(f => s"${f._1}:${f._2.pretty}").mkString("\n\t")}")
     Out.finest(s"FVS:\n\t${fvs.map(_.toString).mkString("\n\t")}")
     Out.finest(s"TYFVS:\n\t${tyFVs.mkString("\n\t")}")
 
@@ -1250,7 +1250,7 @@ object Miniscope extends CalculusRule {
     var rightSubst : Seq[Int] = Seq()  // Substitution (reversed) removed Quants right
     var loop = 1
     while(it.hasNext){
-      val q@(quant , ty) = it.next
+      val q@(quant , ty) = it.next()
       val push = testPush(left, right, loop, quant, and)
       if(push != 0) {
         if ((push & LEFT) == LEFT) leftQ = q +: leftQ // Push the quantifier left if possible

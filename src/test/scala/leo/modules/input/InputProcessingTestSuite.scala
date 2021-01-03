@@ -23,7 +23,7 @@ class InputProcessingTestSuite extends LeoTestSuite {
     test(f.getName) {
       try {
         val sig = Signature.freshWithHOL()
-        val res2 = InputNew.readProblem(f.getAbsolutePath)(sig)
+        val res2 = Input.readProblem(f.getAbsolutePath)(sig)
         res2.foreach { case (_, term, _) =>
           assert(leo.datastructures.Term.wellTyped(term), s"Term ${term.pretty(sig)} not well-typed.")
           println(term.pretty(sig))

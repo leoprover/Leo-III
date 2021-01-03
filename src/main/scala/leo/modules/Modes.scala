@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.datastructures.{Role_Definition, Role_Type, Signature}
 import leo.{Configuration, Out}
 import leo.modules.output._

@@ -1,7 +1,7 @@
 package leo.modules.input
 
 import leo.{Configuration, Out}
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import transformation.{Wrappers => ModalProcessing}
 import transformation.ModalTransformator.TransformationParameter
 
@@ -9,9 +9,9 @@ object ModalPreprocessor {
 
   final def canApply(problem0: Seq[AnnotatedFormula]): Boolean = {
     val maybeLogicSpecification = problem0.find(_.role == "logic")
-    if (maybeLogicSpecification.isDefined) maybeLogicSpecification.get.function_symbols.contains("$modal")
+    if (maybeLogicSpecification.isDefined) maybeLogicSpecification.get.symbols.contains("$modal")
     else {
-      val symbolsInProblem = problem0.flatMap(_.function_symbols).toSet
+      val symbolsInProblem = problem0.flatMap(_.symbols).toSet
       val boxSymbol = "$box"; val diamondSymbol = "$dia"
       symbolsInProblem.contains(boxSymbol) || symbolsInProblem.contains(diamondSymbol)
     }
@@ -22,7 +22,7 @@ object ModalPreprocessor {
     if (maybeLogicSpecification.isDefined) {
       import java.util.logging
       val spec = maybeLogicSpecification.get
-      assert(spec.function_symbols.contains("$modal"), "Non-classical logics other than modal logic not supported yet.")
+      assert(spec.symbols.contains("$modal"), "Non-classical logics other than modal logic not supported yet.")
       Out.info("Input problem is modal. Running modal-to-HOL transformation from semantics specification contained in the problem file ...")
       logging.Logger.getLogger("default").setLevel(logging.Level.WARNING)
       val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE))

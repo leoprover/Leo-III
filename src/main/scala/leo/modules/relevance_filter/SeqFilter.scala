@@ -3,7 +3,7 @@ package leo.modules.relevance_filter
 import leo.Configuration
 import leo.datastructures.ClauseAnnotation.FromFile
 import leo.datastructures._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.input.Input.processFormula
 
 /**

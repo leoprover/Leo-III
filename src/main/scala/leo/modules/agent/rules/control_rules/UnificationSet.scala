@@ -57,12 +57,12 @@ class UnificationSet extends DataStore{
     val delta = Result()
 
     while(del.hasNext){
-      val c = del.next
+      val c = del.next()
       if(set.remove(c)) delta.remove(Unify)(c)
     }
 
     while(ins.hasNext) {
-      val c = ins.next
+      val c = ins.next()
       if(set.add(c)) delta.insert(Unify)(c)
     }
     delta

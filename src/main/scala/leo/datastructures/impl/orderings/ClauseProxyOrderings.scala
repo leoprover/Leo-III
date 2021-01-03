@@ -103,7 +103,7 @@ object CPO_OldestFirst extends ClauseProxyOrdering[Double] {
     aAge.compareTo(bAge)
   }
 
-  final def weightOf(cl: ClauseProxy): Double = cl.id
+  final def weightOf(cl: ClauseProxy): Double = cl.id.toDouble
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its ratio of negative literals is greater.

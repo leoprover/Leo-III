@@ -162,7 +162,7 @@ object ClauseAnnotation {
       cws.map { case (cw, add) => if (add == null) {
         cw.id
       } else {
-        cw.id  + ":[" + add.apply + "]"
+        s"${cw.id}:[${add.apply()}]"
       }
       }.mkString(",")
     }])"
@@ -196,7 +196,7 @@ object ClauseAnnotation {
         sb.append(",[status(")
         sb.append(rule.inferenceStatus.pretty.toLowerCase)
         sb.append(")]")
-        if(info != null && info.apply() != "") remainingBrackets.insert(0, s":[${info.apply}]")
+        if(info != null && info.apply() != "") remainingBrackets.insert(0, s":[${info.apply()}]")
         sb.append(", ")
       }
       sb.append(annotation.pretty)

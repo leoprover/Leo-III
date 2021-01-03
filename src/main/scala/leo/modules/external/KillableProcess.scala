@@ -153,5 +153,5 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
     }
   }
   override def waitFor(timout: Long, unit: TimeUnit): Boolean = process.waitFor(timout, unit)
-  override def waitFor: Boolean = process.waitFor() > 0
+  override def waitFor(): Boolean = process.waitFor() > 0
 }

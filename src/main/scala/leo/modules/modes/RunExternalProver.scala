@@ -2,7 +2,7 @@ package leo.modules.modes
 
 import leo.Configuration
 import leo.datastructures._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.external.{Capabilities, ExternalProver}
 import leo.modules.output.SZS_Error
 import leo.modules.input.Input

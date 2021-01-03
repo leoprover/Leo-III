@@ -92,7 +92,7 @@ object FormulaDataStore extends DataStore {
    * @param p - All x with p(x) will be removed.
    */
   def rmAll(p: ClauseProxy => Boolean) = synchronized {
-    val filter = formulaStore.filter(p).toIterator
+    val filter = formulaStore.filter(p).iterator
     while(filter.nonEmpty){
       formulaStore.remove(filter.next())
     }

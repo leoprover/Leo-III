@@ -36,8 +36,8 @@ class ParserTestSuite extends LeoTestSuite {
       Out.output(s"## Parsing ${p._1} ...")
 
       val res = Input.parseProblemFileShallow(source + "/" +  p._1 + ".p")
-      Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
-      Out.output(s"${res.inputs.toString()}")
+      Out.output(s"Parsing succeeded. Parsed ${res.formulas.size} formulae and ${res.includes.size} include statements.")
+      Out.output(s"${res.toString()}")
     }
   }
 }

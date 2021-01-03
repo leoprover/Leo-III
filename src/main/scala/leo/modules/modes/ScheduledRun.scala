@@ -1,6 +1,6 @@
 package leo.modules.modes
 
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.control.Control
 import leo.modules.input.Input

@@ -5,7 +5,7 @@ import leo.agents.{Agent, CompletedState, DoItYourSelfAgent, OpenState}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{Blackboard, Delta}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTPAST.AnnotatedFormula
 import leo.modules.GeneralState
 import leo.modules.agent.rules.TypedSet
 import leo.modules.output.SZS_Theorem

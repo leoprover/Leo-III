@@ -83,8 +83,8 @@ class DeltaCompressionTest extends LeoTestSuite{
     class OneTask(s : String) extends Task {
       override val name: String = "insert"
       override def run: Delta = Result().insert(StringType)(s)
-      override def readSet(): Map[DataType[Any], Set[Any]] = Map()
-      override def writeSet(): Map[DataType[Any], Set[Any]] = Map()
+      override def readSet: Map[DataType[Any], Set[Any]] = Map()
+      override def writeSet: Map[DataType[Any], Set[Any]] = Map()
       override val bid: Double = 1.0 / self.cl.size
       override val getAgent: Agent = self
       override val pretty: String = s"insert($s)"

@@ -61,7 +61,7 @@ abstract class AbstractAgent extends Agent {
   private def formatOut(out : String) : String = {
     val sb = new StringBuilder()
     sb.append(s"[${name}]:")
-    out.lines.foreach{s => sb.append("\n  "+s)}
+    out.linesIterator.foreach{s => sb.append("\n  "+s)}
     sb.toString()
   }
 
