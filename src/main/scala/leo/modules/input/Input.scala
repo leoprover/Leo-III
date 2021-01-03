@@ -25,7 +25,7 @@ import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
   *
   * @author Alexander Steen <a.steen@fu-berlin.de>
   * @since 29.04.2015
-  * @note Updated February 2017: Overhaul
+  * @note Updated February 2017: Overhaul. Adapted to new InputProcessing and new Parser on January 2021.
   * @see [[leo.datastructures.tptp]]
   * @see [[leo.datastructures.Term]]
   */
