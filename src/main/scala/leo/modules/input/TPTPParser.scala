@@ -659,65 +659,67 @@ object TPTPParser {
       //  if binary connective assoc. parse unit f2, collect f1 op f2. repeat parse unit until not same op.
       //  if none, return f1
       val f1 = thfUnitFormula(acceptEqualityLike = false)
-      val next = peek()
-      next._1 match {
-        case EQUALS | NOTEQUALS if isUnitaryTerm =>
-          val op = tokenToTHFEqConnective(consume())
-          val nextTok = peek()
-          if (isTHFQuantifier(nextTok._1) || isUnaryTHFConnective(nextTok._1)) {
-            // not allowed, since we are in <thf_unitary_term> here.
-            error2(s"Expected <thf_unitary_term>, but found ${nextTok._1} first. Maybe parentheses are missing around the argument of ${next._1}?", nextTok)
-          } else {
-            val f2 = thfUnitFormula(acceptEqualityLike = false)//thfUnitaryTerm()
-            THF.BinaryFormula(op, f1, f2)
-          }
-        case c if isBinaryTHFConnective(c) || isBinaryTHFTypeConstructor(c) =>
-          if (isBinaryAssocTHFConnective(c)) {
-            val opTok = consume()
-            val op = tokenToTHFBinaryConnective(opTok)
-            val f2 = thfUnitFormula(acceptEqualityLike = true)
-            // collect all further formulas with same associative operator
-            var fs: Seq[THF.Formula] = Vector(f1,f2)
-            while (peek()._1 == opTok._1) {
-              consume()
-              val f = thfUnitFormula(acceptEqualityLike = true)
-              fs = fs :+ f
+      if (tokens.hasNext) {
+        val next = peek()
+        next._1 match {
+          case EQUALS | NOTEQUALS if isUnitaryTerm =>
+            val op = tokenToTHFEqConnective(consume())
+            val nextTok = peek()
+            if (isTHFQuantifier(nextTok._1) || isUnaryTHFConnective(nextTok._1)) {
+              // not allowed, since we are in <thf_unitary_term> here.
+              error2(s"Expected <thf_unitary_term>, but found ${nextTok._1} first. Maybe parentheses are missing around the argument of ${next._1}?", nextTok)
+            } else {
+              val f2 = thfUnitFormula(acceptEqualityLike = false)//thfUnitaryTerm()
+              THF.BinaryFormula(op, f1, f2)
             }
-            if (op == THF.App) fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
-            else fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
-          } else if (isBinaryTHFTypeConstructor(c)) {
-            val opTok = consume()
-            val op = tokenToTHFBinaryTypeConstructor(opTok)
-            if (isUnitaryFormula) {
-              if (isUnaryTHFConnective(peek()._1)) {
-                error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
-              } else {
-                val f2 = thfUnitFormula(acceptEqualityLike = false)
-                // collect all further formulas with same associative operator
-                var fs: Seq[THF.Formula] = Vector(f1,f2)
-                while (peek()._1 == opTok._1) {
-                  consume()
-                  if (!isUnaryTHFConnective(peek()._1)) {
-                    val f = thfUnitFormula(acceptEqualityLike = false)
-                    fs = fs :+ f
-                  } else {
-                    error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+          case c if isBinaryTHFConnective(c) || isBinaryTHFTypeConstructor(c) =>
+            if (isBinaryAssocTHFConnective(c)) {
+              val opTok = consume()
+              val op = tokenToTHFBinaryConnective(opTok)
+              val f2 = thfUnitFormula(acceptEqualityLike = true)
+              // collect all further formulas with same associative operator
+              var fs: Seq[THF.Formula] = Vector(f1,f2)
+              while (tokens.hasNext && peek()._1 == opTok._1) {
+                consume()
+                val f = thfUnitFormula(acceptEqualityLike = true)
+                fs = fs :+ f
+              }
+              if (op == THF.App) fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
+              else fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+            } else if (isBinaryTHFTypeConstructor(c)) {
+              val opTok = consume()
+              val op = tokenToTHFBinaryTypeConstructor(opTok)
+              if (isUnitaryFormula) {
+                if (isUnaryTHFConnective(peek()._1)) {
+                  error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+                } else {
+                  val f2 = thfUnitFormula(acceptEqualityLike = false)
+                  // collect all further formulas with same associative operator
+                  var fs: Seq[THF.Formula] = Vector(f1,f2)
+                  while (peek()._1 == opTok._1) {
+                    consume()
+                    if (!isUnaryTHFConnective(peek()._1)) {
+                      val f = thfUnitFormula(acceptEqualityLike = false)
+                      fs = fs :+ f
+                    } else {
+                      error2("Unexpected binary type constructor before <thf_unary_formula>.", peek())
+                    }
                   }
+                  if (op == THF.FunTyConstructor) fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
+                  else fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
                 }
-                if (op == THF.FunTyConstructor) fs.reduceRight((x,y) => THF.BinaryFormula(op, x, y))
-                else fs.reduceLeft((x,y) => THF.BinaryFormula(op, x, y))
+              } else {
+                error2("Unexpected binary type constructor after <thf_unary_formula>.", opTok)
               }
             } else {
-              error2("Unexpected binary type constructor after <thf_unary_formula>.", opTok)
+              // non-assoc; just parse one more unit and then done.
+              val op = tokenToTHFBinaryConnective(consume())
+              val f2 = thfUnitFormula(acceptEqualityLike = true)
+              THF.BinaryFormula(op, f1, f2)
             }
-          } else {
-            // non-assoc; just parse one more unit and then done.
-            val op = tokenToTHFBinaryConnective(consume())
-            val f2 = thfUnitFormula(acceptEqualityLike = true)
-            THF.BinaryFormula(op, f1, f2)
-          }
-        case _ => f1
-      }
+          case _ => f1
+        }
+      } else f1
     }
 
     // Can use this as thfUnitaryFormula with false for call in pre_unit and also for thfUnitaryTerm if is made sure before
@@ -884,7 +886,7 @@ object TPTPParser {
         case _ => error2(s"Unrecognized thf formula input '${tok._1}'", tok)
       }
       // if expect equality: do double time.
-      if (acceptEqualityLike && feasibleForEq) {
+      if (acceptEqualityLike && feasibleForEq && tokens.hasNext) {
         val tok2 = peek()
         if (isEqualityLikeConnective(tok2._1)) {
           val op = tokenToTHFEqConnective(consume())
@@ -1779,7 +1781,7 @@ object TPTPParser {
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-    @inline private[this] def peek(): Token = {
+    private[this] def peek(): Token = {
       if (tokens.hasNext) {
         tokens.peek()
       } else {
