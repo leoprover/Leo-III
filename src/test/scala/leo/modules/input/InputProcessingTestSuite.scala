@@ -11,7 +11,7 @@ class InputProcessingTestSuite extends LeoTestSuite {
   private[this] val th0Files = th0Files0.filterNot(_.getName == "SYN000^2.p")
   private[this] val tffBasicFiles = Seq(new File(tptp ++ "/Problems/SYN/SYN000_1.p"), new File(tptp ++ "/Problems/SYN/SYN000_3.p"))
   private[this] val tffFiles0 = new File(tptp ++ "/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("_")).toList
-  private[this] val tffFiles = tffBasicFiles  ++ tffFiles0.filterNot(x => Seq("SYN000_1.p", "SYN000_3.p").contains(x.getName))
+  private[this] val tffFiles = tffBasicFiles  ++ tffFiles0.filterNot(x => Seq("SYN000_1.p", "SYN000_2.p", "SYN000_3.p", "SYN000_4.p").contains(x.getName))
   private[this] val fofBasicFiles = Seq(new File(tptp ++ "/Problems/SYN/SYN000+1.p"), new File(tptp ++ "/Problems/SYN/SYN000+2.p"))
   private[this] val fofFiles0 = new File(tptp ++ "/Problems/SYN/").listFiles.filter(x => x.getName.endsWith(".p") && x.getName.contains("+")).toList
   private[this] val fofFiles = fofBasicFiles //++ fofFiles0

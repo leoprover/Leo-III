@@ -319,6 +319,7 @@ object TPTP {
     final case object <~> extends BinaryConnective { override def pretty: String = "<~>" }
     final case object ~| extends BinaryConnective { override def pretty: String = "~|" }
     final case object ~& extends BinaryConnective { override def pretty: String = "~&" }
+    final case object := extends BinaryConnective { override def pretty: String = ":=" }
     // assoc
     final case object | extends BinaryConnective { override def pretty: String = "|" }
     final case object & extends BinaryConnective { override def pretty: String = "&" }

@@ -368,6 +368,7 @@ object InputProcessing {
       case TPTP.THF.~& => nand
       case TPTP.THF.<~> => !=== //niff
       case TPTP.THF.App => @@@
+      case TPTP.THF.:= => throw new SZSException(SZS_Inappropriate, s"Leo-III does not support assignments ':=' as binary connectives on formula-level.")
       case _ => throw new SZSException(SZS_InputError, s"Unexpected symbol '${connective.pretty}' used as binary connective.")
     }
   }

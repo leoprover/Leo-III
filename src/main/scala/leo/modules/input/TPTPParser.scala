@@ -759,7 +759,17 @@ object TPTPParser {
       }
     }
 
+
     def thfLogicFormula(): THF.Formula = {
+      val f1 = thfLogicFormula0()
+      if (tokens.hasNext && peek()._1 == ASSIGNMENT) {
+        consume()
+        val f2 = thfLogicFormula0()
+        THF.BinaryFormula(THF.:=, f1, f2)
+      } else f1
+    }
+
+    def thfLogicFormula0(): THF.Formula = {
       // We want to eliminate backtracking when parsing THF. So change the grammar interpretation as follows
       // Always read units first (thats everything except binary formulas). Then check for following
       // binary connectives and iteratively parse more units (one if non-assoc, as much as possible if assoc).
