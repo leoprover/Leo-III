@@ -1,52 +1,33 @@
 %------------------------------------------------------------------------------
-% File     : SYN000-2 : TPTP v6.0.0. Bugfixed v4.1.1.
+% File     : SYN000-2 : TPTP v7.3.0. Bugfixed v7.1.0.
 % Domain   : Syntactic
 % Problem  : Advanced TPTP CNF syntax
 % Version  : Biased.
-% English  : Advanced TPTP CNF syntax that you will encounter some time.
+% English  : 
 
 % Refs     :
 % Source   : [TPTP]
 % Names    :
 
 % Status   : Satisfiable
-% Rating   : 0.78 v6.0.0, 1.00 v5.4.0, 0.90 v5.3.0, 0.89 v5.2.0, 0.90 v5.0.0
-% Syntax   : Number of clauses     :   19 (   3 non-Horn;  16 unit;  12 RR)
-%            Number of atoms       :   28 (   2 equality)
-%            Maximal clause size   :    7 (   1 average)
-%            Number of predicates  :    8 (   3 propositional; 0-3 arity)
-%            Number of functors    :   22 (  20 constant; 0-3 arity)
+% Rating   : 0.70 v7.3.0, 0.56 v7.1.0
+% Syntax   : Number of clauses     :   16 (   0 non-Horn;  16 unit;   9 RR)
+%            Number of atoms       :   16 (   2 equality)
+%            Maximal clause size   :    1 (   1 average)
+%            Number of predicates  :    7 (   2 propositional; 0-3 arity)
+%            Number of functors    :   10 (   8 constant; 0-3 arity)
 %            Number of variables   :    7 (   7 singleton)
 %            Maximal term depth    :    2 (   1 average)
-%            Arithmetic symbols    :   12 (   0 pred;    0 func;   12 numbers)
 % SPC      : CNF_SAT_RFO_EQU_NUE
 
 % Comments :
 % Bugfixes : v4.0.1 - Added more numbers, particularly rationals.
 %          : v4.1.1 - Removed rationals with negative denominators.
+%          : v7.1.0 - Removed numbers
 %------------------------------------------------------------------------------
 %----Quoted symbols
 cnf(distinct_object,axiom,
     ( "An Apple" != "A \"Microsoft \\ escape\"" )).
-
-%----Numbers
-cnf(integers,axiom,
-    ( p(12)
-    | p(-12) )).
-
-cnf(rationals,axiom,
-    ( p(123/456)
-    | p(-123/456)
-    | p(+123/456) )).
-
-cnf(reals,axiom,
-    ( p(123.456 )
-    | p(-123.456 )
-    | p(123.456E789 )
-    | p(123.456e789 )
-    | p(-123.456E789 )
-    | p(123.456E-789 )
-    | p(-123.456E-789 ) )).
 
 %----Roles - seen axiom already
 cnf(role_definition,definition,

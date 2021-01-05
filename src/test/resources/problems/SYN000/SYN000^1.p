@@ -1,28 +1,28 @@
 %------------------------------------------------------------------------------
-% File     : SYN000^1 : TPTP v6.0.0. Released v3.7.0.
+% File     : SYN000^1 : TPTP v7.3.0. Released v3.7.0.
 % Domain   : Syntactic
-% Problem  : Basic TPTP 
+% Problem  : Basic TPTP TH0 syntax
 % Version  : Biased.
-% English  : Basic TPTP  that you can't survive without parsing.
+% English  : Basic TPTP TH0 that you can't survive without parsing.
 
 % Refs     :
 % Source   : [TPTP]
 % Names    :
 
 % Status   : Theorem
-% Rating   : 0.29 v6.0.0, 0.43 v5.5.0, 0.50 v5.4.0, 0.60 v5.1.0, 0.20 v4.1.0, 0.00 v3.7.0
-% Syntax   : Number of formulae    :   42 (  18 unit;  27 type;   0 defn)
-%            Number of atoms       :  161 (   4 equality;  32 variable)
+% Rating   : 0.11 v7.2.0, 0.12 v7.0.0, 0.14 v6.4.0, 0.17 v6.3.0, 0.20 v6.2.0, 0.57 v6.1.0, 0.29 v6.0.0, 0.43 v5.5.0, 0.50 v5.4.0, 0.60 v5.1.0, 0.20 v4.1.0, 0.00 v3.7.0
+% Syntax   : Number of formulae    :   42 (   3 unit;  27 type;   0 defn)
+%            Number of atoms       :  110 (   4 equality;  32 variable)
 %            Maximal formula depth :   11 (   4 average)
 %            Number of connectives :   96 (   9   ~;  10   |;   3   &;  68   @)
 %                                         (   1 <=>;   3  =>;   1  <=;   1 <~>)
-%                                         (   0  ~|;   0  ~&;   0  !!;   0  ??)
+%                                         (   0  ~|;   0  ~&)
 %            Number of type conns  :   26 (  26   >;   0   *;   0   +;   0  <<)
-%            Number of symbols     :   33 (  27   :)
+%            Number of symbols     :   32 (  27   :;   0   =)
 %            Number of variables   :   18 (   1 sgn;   6   !;   8   ?;   4   ^)
 %                                         (  18   :;   0  !>;   0  ?*)
 %                                         (   0  @-;   0  @+)
-% SPC      : TH0_THM_EQU
+% SPC      : TH0_THM_EQU_NAR
 
 % Comments :
 %------------------------------------------------------------------------------
@@ -183,5 +183,10 @@ thf(role_conjecture,conjecture,(
 %----Include directive
 include('Axioms/SYN000^0.ax').
 
-%------------------------------------------------------------------------------
+%----Comments
+/* This
+   is a block
+   comment.
+*/
 
+%------------------------------------------------------------------------------
