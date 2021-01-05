@@ -46,7 +46,7 @@ trait RuleGraph[In, Out] {
     * Contains all DataTypes used throughout the graph
     */
   lazy val containedTypes : Iterable[DataType[Any]] = {
-    rules.flatMap{x => x.inTypes union x.outTypes}
+    rules.flatMap{x => x.inTypes concat x.outTypes}
   }
 
   /**

@@ -117,8 +117,8 @@ object AnoyingAgent extends AbstractAgent {
   class AnoyingTask(n : Int) extends Task {
     override def name: String = s"anoy"
     override def run: Delta = Result().update(NumberType)(n)(n+5)
-    override def readSet(): Map[DataType[Any], Set[Any]] = Map.empty
-    override def writeSet(): Map[DataType[Any], Set[Any]] = Map(NumberType -> Set(n))
+    override def readSet: Map[DataType[Any], Set[Any]] = Map.empty
+    override def writeSet: Map[DataType[Any], Set[Any]] = Map(NumberType -> Set(n))
     override def bid: Double = 1
     override def getAgent: Agent = AnoyingAgent
     override def pretty: String = s"anoy(${n} --> ${n+5})"

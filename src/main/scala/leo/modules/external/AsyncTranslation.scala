@@ -16,9 +16,9 @@ import scala.collection.mutable
   *
   */
 trait AsyncTranslation {
-  def killAll()
+  def killAll(): Unit
 
-  def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false)
+  def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit
 }
 
 class SequentialTranslationImpl extends AsyncTranslation {

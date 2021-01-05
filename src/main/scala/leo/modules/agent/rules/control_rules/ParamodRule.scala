@@ -71,7 +71,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
 
       //      r.remove(LockType(inType))(sClause)
       while (it.hasNext) {
-        val c = Control.liftEq(it.next)
+        val c = Control.liftEq(it.next())
         if(c.cl.lits.exists(l => l.uni)) {
           leo.Out.debug(s"[Paramod] From [$id1],[$id2] to unify ${c.pretty(sig)}")
           r.insert(unifyType)(c)
@@ -80,7 +80,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
           newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while (newIt.hasNext) {
-            val nc = newIt.next
+            val nc = newIt.next()
             leo.Out.debug(s"[Paramod] From [$id1],[$id2] no unification ${c.pretty(sig)}")
             r.insert(noUnifyType)(nc)
           }
@@ -173,7 +173,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
 
       val it = resClauses.iterator
       while (it.hasNext) {
-        val c = Control.liftEq(it.next)
+        val c = Control.liftEq(it.next())
         if(c.cl.lits.exists(l => l.uni)) {
           leo.Out.debug(s"[Paramod] From " +
             s"${c.annotation.parents.map(c => s"[${c.id}]").mkString(",")} " +
@@ -184,7 +184,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
           newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while (newIt.hasNext) {
-            val nc = newIt.next
+            val nc = newIt.next()
             leo.Out.debug(s"[Paramod] From " +
               s"${nc.annotation.parents.map(c => s"[${c.id}]").mkString(",")} " +
               s" no unification ${c.pretty(state.signature)}")

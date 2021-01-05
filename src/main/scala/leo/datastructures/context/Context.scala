@@ -366,7 +366,7 @@ trait ContextMap[K,V] {
    *
    * @param c - The context to be cleared
    */
-  def clear(c : Context)
+  def clear(c : Context): Unit
 
   /**
    * Convert the datastrucutre into an initial state.

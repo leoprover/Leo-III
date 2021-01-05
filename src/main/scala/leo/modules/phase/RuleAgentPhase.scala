@@ -4,7 +4,7 @@ import leo.agents.Agent
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.agent.rules.control_rules.AnnotatedClauseGraph
 import leo.modules.control.Control
 import leo.modules.prover._
@@ -29,7 +29,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = Seq()
 
-  var parsingTime : Long = 0l
+  var parsingTime : Long = 0L
 
   override def execute(): Boolean = {
     if (Configuration.ATPS.nonEmpty) {

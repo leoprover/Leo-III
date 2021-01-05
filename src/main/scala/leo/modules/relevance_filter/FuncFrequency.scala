@@ -1,6 +1,6 @@
 package leo.modules.relevance_filter
 
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 import scala.collection.mutable._
 
@@ -16,9 +16,9 @@ class FuncFrequency {
     * @param formula New formula from the problem
     */
   def addFormula(formula: AnnotatedFormula) : Unit = {
-    val it = formula.function_symbols.iterator
+    val it = formula.symbols.iterator
     while(it.hasNext){
-      val symb = it.next
+      val symb = it.next()
         val freq = symbols.getOrElse(symb,0: Int)
         symbols.put(symb, freq+1)
     }

@@ -33,7 +33,7 @@ trait DataStore {
     */
   def updateResult(r : Delta) : Delta
 
-  def clear()
+  def clear(): Unit
 
   def get[T](t : DataType[T]) : Set[T]
 

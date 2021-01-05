@@ -141,7 +141,7 @@ trait Term extends Pretty with Prettier {
 /////////////////////////////
 
 class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeException(msg) {
-  def this(msg: String) {
+  def this(msg: String) = {
     this(msg, None)
   }
 }

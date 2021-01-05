@@ -1,10 +1,10 @@
 package leo.modules
 
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.datastructures.{Role_Definition, Role_Type, Signature}
 import leo.{Configuration, Out}
 import leo.modules.output._
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 object Modes {
   final def apply(beginTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {

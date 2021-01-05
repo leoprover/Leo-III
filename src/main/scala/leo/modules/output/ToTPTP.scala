@@ -34,7 +34,7 @@ object ToTPTP {
   /** See toString(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
   final def output(f: ClauseProxy)(implicit sig: Signature): Output = new Output {
-    def apply = toTPTP(f.id.toString, f.cl, f.role)(sig)
+    def apply() = toTPTP(f.id.toString, f.cl, f.role)(sig)
   }
 
   /**
@@ -49,7 +49,7 @@ object ToTPTP {
   /** See withAnnotation(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
   final def outputWithAnnotation(cl: ClauseProxy)(implicit sig: Signature): Output = new Output {
-    def apply: String = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
+    def apply(): String = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
   }
 
   ///////////////////////
@@ -196,7 +196,7 @@ object ToTPTP {
   ///////////////////////////////
 
   final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)], tyVars: Seq[Int])(implicit sig: Signature): Output = new Output {
-    override def apply: String = {
+    override def apply(): String = {
       if (termsubst.length == 0) {
         ""
       } else {

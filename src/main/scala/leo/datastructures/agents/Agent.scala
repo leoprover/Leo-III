@@ -32,7 +32,7 @@ trait Agent {
   * This method is called, whenever the program is forcefully stopped.
   * It has to be implemented to reset internal stati or the agent cannot simply be terminated.
   */
-  def kill()
+  def kill(): Unit
 
 //  /**
 //  * Registers this agent in the System for execution.

@@ -2,7 +2,6 @@ package leo.datastructures.context
 
 import leo.{Checked, Configuration, LeoTestSuite}
 import leo.datastructures.context.impl.TreeContext
-import leo.modules.parsers.CLParameterParser
 
 /**
  *

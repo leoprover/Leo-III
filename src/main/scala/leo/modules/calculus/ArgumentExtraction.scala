@@ -61,7 +61,7 @@ object ArgumentExtraction extends CalculusRule {
   private def containsLocalBounds(t : Term, lambdas : Int) : Boolean = {
     val vars = t.fv.iterator
     while(vars.hasNext){
-      if(vars.next._1 <= lambdas) return true
+      if(vars.next()._1 <= lambdas) return true
     }
     false
   }

@@ -86,7 +86,7 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return all registered agents
    */
-  override def getAgents(): Iterable[Agent] = taskSelectionSet.agents
+  override def getAgents: Iterable[Agent] = taskSelectionSet.agents
 
   /**
    * Sends a message to an agent.
@@ -126,7 +126,7 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
   override def rmDS(ds: DataStore): Unit = if (dsset.remove(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) - ds)}
 
   override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
-    dsmap.filterKeys(k =>
+    dsmap.view.filterKeys(k =>
       d.contains(k))
       .values.flatten.toSet
   }

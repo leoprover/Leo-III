@@ -3,7 +3,6 @@ package modules.calculus.splitting
 
 import leo.modules.HOLSignature.o
 import leo.modules.output.ToTPTP
-import org.scalatest.FunSuite
 
 /**
  * Created by max on 19.02.2015.

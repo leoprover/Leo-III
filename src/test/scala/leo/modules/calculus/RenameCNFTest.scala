@@ -1,9 +1,9 @@
 package leo.modules.calculus
 
 import leo.datastructures.{AnnotatedClause, Clause, Literal, Signature}
-import leo.modules.parsers.Input
 import leo.modules.prover.State
 import leo.{Checked, LeoTestSuite}
+import leo.modules.input.Input
 
 /**
   * Created by mwisnie on 1/31/17.
