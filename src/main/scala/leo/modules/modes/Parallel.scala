@@ -6,7 +6,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.context.Context
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules._
 import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._
@@ -32,7 +32,7 @@ object Parallel {
     *
     * @param startTime Time the program started
     */
-  def runMultiSearch(startTime : Long, parsedProblem: Seq[AnnotatedFormula]) {
+  def runMultiSearch(startTime : Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
@@ -91,7 +91,7 @@ object Parallel {
     *
     * @param startTime Time the program started
     */
-  def runParallel(startTime : Long, parsedProblem: Seq[AnnotatedFormula]){
+  def runParallel(startTime : Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
 
     import leo.datastructures.Signature
 
@@ -241,7 +241,7 @@ object Parallel {
     }
   }
 
-  private def unexpectedEnd(time : Long) {
+  private def unexpectedEnd(time : Long): Unit = {
     val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
     Out.output("")
     Out.output(SZSResult(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))

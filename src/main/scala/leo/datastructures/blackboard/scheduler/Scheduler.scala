@@ -46,7 +46,7 @@ trait Scheduler {
 
   def clear() : Unit
 
-  protected[scheduler] def start()
+  protected[scheduler] def start(): Unit
 
   def openTasks : Int
 
@@ -175,7 +175,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     AgentWork.clear()
   }
 
-  protected[blackboard] def start() {
+  protected[blackboard] def start(): Unit = {
 //    println("Scheduler started.")
     sT = new Thread(s)
     sT.start()      // Start Scheduler
@@ -288,10 +288,10 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         while(dsIT.hasNext){
           val ds = dsIT.next()
           val start = System.currentTimeMillis()
-          updateAmount += ((ds, updateAmount.getOrElse(ds, 0l)+1l))
+          updateAmount += ((ds, updateAmount.getOrElse(ds, 0L)+1L))
           val realUpdate = ds.updateResult(result)
           delta = delta.merge(realUpdate) // TODO if there is no ds for a datatype? Blackboard level solution?
-          updateTime += ((ds, updateTime.getOrElse(ds, 0l) + (System.currentTimeMillis() - start)))
+          updateTime += ((ds, updateTime.getOrElse(ds, 0L) + (System.currentTimeMillis() - start)))
         }
 
         ActiveTracker.incAndGet()
@@ -353,16 +353,16 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     val it = timeWork.keys.iterator
     val sb = new mutable.StringBuilder()
     sb.append("Agent load:\n")
-    var workTO = 0l
-    var workAO = 0l
-    var filterTO = 0l
-    var filterAO = 0l
+    var workTO = 0L
+    var workAO = 0L
+    var filterTO = 0L
+    var filterAO = 0L
     while(it.hasNext){
       val agent = it.next()
-      val workT = timeWork.getOrElse(agent, 0l)
-      val workA = amountWork.getOrElse(agent, 0l)
-      val filterT = timeFilter.getOrElse(agent, 0l)
-      val filterA = amountFilter.getOrElse(agent, 0l)
+      val workT = timeWork.getOrElse(agent, 0L)
+      val workA = amountWork.getOrElse(agent, 0L)
+      val filterT = timeFilter.getOrElse(agent, 0L)
+      val filterA = amountFilter.getOrElse(agent, 0L)
       val workMean = if(workA == 0) 0.0 else (workT*1.0) / workA
       val filterMean = if(filterA == 0) 0.0 else (filterT*1.0) / filterA
       val totalA = filterA + workA
@@ -393,12 +393,12 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
 
     sb.append("\n\nDataStore load:\n")
     val it2 = updateTime.keys.iterator
-    var updateTO = 0l
-    var updateAO = 0l
+    var updateTO = 0L
+    var updateAO = 0L
     while(it2.hasNext){
       val ds = it2.next()
-      val updateT = updateTime.getOrElse(ds, 0l)
-      val updateA = updateAmount.getOrElse(ds, 0l)
+      val updateT = updateTime.getOrElse(ds, 0L)
+      val updateA = updateAmount.getOrElse(ds, 0L)
       updateTO += updateT
       updateAO += updateA
       val updateMean = if(updateA == 0) 0.0 else (updateT*1.0) / updateA
@@ -421,14 +421,14 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
    * @param t - Task on which the agent runs.
    */
   private class GenAgent(a : Agent, t : Task) extends Runnable{
-    override def run()  { // TODO catch error and move outside or at least recover
+    override def run(): Unit = { // TODO catch error and move outside or at least recover
       try {
 //        println(s"--- ${a.name} ---\n  Start : ${t.pretty}\n-------")
-        amountWork += ((a, amountWork.getOrElse(a, 0l) + 1l))
+        amountWork += ((a, amountWork.getOrElse(a, 0L) + 1L))
         val startTime = System.currentTimeMillis()
         val res = t.run
         val time = System.currentTimeMillis() - startTime
-        timeWork += ((a, timeWork.getOrElse(a, 0l) + time))
+        timeWork += ((a, timeWork.getOrElse(a, 0L) + time))
         ExecTask.put(res.immutable, t, a)
 
 //        println(s"--- ${a.name} ---\n  Done : ${t.pretty}\n-------")
@@ -467,11 +467,11 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
       try {
-        amountFilter += ((a, amountFilter.getOrElse(a, 0l) + 1l))
+        amountFilter += ((a, amountFilter.getOrElse(a, 0L) + 1L))
         val startTime = System.currentTimeMillis()
         val ts = a.filter(r)
         val time = System.currentTimeMillis() - startTime
-        timeFilter += ((a, timeFilter.getOrElse(a, 0l) + time))
+        timeFilter += ((a, timeFilter.getOrElse(a, 0L) + time))
         blackboard.submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
@@ -550,7 +550,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       results = Seq((cd, ct, ca))
     }
 
-    def put(r : Delta, t : Task, a : Agent) {
+    def put(r : Delta, t : Task, a : Agent): Unit = {
       this.synchronized{
         results = (r,t,a) +: results
         this.notifyAll()
@@ -672,8 +672,8 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
-    override def readSet(): Map[DataType[Any], Set[Any]] = Map.empty
-    override def writeSet(): Map[DataType[Any], Set[Any]] = Map.empty
+    override def readSet: Map[DataType[Any], Set[Any]] = Map.empty
+    override def writeSet: Map[DataType[Any], Set[Any]] = Map.empty
     override def bid : Double = 1
     override def name: String = "ExitTask"
 

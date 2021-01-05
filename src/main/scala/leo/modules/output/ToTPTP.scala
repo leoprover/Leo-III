@@ -34,7 +34,7 @@ object ToTPTP {
   /** See toString(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
   final def output(f: ClauseProxy)(implicit sig: Signature): Output = new Output {
-    def apply = toTPTP(f.id.toString, f.cl, f.role)(sig)
+    def apply() = toTPTP(f.id.toString, f.cl, f.role)(sig)
   }
 
   /**
@@ -49,7 +49,7 @@ object ToTPTP {
   /** See withAnnotation(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
   final def outputWithAnnotation(cl: ClauseProxy)(implicit sig: Signature): Output = new Output {
-    def apply: String = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
+    def apply(): String = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
   }
 
   ///////////////////////
@@ -195,9 +195,9 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  final def apply(subst: Subst, implicitlyBound: Seq[(Int, Type)])(implicit sig: Signature): Output = new Output {
-    override def apply: String = {
-      if (subst.length == 0) {
+  final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)], tyVars: Seq[Int])(implicit sig: Signature): Output = new Output {
+    override def apply(): String = {
+      if (termsubst.length == 0) {
         ""
       } else {
         val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)(sig)
@@ -205,16 +205,16 @@ object ToTPTP {
         val varmapSize = varmap.size
         val sb = new StringBuilder
         var i = 1
-        val max = subst.length
+        val max = termsubst.length
         while (i <= max) {
           if (varmap.keySet.contains(i)) {
-            val erg = subst.substBndIdx(i)
+            val erg = termsubst.substBndIdx(i)
             try {
               erg match {
                 case TermFront(t) =>
                   val newVars = t.looseBounds.map(k => (k, intToName(varmapSize + k - varmapMaxKey - 1)))
                   val varmap2 = varmap ++ newVars
-                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, 0,varmap2)(sig)}))")
+                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, tyVars.size, varmap2)(sig)}))")
                 case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${intToName(varmapSize + j - varmapMaxKey - 1)}))")
                 case _ => throw new SZSException(SZS_Error, "Types in term substitution")
               }
@@ -229,6 +229,7 @@ object ToTPTP {
         if (sb.isEmpty) "" else sb.init.toString()
       }
     }
+    val erg00 = apply()
   }
 
   ///////////////////////////////
@@ -242,6 +243,11 @@ object ToTPTP {
       sb.append(cl.typeVars.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (cl.typeVars.nonEmpty && cl.implicitlyBound.nonEmpty) sb.append(",")
       val (namedFVEnumeration, bVarMap) = clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.size))(sig)
+      /* if (cl.typeVars.isEmpty) {
+        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, 0))(sig)
+      } else {
+        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.max))(sig)
+      }*/
       sb.append(namedFVEnumeration)
       sb.append("] : (")
       sb.append(clauseToTPTP(cl, cl.typeVars.size, bVarMap)(sig))

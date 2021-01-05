@@ -2,7 +2,7 @@ package leo.modules.prover
 
 import leo.{Configuration, Out}
 import leo.datastructures._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.{SZSOutput, SZSResult, myAssert}
 import leo.modules.control.Control
 import leo.modules.output._
@@ -66,7 +66,7 @@ object SeqLoop {
 
   /* Main function containing proof loop */
   final def apply(startTime: Long, timeout: Int): Unit = {
-    import leo.modules.parsers.Input
+    import leo.modules.input.Input
     apply(startTime, timeout, Input.parseProblemFile(Configuration.PROBLEMFILE))
   }
 
@@ -120,7 +120,7 @@ object SeqLoop {
     try {
       implicit val sig: Signature = state.signature
       val timeout0 = state.timeout
-      val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
+      val timeout: Float = if (timeout0 == 0) Float.PositiveInfinity else timeout0.toFloat
       // Initialize indexes
       state.initUnprocessed()
       val toPreprocess = if (state.negConjecture.nonEmpty) {

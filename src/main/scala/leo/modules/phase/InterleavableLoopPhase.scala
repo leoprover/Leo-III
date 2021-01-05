@@ -4,11 +4,10 @@ import leo.agents.{Agent, InterferingLoopAgent}
 import leo.datastructures.blackboard.{Blackboard, Delta}
 import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.prover._
 import leo.modules.interleavingproc.{BlackboardState, SZSStatus, StateView}
 import leo.modules.control.Control
-import leo.modules.parsers.Input
 
 object InterleavableLoopPhase {
   def endOn(d : Delta) : Boolean = {

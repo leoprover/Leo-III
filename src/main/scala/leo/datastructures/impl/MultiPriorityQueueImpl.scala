@@ -137,7 +137,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     var qC = 0
     val it = priorityQueues.iterator
     while(it.hasNext){
-      val q = it.next
+      val q = it.next()
       sb.append(s"\n > Queue $qC: ")
       qC += 1
       val itE = q.clone().dequeueAll.iterator

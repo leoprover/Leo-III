@@ -288,11 +288,11 @@ object StatusSZS  {
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: String): Output = new Output {
     final val apply = comment match {
-      case null | "" => s"% SZS status ${szsStatus.apply} for $problemName"
-      case _ => s"% SZS status ${szsStatus.apply} for $problemName : $comment"
+      case null | "" => s"% SZS status ${szsStatus.apply()} for $problemName"
+      case _ => s"% SZS status ${szsStatus.apply()} for $problemName : $comment"
     }
   }
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: Output): Output =
-      mkOutput(szsStatus,problemName, comment.apply)
+      mkOutput(szsStatus,problemName, comment.apply())
 }

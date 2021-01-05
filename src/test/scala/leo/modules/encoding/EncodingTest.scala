@@ -3,7 +3,7 @@ package leo.modules.encoding
 import leo.LeoTestSuite
 import leo.datastructures.{Role_Axiom, Signature, Term, Clause}
 import leo.modules.{signatureAsString, termToClause}
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 /**
   * Created by lex on 3/22/17.

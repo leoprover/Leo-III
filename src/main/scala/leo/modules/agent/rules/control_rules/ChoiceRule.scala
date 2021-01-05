@@ -55,7 +55,7 @@ class ChoiceRule (inType : DataType[AnnotatedClause],
           state.incChoiceInstantiations(newclauses.size)
           var newIt = newclauses.iterator
           while(newIt.hasNext) {
-            r.insert(noUnifyType)(newIt.next)
+            r.insert(noUnifyType)(newIt.next())
           }
         }
       }

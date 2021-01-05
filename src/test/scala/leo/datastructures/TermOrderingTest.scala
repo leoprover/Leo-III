@@ -3,7 +3,7 @@ package leo.datastructures
 import leo.LeoTestSuite
 import leo.datastructures.impl.orderings.{TO_CPO_Naive => ord}
 import leo.modules.calculus.freshVarGenFromBlank
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import leo.datastructures.Term.local._
 
 

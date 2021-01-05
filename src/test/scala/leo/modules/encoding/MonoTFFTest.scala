@@ -3,8 +3,8 @@ package leo.modules.encoding
 import leo.LeoTestSuite
 import leo.datastructures._
 import leo.modules.HOLSignature._
-import leo.modules.parsers.Input
 import leo.modules.{printSignature, termToClause}
+import leo.modules.input.Input
 
 /**
   * Created by lex on 07.03.17.

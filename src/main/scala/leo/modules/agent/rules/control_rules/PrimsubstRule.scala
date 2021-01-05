@@ -54,7 +54,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
           newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while(newIt.hasNext) {
-            r.insert(noUnify)(newIt.next)
+            r.insert(noUnify)(newIt.next())
           }
         }
       }

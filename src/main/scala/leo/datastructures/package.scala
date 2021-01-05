@@ -368,7 +368,7 @@ package object datastructures {
     protected final def nextVal: Option[S] = {
       val res = results.headOption
       if (res.isDefined) {
-        results.dequeue
+        results.dequeue()
         res
       } else {
         val conf = get
@@ -392,7 +392,7 @@ package object datastructures {
     def iterator: Iterator[S] =
       if (!wasCalled) new Iterator[S] {
         wasCalled = true
-        def next: S = {
+        def next(): S = {
           if (hd.isEmpty && terminal) throw new NoSuchElementException("Stream is empty")
           else {
             if (hd.isEmpty) {hd = nextVal; if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
@@ -446,7 +446,7 @@ package object datastructures {
     protected def add( conf: T ): Unit = ds += conf
     protected def get: Option[T] = {
       val res = ds.headOption
-      if (res.isDefined) ds.dequeue
+      if (res.isDefined) ds.dequeue()
       res
     }
   }

@@ -1,5 +1,6 @@
 package leo.datastructures
 
+import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 /**
@@ -161,6 +162,12 @@ object Type {
   final def mkPolyType(bodyType: Type): Type = TypeImpl.mkPolyType(bodyType)
   /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
   final def ∀(bodyType: Type): Type = mkPolyType(bodyType)
+
+  @tailrec
+  final def mkNAryPolyType(n: Int, bodyType: Type): Type = n match {
+    case n if n <= 0 => bodyType
+    case _ => mkNAryPolyType(n-1, mkPolyType(bodyType))
+  }
 
   /** The (bound) type a type variable represents. This should always be bound by a `mkPolyType`*/
   final def mkVarType(scope: Int): Type = TypeImpl.mkVarType(scope)

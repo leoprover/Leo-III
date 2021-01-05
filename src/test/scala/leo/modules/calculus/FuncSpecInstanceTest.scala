@@ -3,9 +3,10 @@ package leo.modules.calculus
 import leo.LeoTestSuite
 import leo.datastructures.{Clause, Term}
 import Term.{mkAtom, mkTermApp}
-import leo.modules.parsers.Input
 import leo.modules.HOLSignature.{i, Choice => ε}
 import leo.modules.termToClause
+import leo.modules.input.Input
+
 //import leo.modules.calculus.{FullCNF, freshVarGenFromBlank, LiftEq}
 /**
   * Created by lex on 24.04.17.

@@ -1,56 +1,25 @@
-import scala.sys.process._
-
-val buildParser = taskKey[Unit]("Run ANTLR parser generation.")
-val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's parser.")
-
-lazy val commonSettings = Seq(
-    version := "1.5",
-    scalaVersion := "2.13.3",
-    organization := "org.leo",
-    test in assembly := {},
-    logLevel := Level.Warn,
-    logLevel in assembly := Level.Error
-)
-
-
-lazy val leo = (project in file(".")).
-//  enablePlugins(JniNative).
-  settings(commonSettings:_*).
-  settings(
+lazy val leo = (project in file("."))
+  .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.0" % "test"),
+    version := "1.5",
+    organization := "org.leo",
+    scalaVersion := "2.13.4",
+
+    test in assembly := {},
+    logLevel := Level.Warn,
+    logLevel in assembly := Level.Error,
     mainClass in (Compile, run) := Some("leo.Main"),
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
+
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
+
     // set stack size to 4m 
     javaOptions += "-Xss4m",
     parallelExecution in Test := false,
     assemblyJarName in assembly := "leo3.jar",
-    exportJars := true,
-    // options for native bindings
-//    target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
-    // antlr related stuff
-    excludeFilter in unmanagedJars := HiddenFileFilter,
-    antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
-    buildParser := {
-      val log = streams.value.log
-      val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
-        in =>
-          print("Generating parser from tptp grammar ...")
-          val target = (javaSource in Compile).value / "leo" / "modules" / "parsers" / "antlr"
-          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr-4.7.2-complete.jar")),
-            "org.antlr.v4.Tool",
-            "-o", target.toString) ++ in.map(_.toString)
-          val exitCode = Process("java", args) ! log
-          if (exitCode != 0) sys.error(s"ANTLR build failed") else println("successful!")
-          print("Cleaning temporary files ...")
-          val exitCode2 = Process("rm", Seq((target / "tptp.tokens").toString, (target / "tptpLexer.tokens").toString)) ! log 
-          if (exitCode2 != 0) println("cleanup failed.") else println("done!")
-          (target ** "*.java").get.toSet
-      }
-      cachedBuild(Set(antlrFile.value))
-    }
+    exportJars := true
   )
 
 // The following are new commands to allow build with debug output
@@ -74,4 +43,3 @@ def assemblyCommand(name: String, level: Int) =
   }
 commands += assemblyCommand("debug", 0)
 //commands += compileCommand("prod", 1000)
-

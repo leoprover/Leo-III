@@ -80,7 +80,7 @@ class FifoTaskSet extends TaskSet {
     def setNext(n : Node) : Unit
     def elem : Task
     def disabled : Boolean
-    def setDisabled(d : Boolean)
+    def setDisabled(d : Boolean): Unit
 
     def lazyCompressAndSearch : Node
   }

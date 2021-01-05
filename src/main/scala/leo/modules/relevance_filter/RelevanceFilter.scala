@@ -1,7 +1,7 @@
 package leo.modules.relevance_filter
 
 import leo.Configuration
-import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.datastructures.TPTP.AnnotatedFormula
 
 /**
   *
@@ -45,11 +45,11 @@ object RelevanceFilter {
     * @return true iff the formula should be taken
     */
   def apply(passmark : Double)(aging : Double)(phase : Int)(formula : AnnotatedFormula) : Boolean = {
-    val symbs = formula.function_symbols
+    val symbs = formula.symbols
     if(symbs.size == 0) return true  // TODO is there a better solution?
     val common_symbols = PreFilterSet.usedSymbols & symbs
     val size = common_symbols.size
-    val new_size = formula.function_symbols.size - size
+    val new_size = formula.symbols.size - size
 
     var sum = symbs.foldRight(0 : Double){case (symb, m) => m + frequency_fun(PreFilterSet.freq(symb).toDouble)}
 

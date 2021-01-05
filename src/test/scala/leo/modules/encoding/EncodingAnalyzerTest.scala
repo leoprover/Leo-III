@@ -3,7 +3,7 @@ package leo.modules.encoding
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.{Signature, Term, Type}
 import leo.modules.HOLSignature.{i, o}
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 /**
   * Created by lex on 2/27/17.

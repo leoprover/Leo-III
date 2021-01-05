@@ -72,7 +72,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
       val d = Result()
       val szs = res.szsStatus // TODO Check again here for correct szs status?
       val origin = res.problem
-      leo.Out.trace(s"[ExtProver]: ${res.proverName} got the result ${szs.pretty}")
+      leo.Out.trace(s"[ExtProver]: ${res.prover.name} got the result ${szs.pretty}")
       val emptyClause = AnnotatedClause(Clause.empty, extCallInference(res.proverName, res.problem))
       d.insert(ProcessedClause)(emptyClause)
       d.insert(SZSStatus)(szs)

@@ -20,22 +20,22 @@ package object modules {
   class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
   case class SZSResult(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
-    override def apply: String = if (furtherInfo == null || furtherInfo == "") {
-      s"% SZS status ${status.apply} for $problem"
+    override def apply(): String = if (furtherInfo == null || furtherInfo == "") {
+      s"% SZS status ${status.apply()} for $problem"
     } else {
-      s"% SZS status ${status.apply} for $problem : $furtherInfo"
+      s"% SZS status ${status.apply()} for $problem : $furtherInfo"
     }
   }
 
   case class SZSOutput(dataform : DataformSZS, problem: String, content: String, furtherInfo: String = "") extends Output {
-    override def apply: String = if (furtherInfo == null || furtherInfo == "") {
-      s"% SZS output start ${dataform.apply} for $problem\n" +
+    override def apply(): String = if (furtherInfo == null || furtherInfo == "") {
+      s"% SZS output start ${dataform.apply()} for $problem\n" +
         content + "\n" +
-        s"% SZS output end ${dataform.apply} for $problem"
+        s"% SZS output end ${dataform.apply()} for $problem"
     } else {
-      s"% SZS output start ${dataform.apply} for $problem : $furtherInfo\n" +
+      s"% SZS output start ${dataform.apply()} for $problem : $furtherInfo\n" +
         content + "\n" +
-        s"% SZS output end ${dataform.apply} for $problem"
+        s"% SZS output end ${dataform.apply()} for $problem"
     }
   }
 

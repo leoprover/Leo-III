@@ -3,8 +3,8 @@ package leo.modules.relevance_filter
 import leo.Configuration
 import leo.datastructures.ClauseAnnotation.FromFile
 import leo.datastructures._
-import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.parsers.Input.processFormula
+import leo.datastructures.TPTP.AnnotatedFormula
+import leo.modules.input.Input.processFormula
 
 /**
   * Performs a sequential run of the [[RelevanceFilter]] and returns a Sequence of

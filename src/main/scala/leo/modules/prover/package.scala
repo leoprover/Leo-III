@@ -2,12 +2,12 @@ package leo.modules
 
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, tptp}
+import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, TPTP}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
 import leo.modules.external.TptpResult
 import leo.modules.output._
-import leo.modules.parsers.Input
+import leo.modules.input.Input
 
 import scala.annotation.tailrec
 
@@ -23,7 +23,7 @@ package object prover {
   ////////////////////////////////////
 
   /** Converts the input into clauses and filters the axioms if applicable. */
-  final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
+  final def effectiveInput(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
     import leo.datastructures.Clause
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
@@ -59,11 +59,11 @@ package object prover {
     *
     * @throws leo.modules.SZSException of type [[leo.modules.output.SZS_InputError]]
     * if multiple conjecture are contained in the problem input. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): (Seq[tptp.Commons.AnnotatedFormula], Seq[tptp.Commons.AnnotatedFormula]) = {
+  final private def effectiveInput0(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): (Seq[TPTP.AnnotatedFormula], Seq[TPTP.AnnotatedFormula]) = {
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
-    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector.empty
-    var conj: Seq[tptp.Commons.AnnotatedFormula] = Vector.empty
+    var result: Seq[TPTP.AnnotatedFormula] = Vector.empty
+    var conj: Seq[TPTP.AnnotatedFormula] = Vector.empty
     val inputIt = input.iterator
     while (inputIt.hasNext) {
       val formula = inputIt.next()
@@ -116,7 +116,7 @@ package object prover {
     (result,conj)
   }
 
-  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {
+  final private def processInput(input: TPTP.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {
     import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Input.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)

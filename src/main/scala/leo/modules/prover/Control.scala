@@ -1,6 +1,7 @@
 package leo.modules.control
 
 import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
+import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.prover.{Interaction, RunStrategy, State}
 import leo.modules.{FVState, GeneralState, myAssert}
 import leo.{Configuration, Out}
@@ -79,8 +80,8 @@ object Control {
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
 
   // Relevance filtering
-  @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjectures: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula])(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
-  @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
+  @inline final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(implicit sig: Signature): Seq[AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
+  @inline final def relevanceFilterAdd(formula: AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
 
   // External prover call
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
@@ -499,7 +500,8 @@ package inferenceControl {
               myAssert(Clause.wellTyped(withClauseSubst))
               myAssert(Literal.wellTyped(withLitSubst))
               if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
-                AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, intermediateClause.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
+                val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
+                res
               } else {
                 leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
                 null
@@ -1085,7 +1087,8 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
+      val res = AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, subst._2, origin.cl.implicitlyBound, origin.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
+      res
     }
 
 
@@ -1228,7 +1231,7 @@ package inferenceControl {
               }
             }
           }
-          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, Subst.id, cw.cl.implicitlyBound, cw.cl.typeVars)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
           Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
@@ -1701,7 +1704,7 @@ package inferenceControl {
       val clIt = cls.iterator
 
       while(clIt.hasNext) {
-        val cl = clIt.next
+        val cl = clIt.next()
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
         leo.Out.finest(s"${cl.pretty(sig)}")
@@ -1949,8 +1952,14 @@ package inferenceControl {
       //        cl
       //      else {
       val simpResult = Simp(cl.cl)
+
+
       val result0 = if (simpResult == cl.cl) cl
-      else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      else AnnotatedClause(simpResult, cl.annotation, addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      /*else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))*/
+      // TODO: Hacky, we let the old clause vanish. This was done because the pretty print routines could not handle non-simped formulas
+      // e.g. with holes in type variables.
+
       val result = result0
       Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
       result
@@ -1964,7 +1973,9 @@ package inferenceControl {
 //      else {
         val simpResult = Simp(cl.cl)
         val result0 = if (simpResult == cl.cl) cl
-        else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        else AnnotatedClause(simpResult, cl.annotation, addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        /* else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))*/
+        // TODO: see above in cheapSimp2
         val result = rewriteClause(result0)(state)
         Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
         result
@@ -2303,7 +2314,7 @@ package inferenceControl {
       if (cA_leibniz) {
         Out.trace(s"[DefEq][LEq] On ${cl.id}: Leibniz equalities found, replacing ...")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][LEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2322,7 +2333,7 @@ package inferenceControl {
       if (cA_Andrews) {
         Out.trace(s"[DefEq][AEq] On ${cl.id}: Andrews equalities found, replacing ...")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][AEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2656,7 +2667,6 @@ package indexingControl {
   }
 
   object RelevanceFilterControl {
-    import leo.datastructures.tptp.Commons.AnnotatedFormula
     import leo.modules.relevance_filter._
 
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(sig: Signature): Seq[AnnotatedFormula] = {

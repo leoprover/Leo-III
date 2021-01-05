@@ -1,6 +1,7 @@
 package leo.modules
 
 import leo.datastructures._
+import TPTP.AnnotatedFormula
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.prover.{FVIndex, RunStrategy}
@@ -69,8 +70,8 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: Set[T]): Unit
 
-  def setFilteredAxioms(axioms: Seq[tptp.Commons.AnnotatedFormula]): Unit
-  def filteredAxioms: Seq[tptp.Commons.AnnotatedFormula]
+  def setFilteredAxioms(axioms: Seq[AnnotatedFormula]): Unit
+  def filteredAxioms: Seq[AnnotatedFormula]
 
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
@@ -156,9 +157,9 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
       s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
   }
 
-  private var filteredAxioms0: Seq[tptp.Commons.AnnotatedFormula] = Seq.empty
-  final def setFilteredAxioms(axioms: Seq[tptp.Commons.AnnotatedFormula]): Unit = {filteredAxioms0 = axioms}
-  final def filteredAxioms: Seq[tptp.Commons.AnnotatedFormula] = filteredAxioms0
+  private var filteredAxioms0: Seq[AnnotatedFormula] = Seq.empty
+  final def setFilteredAxioms(axioms: Seq[AnnotatedFormula]): Unit = {filteredAxioms0 = axioms}
+  final def filteredAxioms: Seq[AnnotatedFormula] = filteredAxioms0
 
   final def isPolymorphic: Boolean = poly
   final def setPolymorphic(): Unit = {poly = true}

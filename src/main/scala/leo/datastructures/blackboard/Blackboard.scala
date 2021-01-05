@@ -122,7 +122,7 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents : Iterable[Agent]
+  def getAgents: Iterable[Agent]
 
   /**
     * Submits a new Task to the list of executable tasks.
@@ -152,7 +152,7 @@ trait DataBlackboard extends TaskOrganize {
    *
    * @param ds is the data structure to be added.
    */
-  def addDS(ds : DataStore)
+  def addDS(ds : DataStore): Unit
 
   /**
    * Adds a data structure to the blackboard.
@@ -161,7 +161,7 @@ trait DataBlackboard extends TaskOrganize {
    *
    * @param ds is the data structure to be added.
    */
-  def rmDS(ds : DataStore)
+  def rmDS(ds : DataStore): Unit
 
   /**
    * For the update phase in the executor.
@@ -275,5 +275,5 @@ trait MessageBlackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  def send(m : Message, to : Agent)
+  def send(m : Message, to : Agent): Unit
 }
