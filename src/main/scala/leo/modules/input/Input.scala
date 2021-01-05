@@ -52,7 +52,7 @@ object Input {
   /**
     * Reads the file located at `file` and parses it recursively using the `TPTP` parser,
     * hence the file needs to be in valid TPTP format (e.g. FOF, THF, ...).
-    * Note that the return value is a sequence of [[leo.datastructures.tptp.Commons.AnnotatedFormula]] since
+    * Note that the return value is a sequence of [[leo.datastructures.TPTP.AnnotatedFormula]] since
     * all includes are automatically parsed exhaustively.
     * If `file` is a relative path, it is assumed to be equivalent to the path
     * `user.dir`/file.
@@ -126,7 +126,7 @@ object Input {
   /**
     * Parses the problem represented by `problem` recursively using the `TPTP` parser,
     * hence the string needs to be in valid TPTP format (e.g. FOF, THF, ...).
-    * Note that the return value is a sequence of [[leo.datastructures.tptp.Commons.AnnotatedFormula]] since
+    * Note that the return value is a sequence of [[leo.datastructures.TPTP.AnnotatedFormula]] since
     * all includes are automatically parsed exhaustively.
     * If the problem contains relative includes they are assumed
     * to be equivalent to includes of `user.dir/...`.
@@ -174,7 +174,7 @@ object Input {
     * @note This method has no side effects.
     *
     * @param file The absolute or relative path to the problem file.
-    * @return The TPTP problem file in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
+    * @return The TPTP problem file in [[leo.datastructures.TPTP.Problem]] representation.
     */
   def parseProblemFileShallow(file: String): TPTP.Problem = {
     try {
@@ -192,7 +192,7 @@ object Input {
     * @note This method has no side effects.
     *
     * @param formula The formula to be parsed
-    * @return The input formula in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
+    * @return The input formula in [[leo.datastructures.TPTP.AnnotatedFormula]] representation.
     */
   def parseAnnotated(formula: String): TPTP.AnnotatedFormula = {
     TPTPParser.annotated(formula)
@@ -206,7 +206,7 @@ object Input {
     *
     * @param formula The formula to be parsed without annotations, i.e. a <thf_logic_formula> as given by
     *                THF BNF.
-    * @return The input formula in internal [[leo.datastructures.tptp.thf.LogicFormula]] representation
+    * @return The input formula in internal [[leo.datastructures.TPTP.THF.Formula]] representation
     * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
     */
   def parseFormula(formula: String): TPTP.THF.Formula = {
@@ -221,11 +221,11 @@ object Input {
 
   /**
     * Convert the problem given by the formulae in `problem` to internal term representation.
-    * Note that the parameter type is `Commons.AnnotatedFormula`, hence
+    * Note that the parameter type is `AnnotatedFormula`, hence
     * all include statements need to be read externally before calling this function.
     *
     * @note  Side effects: Type declarations and definitions within `problem` are added to the signature.
-    * @param problem The input problem in [[leo.datastructures.tptp.Commons.AnnotatedFormula]] representation.
+    * @param problem The input problem in [[leo.datastructures.TPTP.AnnotatedFormula]] representation.
     * @return A triple `(id, term, role)` for each `formula` within
     *         `problem`, such that `id` is the identifier of `formula`, `term` is the respective
     *         [[leo.datastructures.Term]] representation of `formula`, and `role` is the role of `formula`
@@ -241,7 +241,7 @@ object Input {
     * Convert the `formula` to internal term representation.
     *
     * @note Side effects: If `formula` is a type declaration or a definition,
-    * @param formula The input formula in [[leo.datastructures.tptp.Commons.AnnotatedFormula]] representation.
+    * @param formula The input formula in [[leo.datastructures.TPTP.AnnotatedFormula]] representation.
     * @return A triple `(id, term, role)` such that `id` is the identifier of `formula`, `term` is the respective
     *         [[leo.datastructures.Term]] representation of `formula`, and `role` is the role of `formula`
     *         as defined by the TPTP input.
@@ -340,20 +340,13 @@ object Input {
   protected[input] def read0(absolutePath: Path): io.Source = {
     if (absolutePath.toString.matches(urlStartRegex0)) {
       // URL
-//      import java.net.URL
-//      val url = new URL(absolutePath.toString.replaceFirst(":/","://"))
-//      new BufferedReader(new InputStreamReader(url.openStream()))
       io.Source.fromURL(absolutePath.toString.replaceFirst(":/","://"))
     } else {
       if (absolutePath.toString == "-") {
-//        new BufferedReader(new InputStreamReader(System.in))
         io.Source.stdin
       } else if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
         throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist or cannot be read.")
-      } else {
-//        Files.newBufferedReader(absolutePath)
-        io.Source.fromFile(absolutePath.toFile)
-      }
+      } else io.Source.fromFile(absolutePath.toFile)
     }
   }
 }
