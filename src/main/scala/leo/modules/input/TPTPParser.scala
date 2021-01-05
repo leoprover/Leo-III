@@ -72,7 +72,7 @@ object TPTPParser {
   /**
     * Parses an TPTP annotated formula (THF/TFF/FOF/CNF/TPI) given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -85,7 +85,7 @@ object TPTPParser {
   /**
     * Parses an TPTP THF annotated formula given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -98,7 +98,7 @@ object TPTPParser {
   /**
     * Parses an TPTP TFF annotated formula given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -111,7 +111,7 @@ object TPTPParser {
   /**
     * Parses an TPTP FOF annotated formula given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -124,7 +124,7 @@ object TPTPParser {
   /**
     * Parses an TPTP CNF annotated formula given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -137,7 +137,7 @@ object TPTPParser {
   /**
     * Parses an TPTP TPI annotated formula given as String.
     *
-    * @param input The annotated formula as string.
+    * @param annotatedFormula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -151,7 +151,7 @@ object TPTPParser {
   /**
     * Parses a plain THF formula (i.e., without annotations) given as String.
     *
-    * @param input The annotated formula as string.
+    * @param formula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -164,7 +164,7 @@ object TPTPParser {
   /**
     * Parses a plain TFF formula (i.e., without annotations) given as String.
     *
-    * @param input The annotated formula as string.
+    * @param formula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -177,7 +177,7 @@ object TPTPParser {
   /**
     * Parses a plain FOF formula (i.e., without annotations) given as String.
     *
-    * @param input The annotated formula as string.
+    * @param formula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -190,7 +190,7 @@ object TPTPParser {
   /**
     * Parses a plain CNF formula (i.e., without annotations) given as String.
     *
-    * @param input The annotated formula as string.
+    * @param formula The annotated formula as string.
     * @return The parsing result
     * @throws TPTPParseException If an parsing error occurred.
     */
@@ -759,17 +759,15 @@ object TPTPParser {
       }
     }
 
-
     def thfLogicFormula(): THF.Formula = {
       val f1 = thfLogicFormula0()
-      if (tokens.hasNext && peek()._1 == ASSIGNMENT) {
-        consume()
+      if (o(ASSIGNMENT, null) != null) {
         val f2 = thfLogicFormula0()
         THF.BinaryFormula(THF.:=, f1, f2)
       } else f1
     }
 
-    def thfLogicFormula0(): THF.Formula = {
+    private[this] def thfLogicFormula0(): THF.Formula = {
       // We want to eliminate backtracking when parsing THF. So change the grammar interpretation as follows
       // Always read units first (thats everything except binary formulas). Then check for following
       // binary connectives and iteratively parse more units (one if non-assoc, as much as possible if assoc).
@@ -1980,13 +1978,9 @@ object TPTPParser {
       } else null
     }
 
-    private[this] def m(tok: Token, payload: String): Token = {
+    @inline private[this] def m(tok: Token, payload: String): Token = {
       if (tok._2 == payload) tok
       else throw new TPTPParseException(s"Expected '$payload' but read ${tok._1} with value '${tok._2}'", tok._3, tok._4)
     }
-
-  }
-  object TPTPParser {
-
   }
 }

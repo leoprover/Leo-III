@@ -15,8 +15,8 @@ import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
   * - processX: TPTP AST representation -> Term
   * - readX: Raw input (e.g. string) -> Term
   *
-  * The most usual methods may be [[leo.modules.parsers.Input#readProblem]] and
-  * [[leo.modules.parsers.Input#readFormula]] for reading a whole
+  * The most usual methods may be [[Input#readProblem]] and
+  * [[Input#readFormula]] for reading a whole
   * TPTP problem and readling a single formula, respectively.
   *
   * @example {{{implicit val s: Signature = ...
@@ -26,7 +26,7 @@ import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
   * @author Alexander Steen <a.steen@fu-berlin.de>
   * @since 29.04.2015
   * @note Updated February 2017: Overhaul. Adapted to new InputProcessing and new Parser on January 2021.
-  * @see [[leo.datastructures.tptp]]
+  * @see [[leo.datastructures.TPTP]]
   * @see [[leo.datastructures.Term]]
   */
 object Input {
@@ -167,7 +167,7 @@ object Input {
     * Reads the file located at `file`  and shallowly parses it using the `TPTP` parser, hence
     * the file needs to be in valid tptp format (regardless if FOF, TFF, ...).
     * Note that include statements are *NOT* recursively parsed but returned as TPTP
-    * AST instead. For recursive parsing of include statements, use [[leo.modules.parsers.Input#parseProblem]].
+    * AST instead. For recursive parsing of include statements, use [[Input#parseProblem]].
     * If `file` is a relative path, it is assumed to be equivalent to the path
     * `user.dir`/file.
     *
@@ -316,7 +316,7 @@ object Input {
     val parsed = parseFormula(formula)
     InputProcessing.convertTHFFormula(sig)(parsed)
   }
-  /** Synonym for [[leo.modules.parsers.Input#readFormula]]. */
+  /** Synonym for [[Input#readFormula]]. */
   def apply(formula: String)(implicit sig: Signature): Term = readFormula(formula)
 
   final private val urlStartRegex:String  = "(\\w+?:\\/\\/)(.*)"
