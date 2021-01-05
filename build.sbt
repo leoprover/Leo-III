@@ -1,27 +1,20 @@
-import scala.sys.process._
-
-val buildParser = taskKey[Unit]("Run ANTLR parser generation.")
-val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's parser.")
-
-lazy val commonSettings = Seq(
-    version := "1.5",
-    scalaVersion := "2.13.4",
-    organization := "org.leo",
-    test in assembly := {},
-    logLevel := Level.Warn,
-    logLevel in assembly := Level.Error
-)
-
-
-lazy val leo = (project in file(".")).
-  settings(commonSettings:_*).
-  settings(
+lazy val leo = (project in file("."))
+  .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
+    version := "1.5",
+    organization := "org.leo",
+    scalaVersion := "2.13.4",
+
+    test in assembly := {},
+    logLevel := Level.Warn,
+    logLevel in assembly := Level.Error,
     mainClass in (Compile, run) := Some("leo.Main"),
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
+
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
+
     // set stack size to 4m 
     javaOptions += "-Xss4m",
     parallelExecution in Test := false,
