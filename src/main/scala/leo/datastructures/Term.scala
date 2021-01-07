@@ -217,7 +217,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Bound { final def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
+  final object Bound { final def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
 
   /**
    * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
@@ -228,7 +228,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol { final def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
+  final object Symbol { final def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -242,7 +242,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object ∙ { final def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
+  final object ∙ { final def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
 
   /**
    * Pattern for matching a term application (i.e. terms of form `(h ∙ S)`), where
@@ -256,7 +256,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object TermApp {
+  final object TermApp {
     final def unapply(t: Term): Option[(Term, Seq[Term])] = t match {
       case h ∙ sp => if (sp.forall(_.isLeft)) {
                         Some(h, sp.map(_.left.get))
@@ -277,7 +277,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object TypeApp {
+  final object TypeApp {
     final def unapply(t: Term): Option[(Term, Seq[Type])] = t match {
       case h ∙ sp => if (sp.forall(_.isRight)) {
         Some(h, sp.map(_.right.get))
@@ -296,7 +296,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object :::> { final def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
+  final object :::> { final def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
 
   /**
    * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
@@ -307,12 +307,12 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object TypeLambda { final def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
+  final object TypeLambda { final def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
 
   /** A lexicographical ordering of terms. Its definition is arbitrary, but should form
    * a total order on terms.
    * */
-  object LexicographicalOrdering extends Ordering[Term] {
+  final object LexicographicalOrdering extends Ordering[Term] {
 
       private def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
         case (Left(h1) +: t1, Left(h2) +: t2) =>
