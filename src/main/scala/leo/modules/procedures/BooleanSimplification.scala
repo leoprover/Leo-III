@@ -2,7 +2,6 @@ package leo.modules.procedures
 
 import leo.datastructures.{Term, Type}
 import leo.datastructures.Term.local._
-import leo.modules.HOLSignature.HOLUnaryConnective.toTerm
 
 import scala.annotation.switch
 
@@ -117,7 +116,7 @@ object BooleanSimplification {
                   case (_, LitTrue())   => LitTrue
                   case (LitFalse(), _)  => LitTrue
                   case (LitTrue(), r) =>  r
-                  case (l, LitFalse()) =>
+                  case (_, LitFalse()) =>
                     val intermediate = mkTermApp(mkAtom(Not.key, Not.ty), simpLeft)
                     apply0(intermediate, extensional)
                   case (l, r) if l == r => LitTrue()
@@ -130,10 +129,10 @@ object BooleanSimplification {
                 (simpLeft, simpRight) match {
                   case (l, LitTrue())   => l
                   case (LitTrue(), r)   =>  r
-                  case (LitFalse(), r)  =>
+                  case (LitFalse(), _)  =>
                     val intermediate = mkTermApp(mkAtom(Not.key, Not.ty), simpRight)
                     apply0(intermediate, extensional)
-                  case (l, LitFalse())  =>
+                  case (_, LitFalse())  =>
                     val intermediate = mkTermApp(mkAtom(Not.key, Not.ty), simpLeft)
                     apply0(intermediate, extensional)
                   case (l, r) if l == r => LitTrue()
