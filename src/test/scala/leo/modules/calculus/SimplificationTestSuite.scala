@@ -4,15 +4,18 @@ import leo.datastructures.Term._
 import leo.datastructures._
 import leo.modules.HOLSignature._
 import leo.{Checked, LeoTestSuite}
+import leo.modules.input.Input.{readFormula => read}
+import leo.modules.procedures.BooleanSimplification
 
 /**
  * Created by Max Wisniewski on 6/10/14.
  */
 class SimplificationTestSuite extends LeoTestSuite {
-  implicit val s = getFreshSignature
+  implicit val s: Signature = getFreshSignature
 
   val p = mkAtom(s.addUninterpreted("p", o))
   val q = mkAtom(s.addUninterpreted("q", o))
+  val r = mkAtom(s.addUninterpreted("r", o))
 
   val toSimpl : Map[Term,Term] = Map[Term, Term](
     (Not(LitTrue()),LitFalse()),
@@ -35,15 +38,21 @@ class SimplificationTestSuite extends LeoTestSuite {
     (Impl(LitFalse(), p), LitTrue()),
     (Forall(mkTermAbs(o,p)),p),
     (Exists(mkTermAbs(o, p)),p),
-    (Forall(mkTermAbs(o, <=>(mkTermApp(p, mkBound(o,1)), mkTermApp(p, mkBound(o,1))))), LitTrue())
+    (Forall(mkTermAbs(o, <=>(mkTermApp(p, mkBound(o,1)), mkTermApp(p, mkBound(o,1))))), LitTrue()),
+    (read("! [X:$i]: (r = r)"), read("$true")),
+    (read("! [X:$i]: (X = X)"), read("$true")),
+    (read("! [X:$tType]: (r = r)"), read("$true"))
   )
 
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
-    test("Simplification Test: "+t.pretty, Checked) {
-      val st = Simp.normalize(t)
+    test("Simplification Test: "+t.pretty(s), Checked) {
+      val st = BooleanSimplification.apply(t) //Simp.normalize(t)
       println("Simplicifcation: '" + t.pretty(s) + "' was simplified to '" + st.pretty(s))
-      assert(st == t1, "\nThe simplified Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")
+      if (st != t1) {
+        println("The simplified Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")
+        fail()
+      }
     }
   }
 
