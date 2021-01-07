@@ -35,7 +35,7 @@ import scala.annotation.switch
   *
   * @author Alexander Steen
   */
-object BooleanSimplification {
+object BooleanSimplification extends Function1[Term, Term] {
 
   /**
     * Applies Boolean simplification to `term`, using the well-known Boolean identities (or "Boolean laws") as given
@@ -51,6 +51,14 @@ object BooleanSimplification {
     apply0(term0, extensional).betaNormalize
   }
 
+  /**
+    * Applies Boolean simplification to `term`, using the well-known Boolean identities (or "Boolean laws") as given
+    * in the description of [[BooleanSimplification]], including the extensional ones.
+    *
+    * @param term The term to be simplified
+    * @return The term that is created by exhaustively applying all the rewriting rules given in [[BooleanSimplification]].
+    */
+  final def apply(term: Term): Term = apply(term, extensional = true)
 
   // TODO: Check if the four simplifications are really "extensional" and not just straight-forward
   // Boolean (with equality) identities

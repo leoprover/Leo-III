@@ -5,6 +5,7 @@ import leo.datastructures._
 import Term._
 import leo.modules.HOLSignature
 import leo.modules.HOLSignature._
+import leo.modules.procedures.{Miniscoping => Miniscope}
 
 /**
   * Created by mwisnie on 11/15/16.
