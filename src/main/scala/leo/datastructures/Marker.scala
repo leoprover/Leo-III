@@ -1,5 +1,6 @@
 package leo.datastructures
 
+import leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FormulaType
 import leo.modules.output.Output
 
 import scala.annotation.tailrec
@@ -267,7 +268,18 @@ object ClauseAnnotation {
   *
   * @author Alexander Steen
  */
-sealed abstract class LanguageLevel extends TotalPreorder[LanguageLevel]
+sealed abstract class LanguageLevel extends TotalPreorder[LanguageLevel] with Pretty {
+  def flatten: LanguageLevel = this
+}
+object LanguageLevel {
+  final def fromFormulaType(formulaType: FormulaType): LanguageLevel = formulaType match {
+    case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.THF => Lang_HO
+    case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => Lang_ManySortedFO
+    case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => Lang_FO
+    case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.CNF => Lang_Prop
+    case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TPI => Lang_Unknown
+  }
+}
 
 case object Lang_Prop extends LanguageLevel {
   @tailrec final def compare(that: LanguageLevel): Int = that match {
@@ -275,6 +287,7 @@ case object Lang_Prop extends LanguageLevel {
     case Lang_Mixed(greatest) => compare(greatest)
     case _ => -1
   }
+  final def pretty: String = "propositional (TPTP CNF)"
 }
 
 case object Lang_FO extends LanguageLevel {
@@ -284,6 +297,7 @@ case object Lang_FO extends LanguageLevel {
     case Lang_ManySortedFO | Lang_HO => -1
     case Lang_Mixed(greatest) => compare(greatest)
   }
+  final def pretty: String = "first-order (TPTP FOF)"
 }
 
 case object Lang_ManySortedFO extends LanguageLevel {
@@ -293,6 +307,7 @@ case object Lang_ManySortedFO extends LanguageLevel {
     case Lang_HO => -1
     case Lang_Mixed(greatest) => compare(greatest)
   }
+  final def pretty: String = "typed first-order (TPTP TFF)"
 }
 
 case object Lang_HO extends LanguageLevel {
@@ -301,10 +316,14 @@ case object Lang_HO extends LanguageLevel {
     case Lang_Mixed(greatest) => compare(greatest)
     case _ => 1
   }
+  final def pretty: String = "higher-order (TPTP THF)"
 }
 
-case class Lang_Mixed(greatest: LanguageLevel) extends LanguageLevel {
-  final def compare(that: LanguageLevel): Int = greatest.compare(that)
+final case class Lang_Mixed(greatest: LanguageLevel) extends LanguageLevel {
+  def compare(that: LanguageLevel): Int = greatest.compare(that)
+
+  def pretty: String = s"mixed-order [with most expressive language: ${greatest.pretty}]"
+  override def flatten: LanguageLevel = greatest
 }
 
 case object Lang_Unknown extends LanguageLevel {
@@ -312,6 +331,7 @@ case object Lang_Unknown extends LanguageLevel {
     case Lang_Unknown => 0
     case _ => -1
   }
+  def pretty: String = s"of unsupported format"
 }
 
 

@@ -36,21 +36,34 @@ object TPTP {
   ////////////////////////////////////////////////////////////////////////
 
   sealed abstract class AnnotatedFormula extends Pretty {
+    import AnnotatedFormula.FormulaType.FormulaType
+
     type F
     def name: String
     def role: String
     def formula: F
     def annotations: Annotations
 
+    def formulaType: FormulaType
+
     /** Contains every constant symbol (i.e., no variables) occurring in the formula, including term and type symbols. */
     def symbols: Set[String]
   }
+  object AnnotatedFormula {
+    final object FormulaType extends Enumeration {
+      type FormulaType = Value
+      final val THF, TFF, FOF, CNF, TPI = Value
+    }
+  }
+
   final case class THFAnnotated(override val name: String,
                                 override val role: String,
                                 override val formula: THF.Statement,
                                 override val annotations: Annotations) extends AnnotatedFormula {
+    import AnnotatedFormula.FormulaType.FormulaType
     type F = THF.Statement
 
+    def formulaType: FormulaType = AnnotatedFormula.FormulaType.THF
     override def pretty: String = prettifyAnnotated("thf", name, role, formula, annotations)
     override def symbols: Set[String] = formula.symbols
   }
@@ -59,8 +72,10 @@ object TPTP {
                                 override val role: String,
                                 override val formula: TFF.Statement,
                                 override val annotations: Annotations) extends AnnotatedFormula {
+    import AnnotatedFormula.FormulaType.FormulaType
     type F = TFF.Statement
 
+    def formulaType: FormulaType = AnnotatedFormula.FormulaType.TFF
     override def pretty: String = prettifyAnnotated("tff", name, role, formula, annotations)
     override def symbols: Set[String] = formula.symbols
   }
@@ -69,8 +84,10 @@ object TPTP {
                                 override val role: String,
                                 override val formula: FOF.Statement,
                                 override val annotations: Annotations) extends AnnotatedFormula {
+    import AnnotatedFormula.FormulaType.FormulaType
     type F = FOF.Statement
 
+    def formulaType: FormulaType = AnnotatedFormula.FormulaType.FOF
     override def pretty: String = prettifyAnnotated("fof", name, role, formula, annotations)
     override def symbols: Set[String] = formula.symbols
   }
@@ -88,8 +105,10 @@ object TPTP {
                                 override val role: String,
                                 override val formula: CNF.Statement,
                                 override val annotations: Annotations) extends AnnotatedFormula {
+    import AnnotatedFormula.FormulaType.FormulaType
     type F = CNF.Statement
 
+    def formulaType: FormulaType = AnnotatedFormula.FormulaType.CNF
     override def pretty: String = prettifyAnnotated("cnf", name, role, formula, annotations)
     override def symbols: Set[String] = formula.symbols
   }
@@ -98,8 +117,10 @@ object TPTP {
                           override val role: String,
                           override val formula: FOF.Statement,
                           override val annotations: Annotations) extends AnnotatedFormula {
+    import AnnotatedFormula.FormulaType.FormulaType
     type F = FOF.Statement
 
+    def formulaType: FormulaType = AnnotatedFormula.FormulaType.TPI
     override def pretty: String = prettifyAnnotated("tpi", name, role, formula, annotations)
     override def symbols: Set[String] = formula.symbols
   }

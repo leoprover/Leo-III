@@ -61,6 +61,9 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def signature: Signature
 
+  def languageLevel: LanguageLevel
+  def setLanguageLevel(languageLevel: LanguageLevel): Unit
+
   def timeout: Int
   def setTimeout(timeout: Int): Unit
 
@@ -169,6 +172,10 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
 
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
+
+  private[this] var langLevel0: LanguageLevel = Lang_Unknown
+  def languageLevel: LanguageLevel = langLevel0
+  def setLanguageLevel(languageLevel: LanguageLevel): Unit = { langLevel0 = languageLevel  }
 
   final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
   final def initialProblem: Set[T] = initialProblem0

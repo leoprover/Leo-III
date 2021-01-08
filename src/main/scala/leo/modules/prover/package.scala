@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, TPTP}
+import leo.datastructures.{AnnotatedClause, ClauseAnnotation, LanguageLevel, TPTP, Term}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
 import leo.modules.external.TptpResult
@@ -38,10 +38,14 @@ package object prover {
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${state.filteredAxioms.size} axioms).")
-      relevantAxioms.map(ax => processInput(ax, state))
+      val result = relevantAxioms.map(ax => processInput(ax, state))
+      Out.info(s"Problem is ${state.languageLevel.pretty}.")
+      result
     } else {
       Out.info(s"${effectiveInput.size} axioms and no conjecture found.")
-      effectiveInput.map(ax => processInput(ax, state))
+      val result = effectiveInput.map(ax => processInput(ax, state))
+      Out.info(s"Problem is ${state.languageLevel.pretty}.")
+      result
     }
   }
 
@@ -62,11 +66,20 @@ package object prover {
   final private def effectiveInput0(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): (Seq[TPTP.AnnotatedFormula], Seq[TPTP.AnnotatedFormula]) = {
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
+    import leo.datastructures.{Lang_Unknown, Lang_Mixed}
+
     var result: Seq[TPTP.AnnotatedFormula] = Vector.empty
     var conj: Seq[TPTP.AnnotatedFormula] = Vector.empty
     val inputIt = input.iterator
     while (inputIt.hasNext) {
       val formula = inputIt.next()
+      val langLevelFromFormula = LanguageLevel.fromFormulaType(formula.formulaType)
+      if (state.languageLevel == Lang_Unknown) state.setLanguageLevel(langLevelFromFormula)
+      else {
+        val cmp = langLevelFromFormula.compare(state.languageLevel)
+        if (cmp > 0) state.setLanguageLevel(Lang_Mixed(langLevelFromFormula))
+        else if (cmp < 0) state.setLanguageLevel(Lang_Mixed(state.languageLevel.flatten))
+      }
       formula.role match {
         case Role_Type.pretty => Input.processFormula(formula)(state.signature)
         case Role_Definition.pretty =>
