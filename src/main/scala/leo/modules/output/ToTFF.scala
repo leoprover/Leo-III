@@ -23,7 +23,7 @@ object ToTFF {
       sb.append("! [")
       sb.append(tyFvs.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (tyFvs.nonEmpty && fvs.nonEmpty) sb.append(",")
-      val (namedFVEnumeration, fvMap) = clauseVarsToTPTP(fvs, typeToTFF0(_, tyFvs.size))(sig)
+      val (namedFVEnumeration, fvMap) = clauseVarsToTPTP(fvs, typeToTFF0(_)(sig))
       sb.append(namedFVEnumeration)
       sb.append("] : (")
       fvMap
@@ -76,11 +76,11 @@ object ToTFF {
       case `forall` ∙ _ =>
         val (bVarTys, body) = collectForall(t, forall)
         val newBVars = makeBVarList(bVarTys, fvMap.size)
-        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty, tyFvCount)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body)(sig)})"
+        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body)(sig)})"
       case `exists` ∙ _ =>
         val (bVarTys, body0) = collectExists(t, exists)
         val newBVars = makeBVarList(bVarTys, fvMap.size)
-        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty, tyFvCount)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body0)(sig)})"
+        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body0)(sig)})"
       case `tyforall` ∙ _ =>
         val (absCount, body) = collectTyForall(t, tyforall)
         val varlist = (1 to absCount).map(i => intToName(i-1+tyFvCount))
@@ -122,7 +122,7 @@ object ToTFF {
 
   private final def termOrTypeToTFF(fvMap: Map[Int, String],  tyFvCount: Int, termOrType: Either[Term, Type])(sig: Signature): String = {
     if (termOrType.isLeft) termToTFF(fvMap, tyFvCount, termOrType.left.get)(sig)
-    else typeToTFF0(termOrType.right.get, tyFvCount)(sig)
+    else typeToTFF0(termOrType.right.get)(sig)
   }
 
   private final def termToTFF(fvMap: Map[Int, String], tyFvCount: Int, t: Term)(sig: Signature): String = {
@@ -162,18 +162,18 @@ object ToTFF {
     import leo.datastructures.Type.∀
     ty match {
       case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
-        s"!> [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ":$tType").mkString(",")}]: (${typeToTFF0(bodyTy, tyAbsCount)(sig)})"
-      case _ => typeToTFF0(ty,0)(sig)
+        s"!> [${(1 to tyAbsCount).map(i => s"T${intToName(i - 1)}: $$tType").mkString(",")}]: ${typeToTFF0(bodyTy)(sig)}"
+      case _ => typeToTFF0(ty)(sig)
     }
   }
 
-  final private def typeToTFF0(ty: Type, depth: Int)(sig: Signature): String = {
+  final private def typeToTFF0(ty: Type)(sig: Signature): String = {
     import leo.datastructures.Type._
 
     ty match {
-      case BoundType(scope) => "T"+intToName(depth-scope)
+      case BoundType(scope) => "T"+intToName(scope-1)
       case BaseType(id) => tptpEscapeExpression(sig(id).name)
-      case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
+      case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
         val inTypes = paramTypes.init
@@ -183,13 +183,13 @@ object ToTFF {
         if (inTypes.size > 1) sb.append("(")
         while (inTypesIt.hasNext) {
           val inTy = inTypesIt.next()
-          if (inTy.isFunType) sb.append(s"(${typeToTFF0(inTy, depth)(sig)})")
-          else sb.append(typeToTFF0(inTy, depth)(sig))
+          if (inTy.isFunType) sb.append(s"(${typeToTFF0(inTy)(sig)})")
+          else sb.append(typeToTFF0(inTy)(sig))
           if (inTypesIt.hasNext) sb.append("*")
         }
         if (inTypes.size > 1) sb.append(")")
         sb.append(">")
-        sb.append(typeToTFF0(outType, depth)(sig))
+        sb.append(typeToTFF0(outType)(sig))
         sb.toString
       case *(l,r) => ???
       case +(l,r) => ???

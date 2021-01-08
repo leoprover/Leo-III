@@ -242,7 +242,7 @@ object ToTPTP {
       sb.append("! [")
       sb.append(cl.typeVars.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (cl.typeVars.nonEmpty && cl.implicitlyBound.nonEmpty) sb.append(",")
-      val (namedFVEnumeration, bVarMap) = clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.size))(sig)
+      val (namedFVEnumeration, bVarMap) = clauseVarsToTPTP(cl.implicitlyBound, typeToTHF1(_)(sig))
       /* if (cl.typeVars.isEmpty) {
         clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, 0))(sig)
       } else {
@@ -256,7 +256,7 @@ object ToTPTP {
 
     // Output whole tptp thf statement
     val escapedName = tptpEscapeName(name)
-    if (clauseAnnotation == null)
+    val result = if (clauseAnnotation == null)
       s"thf($escapedName,${role.pretty},(${sb.toString}))."
     else {
       if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
@@ -264,6 +264,9 @@ object ToTPTP {
       else
         s"thf($escapedName,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
     }
+    val clauseFreeVars = cl.implicitlyBound.map { case (i,t) => s"$i:${t.pretty(sig)}"}.mkString("[", ",", "]")
+    val clauseFreeTypeVars = cl.typeVars.map(_.toString).mkString("[", ",", "]")
+    s"$result % vars = $clauseFreeVars; tyVars = $clauseFreeTypeVars"
   }
 
   final private def clauseToTPTP(cl: Clause, tyVarCount: Int, bVarMap: Map[Int, String])(sig: Signature): String = {
@@ -330,23 +333,23 @@ object ToTPTP {
       case Forall(_) => val (bVarTys, body) = collectForall(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body,tyVarCount, fusebVarListwithMap(newBVars, bVars))(sig)}"
-          case _ => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body,tyVarCount, fusebVarListwithMap(newBVars, bVars))(sig)})"
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body,tyVarCount, fusebVarListwithMap(newBVars, bVars))(sig)}"
+          case _ => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body,tyVarCount, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
 
       case Exists(_) => val (bVarTys, body) = collectExists(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty,tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)}"
-          case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)})"
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)}"
+          case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)})"
         }
       case TyForall(_) => val (tyAbsCount, body) = collectTyForall(t)
         s"! [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount, bVars)(sig)})"
       case Choice(_) => val (bVarTys, body) = collectChoice(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty,tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)}"
-          case _ => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)})"
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)}"
+          case _ => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)})"
         }
       // Binary connectives
       case t1 ||| t2 => t1 match {
@@ -403,23 +406,28 @@ object ToTPTP {
           val (bVarTys, body) = collectLambdas(t)
           val newBVars = makeBVarList(bVarTys, bVars.size)
           body match {
-            case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)}"
-            case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)})"
+            case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)}"
+            case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF1(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)})"
           }
         }
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
         s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount,bVars)(sig)})"
-      case f ∙ args => args.foldLeft(toTPTP0(f,tyVarCount, bVars)(sig))({case (str, arg) => s"$str @ ${arg.fold(
-        //Translate terms as arguments
-        {
-          case termArg@(Bound(_,_) | Symbol(_)) => toTPTP0(termArg,tyVarCount, bVars)(sig)
-          case termArg => "("+toTPTP0(termArg,tyVarCount, bVars)(sig)+")"
-        },
-        //Translate types as arguments
-        tyArg => typeToTHF0(tyArg, tyVarCount)(sig)
-      )}"})
+      case f ∙ args =>
+        val translatedF = toTPTP0(f,tyVarCount, bVars)(sig)
+        val translatedArgs: Seq[String] = args.map(argToTPTP(_, tyVarCount, bVars)(sig))
+        s"$translatedF @ ${translatedArgs.mkString(" @ ")}"
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
+    }
+  }
+
+  private[this] final def argToTPTP(arg: Either[Term, Type], tyVarCount: Int, bVars: Map[Int, String])(sig: Signature): String = {
+    arg match {
+      case Left(termArg) => termArg match {
+        case Bound(_, _) | Symbol(_) => toTPTP0(termArg,tyVarCount, bVars)(sig)
+        case _ => s"(${toTPTP0(termArg,tyVarCount, bVars)(sig)})"
+      }
+      case Right(tyArg) => typeToTHF1(tyArg)(sig)
     }
   }
 
@@ -439,18 +447,27 @@ object ToTPTP {
 
   final private def typeToTHF(ty: Type)(sig: Signature): String = ty match {
     case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
-      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + typeToTHF0(bodyTy, tyAbsCount)(sig)
-    case _ => typeToTHF0(ty, 0)(sig)
+      s"!> [${(1 to tyAbsCount).map(i => s"T${intToName(i - 1)}: $$tType").mkString(",")}]: ${typeToTHF1(bodyTy)(sig)}"
+//      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + typeToTHF0(bodyTy, tyAbsCount)(sig)
+    case _ => typeToTHF1(ty)(sig)
   }
-  final private def typeToTHF0(ty: Type, depth: Int)(sig: Signature): String = ty match {
+//  final private def typeToTHF0(ty: Type, depth: Int)(sig: Signature): String = ty match {
+//    case BaseType(id) => tptpEscapeExpression(sig(id).name)
+//    case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF0(_, depth)(sig)).mkString(" @ ")})"
+//    case BoundType(scope) => "T" + intToName(depth-scope) // FIXME Holes in tyfvs
+//    case t1 -> t2 => s"(${typeToTHF0(t1, depth)(sig)} > ${typeToTHF0(t2, depth)(sig)})"
+//    case t1 * t2 => s"(${typeToTHF0(t1, depth)(sig)} * ${typeToTHF0(t2, depth)(sig)})"
+//    case t1 + t2 => s"(${typeToTHF0(t1, depth)(sig)} + ${typeToTHF0(t2, depth)(sig)})"
+//    case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
+//  }
+  final private def typeToTHF1(ty: Type)(sig: Signature): String = ty match {
     case BaseType(id) => tptpEscapeExpression(sig(id).name)
-    case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF0(_, depth)(sig)).mkString(" @ ")})"
-    case BoundType(scope) => "T" + intToName(depth-scope) // FIXME Holes in tyfvs
-    case t1 -> t2 => s"(${typeToTHF0(t1, depth)(sig)} > ${typeToTHF0(t2, depth)(sig)})"
-    case t1 * t2 => s"(${typeToTHF0(t1, depth)(sig)} * ${typeToTHF0(t2, depth)(sig)})"
-    case t1 + t2 => s"(${typeToTHF0(t1, depth)(sig)} + ${typeToTHF0(t2, depth)(sig)})"
+    case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF1(_)(sig)).mkString(" @ ")})"
+    case BoundType(scope) => "T" + intToName(scope-1)
+    case t1 -> t2 => s"(${typeToTHF1(t1)(sig)} > ${typeToTHF1(t2)(sig)})"
+    case t1 * t2 => s"(${typeToTHF1(t1)(sig)} * ${typeToTHF1(t2)(sig)})"
+    case t1 + t2 => s"(${typeToTHF1(t1)(sig)} + ${typeToTHF1(t2)(sig)})"
     case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
-    /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
   }
 
   ///////////////////////////////
