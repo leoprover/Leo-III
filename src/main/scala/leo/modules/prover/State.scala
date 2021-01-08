@@ -78,6 +78,9 @@ trait State[T <: ClauseProxy] extends FVState[T] {
     "Or specify it. And implement it.", "Leo III 1.1")
   def copy : State[T]
 
+  def languageLevel: LanguageLevel
+  def setLanguageLevel(languageLevel: LanguageLevel): Unit
+
   /////////////////////
   // Handling of external calls
   /////////////////////
@@ -235,6 +238,10 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   def proof: Proof = proof0
   def setProof(proof: Proof): Unit = {proof0 = proof}
+
+  private[this] var langLevel0: LanguageLevel = Lang_Unknown
+  def languageLevel: LanguageLevel = langLevel0
+  def setLanguageLevel(languageLevel: LanguageLevel): Unit = { langLevel0 = languageLevel  }
 
   override final def copy: State[T] = {
     val state = new StateImpl[T](sig.copy)

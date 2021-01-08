@@ -261,8 +261,9 @@ object ClauseAnnotation {
   *   - [[Lang_Prop]] for CNF problems,
   *   - [[Lang_FO]] for FOF problems,
   *   - [[Lang_ManySortedFO]] for TFF problems,
-  *   - [[Lang_HO]] for TH0 problems, and
-  *   - [[Lang_Mixed]] for mixed input problems (the maximal level is recorded as argument).
+  *   - [[Lang_HO]] for TH0 problems,
+  *   - [[Lang_Mixed]] for mixed input problems (the maximal level is recorded as argument), and
+  *   - [[Lang_Unknown]] for an (yet) unknown kind of problem (replaces null value).
   *
   * @author Alexander Steen
  */
@@ -304,6 +305,13 @@ case object Lang_HO extends LanguageLevel {
 
 case class Lang_Mixed(greatest: LanguageLevel) extends LanguageLevel {
   final def compare(that: LanguageLevel): Int = greatest.compare(that)
+}
+
+case object Lang_Unknown extends LanguageLevel {
+  final def compare(that: LanguageLevel): Int = that match {
+    case Lang_Unknown => 0
+    case _ => -1
+  }
 }
 
 
