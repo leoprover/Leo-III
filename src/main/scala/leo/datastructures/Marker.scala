@@ -2,6 +2,8 @@ package leo.datastructures
 
 import leo.modules.output.Output
 
+import scala.annotation.tailrec
+
 /////////////////////////////////////////////
 // Collection of potentially globally used
 // markers/properties.
@@ -254,42 +256,54 @@ object ClauseAnnotation {
 
 
 /**
- * Marker type for the 'language level' of terms.
- * A Term is flagged `PROPOSITIONAL` iff it is a propositional formula,
- * analogously for `FIRSTORDER` and `HIGHERORDER`.
- *
- * @author Alexander Steen
+  * Marker type for the 'language level' of input problems. Used in the prover state to record
+  * what kind of problem was given to the system. Can be one of:
+  *   - [[Lang_Prop]] for CNF problems,
+  *   - [[Lang_FO]] for FOF problems,
+  *   - [[Lang_ManySortedFO]] for TFF problems,
+  *   - [[Lang_HO]] for TH0 problems, and
+  *   - [[Lang_Mixed]] for mixed input problems (the maximal level is recorded as argument).
+  *
+  * @author Alexander Steen
  */
-sealed abstract class LangOrder extends Ordered[LangOrder]
+sealed abstract class LanguageLevel extends TotalPreorder[LanguageLevel]
 
-case object Lang_Prop extends LangOrder {
-  def compare(that: LangOrder) = that match {
+case object Lang_Prop extends LanguageLevel {
+  @tailrec final def compare(that: LanguageLevel): Int = that match {
     case Lang_Prop => 0
+    case Lang_Mixed(greatest) => compare(greatest)
     case _ => -1
   }
 }
 
-case object Lang_FO extends LangOrder {
-  def compare(that: LangOrder) = that match {
+case object Lang_FO extends LanguageLevel {
+  @tailrec final def compare(that: LanguageLevel): Int = that match {
     case Lang_Prop => 1
     case Lang_FO => 0
     case Lang_ManySortedFO | Lang_HO => -1
+    case Lang_Mixed(greatest) => compare(greatest)
   }
 }
 
-case object Lang_ManySortedFO extends LangOrder {
-  def compare(that: LangOrder) = that match {
+case object Lang_ManySortedFO extends LanguageLevel {
+  @tailrec final def compare(that: LanguageLevel): Int = that match {
     case Lang_Prop | Lang_FO => 1
     case Lang_ManySortedFO => 0
     case Lang_HO => -1
+    case Lang_Mixed(greatest) => compare(greatest)
   }
 }
 
-case object Lang_HO extends LangOrder {
-  def compare(that: LangOrder) = that match {
+case object Lang_HO extends LanguageLevel {
+  @tailrec final def compare(that: LanguageLevel): Int = that match {
     case Lang_HO => 0
+    case Lang_Mixed(greatest) => compare(greatest)
     case _ => 1
   }
+}
+
+case class Lang_Mixed(greatest: LanguageLevel) extends LanguageLevel {
+  final def compare(that: LanguageLevel): Int = greatest.compare(that)
 }
 
 
