@@ -10,11 +10,12 @@ object ModalPreprocessor {
   final def canApply(problem0: Seq[AnnotatedFormula]): Boolean = {
     val maybeLogicSpecification = problem0.find(_.role == "logic")
     if (maybeLogicSpecification.isDefined) maybeLogicSpecification.get.symbols.contains("$modal")
-    else {
-      val symbolsInProblem = problem0.flatMap(_.symbols).toSet
-      val boxSymbol = "$box"; val diamondSymbol = "$dia"
-      symbolsInProblem.contains(boxSymbol) || symbolsInProblem.contains(diamondSymbol)
-    }
+    else false // We require now a logic specification
+//    else {
+//      val symbolsInProblem = problem0.flatMap(_.symbols).toSet
+//      val boxSymbol = "$box"; val diamondSymbol = "$dia"
+//      symbolsInProblem.contains(boxSymbol) || symbolsInProblem.contains(diamondSymbol)
+//    }
   }
 
   final def apply(problem0: Seq[AnnotatedFormula]): Seq[AnnotatedFormula] = {

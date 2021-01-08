@@ -229,7 +229,6 @@ object ToTPTP {
         if (sb.isEmpty) "" else sb.init.toString()
       }
     }
-    val erg00 = apply()
   }
 
   ///////////////////////////////
@@ -243,11 +242,6 @@ object ToTPTP {
       sb.append(cl.typeVars.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (cl.typeVars.nonEmpty && cl.implicitlyBound.nonEmpty) sb.append(",")
       val (namedFVEnumeration, bVarMap) = clauseVarsToTPTP(cl.implicitlyBound, typeToTHF1(_)(sig))
-      /* if (cl.typeVars.isEmpty) {
-        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, 0))(sig)
-      } else {
-        clauseVarsToTPTP(cl.implicitlyBound, typeToTHF0(_, cl.typeVars.max))(sig)
-      }*/
       sb.append(namedFVEnumeration)
       sb.append("] : (")
       sb.append(clauseToTPTP(cl, cl.typeVars.size, bVarMap)(sig))
@@ -256,7 +250,7 @@ object ToTPTP {
 
     // Output whole tptp thf statement
     val escapedName = tptpEscapeName(name)
-    val result = if (clauseAnnotation == null)
+    if (clauseAnnotation == null)
       s"thf($escapedName,${role.pretty},(${sb.toString}))."
     else {
       if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
@@ -264,9 +258,9 @@ object ToTPTP {
       else
         s"thf($escapedName,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
     }
-    val clauseFreeVars = cl.implicitlyBound.map { case (i,t) => s"$i:${t.pretty(sig)}"}.mkString("[", ",", "]")
-    val clauseFreeTypeVars = cl.typeVars.map(_.toString).mkString("[", ",", "]")
-    s"$result % vars = $clauseFreeVars; tyVars = $clauseFreeTypeVars"
+//    val clauseFreeVars = cl.implicitlyBound.map { case (i,t) => s"$i:${t.pretty(sig)}"}.mkString("[", ",", "]")
+//    val clauseFreeTypeVars = cl.typeVars.map(_.toString).mkString("[", ",", "]")
+//    s"$result % vars = $clauseFreeVars; tyVars = $clauseFreeTypeVars"
   }
 
   final private def clauseToTPTP(cl: Clause, tyVarCount: Int, bVarMap: Map[Int, String])(sig: Signature): String = {
@@ -448,18 +442,8 @@ object ToTPTP {
   final private def typeToTHF(ty: Type)(sig: Signature): String = ty match {
     case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
       s"!> [${(1 to tyAbsCount).map(i => s"T${intToName(i - 1)}: $$tType").mkString(",")}]: ${typeToTHF1(bodyTy)(sig)}"
-//      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + typeToTHF0(bodyTy, tyAbsCount)(sig)
     case _ => typeToTHF1(ty)(sig)
   }
-//  final private def typeToTHF0(ty: Type, depth: Int)(sig: Signature): String = ty match {
-//    case BaseType(id) => tptpEscapeExpression(sig(id).name)
-//    case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF0(_, depth)(sig)).mkString(" @ ")})"
-//    case BoundType(scope) => "T" + intToName(depth-scope) // FIXME Holes in tyfvs
-//    case t1 -> t2 => s"(${typeToTHF0(t1, depth)(sig)} > ${typeToTHF0(t2, depth)(sig)})"
-//    case t1 * t2 => s"(${typeToTHF0(t1, depth)(sig)} * ${typeToTHF0(t2, depth)(sig)})"
-//    case t1 + t2 => s"(${typeToTHF0(t1, depth)(sig)} + ${typeToTHF0(t2, depth)(sig)})"
-//    case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
-//  }
   final private def typeToTHF1(ty: Type)(sig: Signature): String = ty match {
     case BaseType(id) => tptpEscapeExpression(sig(id).name)
     case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF1(_)(sig)).mkString(" @ ")})"
