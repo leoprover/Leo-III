@@ -4,7 +4,7 @@ import leo.datastructures._
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, TyForall, Choice, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
+import leo.modules.HOLSignature.{!===, &, <=, <=>, <~>, ===, Choice, Exists, Forall, Impl, LitFalse, Not, TyForall, types, |||, ~&, ~|||}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -195,18 +195,32 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
+  /**
+    * Generate an [[Output]] for substitutions. According to Geoff's proposal .... (e-mail on Oct 26, 2020):
+    *
+    * ```<general_data>         :== bind(<variable>,<formula_data>) | bind_type(<variable>,<bound_type>)```
+    *
+    * ```<bound_type>           ::= $thf(<thf_top_level_type>) | $tff(<tff_top_level_type>)```
+    *
+    *
+    * @param termsubst
+    * @param typesubst
+    * @param implicitlyBound
+    * @param tyVars
+    * @param sig
+    * @return
+    */
+
   final def apply(termsubst: Subst, typesubst: Subst, implicitlyBound: Seq[(Int, Type)], tyVars: Seq[Int])(implicit sig: Signature): Output = new Output {
     override def apply(): String = {
-      if (termsubst.length == 0) {
-        ""
-      } else {
+      var sb = new StringBuilder
+      if (termsubst.length > 0) {
         val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)(sig)
         val varmapMaxKey = if (varmap.nonEmpty) varmap.keySet.max else 0
         val varmapSize = varmap.size
-        val sb = new StringBuilder
         var i = 1
         val max = termsubst.length
-        while (i <= max) {
+        while (i <= max) { // TODO: Clean up this mess.
           if (varmap.keySet.contains(i)) {
             val erg = termsubst.substBndIdx(i)
             try {
@@ -220,14 +234,33 @@ object ToTPTP {
               }
             } catch {
               case e: Exception => leo.Out.warn(s"Could not translate substitution entry to TPTP format, Exception raised:\n${e.toString}")
-                sb.append(s"bind($i, $$thf(${erg.pretty}))")
+                sb.append(s"bind($i, $$$$data(${erg.pretty}))")
             }
-           sb.append(",")
+            sb.append(",")
           }
           i = i + 1
         }
-        if (sb.isEmpty) "" else sb.init.toString()
+        if (sb.nonEmpty) sb = sb.init
       }
+      if (typesubst.length > 0) {
+        if (sb.nonEmpty) sb.append(",")
+        (1 to typesubst.length).foreach { i =>
+          val erg = typesubst.substBndIdx(i)
+          try {
+            erg match {
+              case BoundFront(n) => sb.append(s"bind_type(T${intToName(i-1)},$$thf(T${intToName(n-1)}))")
+              case TermFront(_) => throw new SZSException(SZS_Error, "Term in type substitution")
+              case TypeFront(typ) => sb.append(s"bind_type(T${intToName(i-1)},$$thf(${typeToTHF1(typ)(sig)}))")
+            }
+          } catch {
+            case e: Exception => leo.Out.warn(s"Could not translate substitution entry to TPTP format, Exception raised:\n${e.toString}")
+            sb.append(s"bind_type($i, $$$$data(${erg.pretty}))")
+          }
+          sb.append(",")
+        }
+        if (sb.nonEmpty) sb = sb.init
+      }
+      sb.toString()
     }
   }
 
