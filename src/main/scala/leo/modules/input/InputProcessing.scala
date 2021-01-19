@@ -253,7 +253,7 @@ object InputProcessing {
           }
         } else {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
-          else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
+          else throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$f' is not supported or unknown.")
         }
 
       case Variable(name) =>
@@ -638,7 +638,7 @@ object InputProcessing {
           }
         } else {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
-          else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
+          else throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$f' is not supported or unknown.")
         }
     }
   }
@@ -694,7 +694,7 @@ object InputProcessing {
           }
         } else {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
-          else throw new SZSException(SZS_InputError, s"System symbol or defined (TPTP) symbol '$f' is not supported and/or unknown. Did you spell it correctly?")
+          else throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$f' is not supported or unknown.")
         }
 
       case Variable(name) =>
@@ -801,7 +801,7 @@ object InputProcessing {
           }
         } else {
           if (name.startsWith("$$")) throw new SZSException(SZS_InputError, s"Unknown system type or system type constructor '$name'.")
-          else if (name.startsWith("$")) throw new SZSException(SZS_InputError, s"Unsupported TPTP type or TPTP type constructor '$name'.")
+          else if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"Unsupported TPTP type or TPTP type constructor '$name'.")
           else throw new SZSException(SZS_InputError, s"Unknown type or type constructor '$name'. Please specify its kind first.")
         }
 
