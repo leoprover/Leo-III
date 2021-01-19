@@ -105,7 +105,6 @@ object SeqLoop {
     } catch {
       case e:Exception =>
         Out.trace(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
-        e.printStackTrace()
         throw e
       case e:Error =>
         Out.trace(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
