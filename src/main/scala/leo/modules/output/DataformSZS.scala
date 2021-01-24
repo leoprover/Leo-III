@@ -56,6 +56,11 @@ case object SZS_Proof extends DataformSZS {
   val pretty = "Prf"
 }
 
+case object SZS_Refutation extends DataformSZS {
+  val apply = "Refutation"
+  val pretty = "Ref"
+}
+
 /** A refutation in clause normal form, including, for FOF Ax or C, the
   translation from FOF to CNF (without the FOF to CNF translation it's an
   IncompleteProof). */
