@@ -134,7 +134,8 @@ object InputProcessing {
                                                              vars: Map[String, VariableMarker]): Term = {
     import TPTP.THF.{
       FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
-      Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm
+      Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm,
+      DefinedTH1ConstantTerm
     }
 
     formula match {
@@ -292,6 +293,8 @@ object InputProcessing {
           case binaryConnective: THF.BinaryConnective => convertTHFBinaryConnective(binaryConnective)
         }
 
+      case DefinedTH1ConstantTerm(constant) => convertTH1DefinedConstant(constant)
+
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
 
       case NumberTerm(number) =>
@@ -313,10 +316,17 @@ object InputProcessing {
   //////
 
   private[this] final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
-    import leo.modules.HOLSignature.{Not => not, Forall => forall, Exists => exists, Choice => choice, Description => desc}
+    import leo.modules.HOLSignature.{Not => not}
 
     connective match {
       case TPTP.THF.~ => not
+    }
+  }
+
+  private[this] final def convertTH1DefinedConstant(constant: TPTP.THF.DefinedTH1Constant): HOLUnaryConnective = {
+    import leo.modules.HOLSignature.{Forall => forall, Exists => exists, Choice => choice, Description => desc}
+
+    constant match {
       case TPTP.THF.!! => forall
       case TPTP.THF.?? => exists
       case TPTP.THF.@@+ => choice
