@@ -283,6 +283,7 @@ object LanguageLevel {
 
 case object Lang_Prop extends LanguageLevel {
   @tailrec final def compare(that: LanguageLevel): Int = that match {
+    case Lang_Unknown => 1
     case Lang_Prop => 0
     case Lang_Mixed(greatest) => compare(greatest)
     case _ => -1
@@ -292,6 +293,7 @@ case object Lang_Prop extends LanguageLevel {
 
 case object Lang_FO extends LanguageLevel {
   @tailrec final def compare(that: LanguageLevel): Int = that match {
+    case Lang_Unknown => 1
     case Lang_Prop => 1
     case Lang_FO => 0
     case Lang_ManySortedFO | Lang_HO => -1
@@ -302,7 +304,7 @@ case object Lang_FO extends LanguageLevel {
 
 case object Lang_ManySortedFO extends LanguageLevel {
   @tailrec final def compare(that: LanguageLevel): Int = that match {
-    case Lang_Prop | Lang_FO => 1
+    case Lang_Prop | Lang_FO | Lang_Unknown => 1
     case Lang_ManySortedFO => 0
     case Lang_HO => -1
     case Lang_Mixed(greatest) => compare(greatest)
