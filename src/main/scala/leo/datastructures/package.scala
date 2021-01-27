@@ -67,6 +67,41 @@ package object datastructures {
   // Ordering related library functions
   /////////////////////////////////
 
+  trait TotalPreorder[A] {
+    /** Result of comparing `this` with operand `that`.
+      *
+      * Implement this method to determine how instances of A will be quasisorted.
+      *
+      * Returns `x` where:
+      *
+      *   - `x < 0` when `this < that`
+      *
+      *   - `x == 0` when `this ~ that`
+      *
+      *   - `x > 0` when  `this > that`
+      *
+      *
+      * where `~` is the equivalence relation induced by taking `x ~ y` iff `!(x < y) and !(x > y)`.
+      */
+    def compare(that: A): Int
+
+
+    /** Returns true if `this` is less than `that` */
+    def <  (that: A): Boolean = (this compare that) <  0
+
+    /** Returns true if `this` is greater than `that`. */
+    def >  (that: A): Boolean = (this compare that) >  0
+
+    /** Returns true if `this` is less than or equivalent to `that`. */
+    def <= (that: A): Boolean = (this compare that) <= 0
+
+    /** Returns true if `this` is greater than or equivalent to `that`.  */
+    def >= (that: A): Boolean = (this compare that) >= 0
+
+    /** Returns true if `this` is equivalent to `that`.  */
+    def ~  (that: A): Boolean = (this compare that) == 0
+  }
+
   trait TermOrdering {
     def name: String
     def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result

@@ -52,7 +52,7 @@ package object output {
     *   - map is a function Int -> String where for each i in fv,
     *     map(i) corresponds to the string representation of i in rep.
     */
-  protected[output] final def clauseVarsToTPTP(fvs: Seq[(Int, Type)], typeToTPTP: Type => Signature => String)(sig: Signature): (String, Map[Int, String]) = {
+  protected[output] final def clauseVarsToTPTP(fvs: Seq[(Int, Type)], typeToTPTP: Type => String): (String, Map[Int, String]) = {
     val fvCount = fvs.size
     val sb: StringBuffer = new StringBuffer()
 
@@ -63,7 +63,7 @@ package object output {
       val (scope,ty) = curImplicitlyQuantified.head
       val name = intToName(fvCount - i - 1)
       sb.append(name); sb.append(":")
-      sb.append(typeToTPTP(ty)(sig))
+      sb.append(typeToTPTP(ty))
       resultBindingMap = resultBindingMap + (scope -> name)
 
       curImplicitlyQuantified = curImplicitlyQuantified.tail
