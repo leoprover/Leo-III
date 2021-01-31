@@ -1068,10 +1068,10 @@ object InputProcessing {
   private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
   private[this] case object TypeVariableMarker extends VariableMarker
 
-  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type): Signature.Key = {
+  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, force: Boolean = false): Signature.Key = {
     if (sig.exists(name)) sig(name).key
     else {
-      if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
+      if (name.startsWith("$") && !force) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
       else sig.addUninterpreted(name, ty)
     }
   }
@@ -1092,13 +1092,13 @@ object InputProcessing {
     number match {
       case TPTP.Integer(value) =>
         val constName = s"$$$$int_$value"
-        mkAtom(getOrCreateSymbol(sig)(constName, int))(sig)
+        mkAtom(getOrCreateSymbol(sig)(constName, int, force = true))(sig)
       case TPTP.Rational(numerator, denominator) =>
         val constName = s"$$$$rat_${numerator}_$denominator"
-        mkAtom(getOrCreateSymbol(sig)(constName, rat))(sig)
+        mkAtom(getOrCreateSymbol(sig)(constName, rat, force = true))(sig)
       case TPTP.Real(wholePart, decimalPlaces, exponent) =>
         val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-        mkAtom(getOrCreateSymbol(sig)(constName, real))(sig)
+        mkAtom(getOrCreateSymbol(sig)(constName, real, force = true))(sig)
     }
   }
 
