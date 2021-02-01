@@ -65,9 +65,9 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   protected[impl] def markBetaNormal(): Unit
   protected[impl] def markBetaEtaNormal(): Unit
 
-  final def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
-  final def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
-  final def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
+  final def closure(termSubst: Subst, typeSubst: Subst): Term = TermClos(this, (termSubst, typeSubst))
+  final def termClosure(subst: Subst): Term = TermClos(this, (subst, Subst.id))
+  final def typeClosure(tySubst: Subst): Term = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
 //  override final def hashCode(): Int = super.hashCode()
@@ -120,9 +120,9 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature) = hd.δ_expandable(sig) || args.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(hd.δ_expand(rep)(sig), args.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature) = mkRedex(hd.δ_expand(sig), args.δ_expand(sig))
+  final def δ_expandable(implicit sig: Signature) = hd.defExpandable(sig) || args.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(hd.defExpand(rep)(sig), args.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature) = mkRedex(hd.defExpand(sig), args.δ_expand(sig))
   final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
     case Atom(key,_) if !symbs.contains(key) => {
       val meta = sig(key)
@@ -254,13 +254,13 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
   def etaContract0: TermImpl = Root(hd, args.etaContract)
 
-  final def replace(what: Term, by: Term): Term = if (this == what)
-                                              by
-                                            else
-                                              hd.replace(what, by) match {
-                                                case Some(repl) => Redex(repl, args.replace(what, by))
-                                                case None => Root(hd, args.replace(what, by))
-                                              }
+  final def replace(what: Term, by: Term): Term = {
+    if (this == what) by
+    else {
+      if (hd.toTerm == what) Redex(by, args.replace(what, by))
+      else Root(hd, args.replace(what, by))
+    }
+  }
   final def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
                                                   by
                                                 else
@@ -623,51 +623,58 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 /////////////////////////////////////////////////
 
 protected[impl] sealed abstract class Head extends Pretty with Prettier {
+  import TermImpl.{mkRoot, mkSpineNil}
   // Predicates
   def isBound: Boolean
   def isConstant: Boolean
+  @inline final def isNumber: Boolean = isInteger || isRational || isReal
+  def isInteger: Boolean
+  def isRational: Boolean
+  def isReal: Boolean
 
   // Queries
   def ty: Type
-  final def replace(what: Term, by: Term): Option[Term] = if (TermImpl.headToTerm(this) == what)
-                                              Some(by)
-                                            else
-                                              None
+  final def toTerm: Term = mkRoot(this, mkSpineNil)
 
   // Handling def. expansion
-  def δ_expandable(sig: Signature): Boolean
-  def δ_expand(rep: Int)(sig: Signature): Term
-  def δ_expand(sig: Signature): Term
+  def defExpandable(sig: Signature): Boolean
+  def defExpand(rep: Int)(sig: Signature): Term
+  def defExpand(sig: Signature): Term
 }
 
-protected[impl] case class BoundIndex(ty: Type, scope: Int) extends Head {
+protected[impl] final case class BoundIndex(ty: Type, scope: Int) extends Head {
   // Predicates
-  @inline final val isBound = true
-  @inline final val isConstant = false
+  @inline override def isBound = true
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Handling def. expansion
-  @inline final def δ_expandable(sig: Signature) = false
-  @inline final def δ_expand(rep: Int)(sig: Signature) = δ_expand(sig)
-  @inline final def δ_expand(sig: Signature) = TermImpl.headToTerm(this)
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override lazy val pretty = s"$scope:${ty.pretty}"
-  final def pretty(sig: Signature) = s"$scope:${ty.pretty(sig)}"
+  override def pretty: String = s"$scope:${ty.pretty}"
+  override def pretty(sig: Signature): String = s"$scope:${ty.pretty(sig)}"
 
   // Local definitions
-  final def substitute(s: Subst) = s.substBndIdx(scope)
+  def substitute(s: Subst): Front = s.substBndIdx(scope)
 }
 
 
-protected[impl] case class Atom(id: Signature.Key, ty: Type) extends Head {
-
+protected[impl] final case class Atom(id: Signature.Key, ty: Type) extends Head {
   // Predicates
-  @inline final val isBound = false
-  @inline final val isConstant = true
+  @inline override def isBound = false
+  @inline override def isConstant = true
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Handling def. expansion
-  @inline final def δ_expandable(sig: Signature) = sig(id).hasDefn
-  final def δ_expand(rep: Int)(sig: Signature) = if (rep == 0) TermImpl.headToTerm(this)
+  override def defExpandable(sig: Signature): Boolean = sig(id).hasDefn
+  override def defExpand(rep: Int)(sig: Signature): Term = if (rep == 0) TermImpl.headToTerm(this)
   else if (rep > 0) {
     val meta = sig(id)
     if (meta.hasDefn) meta._defn.δ_expand(rep-1)(sig)
@@ -678,30 +685,99 @@ protected[impl] case class Atom(id: Signature.Key, ty: Type) extends Head {
     if (meta.hasDefn) meta._defn.δ_expand(rep)(sig)
     else TermImpl.headToTerm(this)
   }
-  @inline final def δ_expand(sig: Signature) = δ_expand(-1)(sig)
+  override def defExpand(sig: Signature): Term = defExpand(-1)(sig)
 
   // Pretty printing
-  override lazy val pretty = s"const($id, ${ty.pretty})"
-  final def pretty(sig: Signature) = sig(id).name
+  override def pretty: String = s"const($id, ${ty.pretty})"
+  override def pretty(sig: Signature): String = sig(id).name
+}
+
+protected[impl] final case class Integer(value: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = true
+  @inline override def isRational = false
+  @inline override def isReal = false
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.int
+
+  // Pretty printing
+  override def pretty: String = s"int($value)"
+  override def pretty(sig: Signature): String = pretty
+}
+
+protected[impl] final case class RationalNumber(numerator: Int, denominator: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = true
+  @inline override def isReal = false
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.rat
+
+  // Pretty printing
+  override def pretty: String = s"rat($numerator/$denominator)"
+  override def pretty(sig: Signature): String = pretty
+}
+
+protected[impl] final case class RealNumber(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = true
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.real
+
+  // Pretty printing
+  override def pretty: String = s"real($wholePart.${decimalPlaces}E$exponent)"
+  override def pretty(sig: Signature): String = pretty
 }
 
 
-protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
+protected[impl] final case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
   // Predicates
-  @inline final val isBound = false
-  @inline final val isConstant = false
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Queries
-  final def ty = hd.ty
+  override def ty: Type = hd.ty
 
   // Handling def. expansion
-  final def δ_expandable(sig: Signature) = ???
-  final def δ_expand(rep: Int)(sig: Signature) = ???
-  final def δ_expand(sig: Signature) = ???
+  override def defExpandable(sig: Signature): Boolean = false
+  override def defExpand(rep: Int)(sig: Signature): Term = throw new IllegalArgumentException
+  override def defExpand(sig: Signature): Term = throw new IllegalArgumentException
 
   // Pretty printing
-  final def pretty = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
-  final def pretty(sig: Signature) = s"${hd.pretty(sig)}[${subst._1.pretty}/${subst._2.pretty}}]"
+  override def pretty: String = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
+  override def pretty(sig: Signature): String = s"${hd.pretty(sig)}[${subst._1.pretty}/${subst._2.pretty}}]"
 }
 
 
@@ -1447,5 +1523,6 @@ object TermImpl extends TermBank {
   ////////////////////////////////////////////
   // Utility, night be removed in the future
   ////////////////////////////////////////////
+  @deprecated("headToTerm will be removed at some point, use Head#toTerm instead.", "1.5.X")
   implicit final def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
 }
