@@ -94,36 +94,37 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
 /////////////////////////////////////////////////
 
 /** Representation of terms that are in (weak) head normal form. */
-protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
+protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm, mkRedex, mkRoot}
 
-  final protected[impl] def markBetaNormal(): Unit = {
+  protected[impl] def markBetaNormal(): Unit = {
     this.normal = true
     args.markBetaNormal()
   }
-  final protected[impl] def markBetaEtaNormal(): Unit = {
+  protected[impl] def markBetaEtaNormal(): Unit = {
     this.normal = true; this.etanormal = true
     args.markBetaEtaNormal()
   }
 
   // Predicates on terms
-  final val isAtom = args == SNil
-  final val isConstant = isAtom && hd.isConstant
-  final val isVariable = isAtom && !hd.isConstant
-  final val isTermAbs = false
-  final val isTypeAbs = false
-  final val isApp = args != SNil
+  override def isAtom: Boolean = args == SNil
+  override def isConstant: Boolean = isAtom && hd.isConstant
+  override def isVariable: Boolean = isAtom && hd.isBound
+  override def isNumber: Boolean = isAtom && hd.isNumber
+  override def isTermAbs: Boolean = false
+  override def isTypeAbs: Boolean = false
+  override def isApp: Boolean = args != SNil
 
-  final protected[impl] def flexHead0(depth: Int): Boolean = hd match {
+  override protected[impl] def flexHead0(depth: Int): Boolean = hd match {
     case BoundIndex(_, scope) => scope > depth
     case _ => false
   }
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature) = hd.defExpandable(sig) || args.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(hd.defExpand(rep)(sig), args.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature) = mkRedex(hd.defExpand(sig), args.δ_expand(sig))
-  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
+  override def δ_expandable(implicit sig: Signature): Boolean = hd.defExpandable(sig) || args.δ_expandable(sig)
+  override def δ_expand(rep: Int)(implicit sig: Signature): Term = mkRedex(hd.defExpand(rep)(sig), args.δ_expand(rep)(sig))
+  override def δ_expand(implicit sig: Signature): Term = mkRedex(hd.defExpand(sig), args.δ_expand(sig))
+  override def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
     case Atom(key,_) if !symbs.contains(key) => {
       val meta = sig(key)
       if (meta.hasDefn) {
@@ -136,8 +137,8 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   // Queries on terms
-  lazy val ty = ty0(hd.ty, args)
-  private def ty0(funty: Type, s: Spine): Type = s match {
+  override def ty: Type = ty0(hd.ty, args)
+  @tailrec private[this] def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
       case (t -> out) if t.isProdType => ty0(out, s.drop(t.numberOfComponents))
@@ -145,22 +146,22 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
-      case tt@(∀(body)) => ty0(tt.instantiate(s0), tail)
+      case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
-  lazy val fv: Set[(Int, Type)] = hd match {
+  override lazy val fv: Set[(Int, Type)] = hd match {
     case BoundIndex(ty,i) => args.fv + ((i, ty))
     case _ => args.fv
   }
-  lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
-  def vars0(depth: Int): Multiset[Int] = hd match {
+  override lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
+  override def vars0(depth: Int): Multiset[Int] = hd match {
     case BoundIndex(_, idx) if idx > depth => args.vars0(depth) + (idx-depth)
     case _ => args.vars0(depth)
   }
 
-  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
+  override lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
     hd match {
       case BoundIndex(_,_) => Map()
       case Atom(key,_)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
@@ -175,23 +176,16 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
     }
   }
 
-  lazy val headSymbol = Root(hd, SNil)
-  val headSymbolDepth = 0
-  lazy val feasibleOccurrences = if (args.length == 0)
+  override lazy val headSymbol = Root(hd, SNil)
+  override val headSymbolDepth = 0
+  override lazy val feasibleOccurrences = if (args.length == 0)
     Map(this.asInstanceOf[Term] -> Set(Position.root))
   else
     fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), args.feasibleOccurences)
-  lazy val size = 2 + args.size
-//  def subterm(pos: Position): Term = {
-//    import leo.datastructures.Position._
-//    pos match {
-//      case Position.root => this
-//      case ArgsPos(i) => args.
-//    }
-//  }
+  override lazy val size = 2 + args.size
 
   // Other operations
-  lazy val etaExpand0: TermImpl = {
+  override lazy val etaExpand0: TermImpl = {
     if (hd.ty.isFunType) {
       val hdFunParamTypes = hd.ty.funParamTypes
       if (args.length < hdFunParamTypes.length) {
@@ -244,24 +238,24 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
         Root(hd, args.etaExpand)
     } else this
   }
-  private final def getFirstNTyArgs(sp: Spine, n: Int): (Seq[Type], Spine) = getFirstNTyArgs0(sp, n, Seq())
-  private final def getFirstNTyArgs0(sp: Spine, n: Int, acc: Seq[Type]): (Seq[Type], Spine) = n match {
+  private def getFirstNTyArgs(sp: Spine, n: Int): (Seq[Type], Spine) = getFirstNTyArgs0(sp, n, Seq())
+  private def getFirstNTyArgs0(sp: Spine, n: Int, acc: Seq[Type]): (Seq[Type], Spine) = n match {
     case 0 => (acc.reverse, sp)
     case _ => sp match {
       case TyApp(typ, tail) => getFirstNTyArgs0(tail, n-1, typ +: acc)
       case _ => throw new IllegalArgumentException
     }
   }
-  def etaContract0: TermImpl = Root(hd, args.etaContract)
+  override def etaContract0: TermImpl = Root(hd, args.etaContract)
 
-  final def replace(what: Term, by: Term): Term = {
+  override def replace(what: Term, by: Term): Term = {
     if (this == what) by
     else {
       if (hd.toTerm == what) Redex(by, args.replace(what, by))
       else Root(hd, args.replace(what, by))
     }
   }
-  final def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+  override def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
                                                   by
                                                 else
                                                   at match {
@@ -269,19 +263,19 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
                                                     case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
-  final def normalize(termSubst: Subst, typeSubst: Subst) = {
+  override def normalize(termSubst: Subst, typeSubst: Subst): TermImpl = {
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
 
     hd match {
-      case Atom(_,_)  => Root(hd, normalizeSpine(args,termSubstNF, typeSubstNF))
+      case Atom(_,_) | Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _) => Root(hd, normalizeSpine(args,termSubstNF, typeSubstNF))
       case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
         case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubstNF), j), normalizeSpine(args,termSubstNF, typeSubstNF))
         case TermFront(t) => Redex(t, args).normalize0(Subst.id,Subst.id, termSubstNF, typeSubstNF)
         case _ => throw new IllegalArgumentException("type front found where it was not expected")
       }
       case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
-        case Atom(_,_) => Root(h2, normalizeSpine(args,termSubst, typeSubst))
+        case Atom(_,_) | Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _)  => Root(h2, normalizeSpine(args,termSubst, typeSubst))
         case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
           case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubst2 o typeSubst), j), args.normalize(termSubst, typeSubst))
           case TermFront(t) => Redex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
@@ -295,8 +289,8 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = sp.normalize(termSubst, typeSubst)
 
   /** Pretty */
-  final def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
-  final def pretty(sig: Signature): String = if (args == SNil)
+  override def pretty: String = s"${hd.pretty} ⋅ (${args.pretty})"
+  override def pretty(sig: Signature): String = if (args == SNil)
     s"${hd.pretty(sig)}"
   else
     s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
@@ -318,6 +312,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = false
   @inline final val isApp = true
@@ -410,6 +405,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = true
   @inline final val isTypeAbs = false
   @inline final val isApp = false
@@ -521,6 +517,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = true
   @inline final val isApp = false
@@ -580,6 +577,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = false
   @inline final val isApp = false
@@ -1392,6 +1390,7 @@ object TermImpl extends TermBank {
         val h2 = h match {
           case BoundIndex(ty, scope) => mkBoundAtom(ty, scope)
           case Atom(id,ty) => mkAtom0(id, ty)
+          case Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _) => h
           case hc@HeadClosure(chd, s) => hc // TODO: do we need closures in bank?
         }
         global(mkRoot(h2, sp2))
