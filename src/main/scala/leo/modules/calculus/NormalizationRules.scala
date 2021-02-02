@@ -985,10 +985,12 @@ object Simp extends CalculusRule {
     if (t.sharing) Term.insert(result)
     else result
   }
+  @tailrec private[this] final def gcd(a: Int, b: Int): Int = if (b == 0) a.abs else gcd(b, a % b)
+
   private[this] final def termSimp0(t: Term): Term = {
     import leo.datastructures.Term.local._
     import leo.modules.HOLSignature.<=>
-    import leo.datastructures.Term.{Symbol, ∙}
+    import leo.datastructures.Term.{Symbol, ∙, Rational, Real}
     t match {
       case ty :::> body     => mkTermAbs(ty, termSimp0(body))
       case TypeLambda(body) => mkTypeAbs(termSimp0(body))
@@ -1140,6 +1142,14 @@ object Simp extends CalculusRule {
               val argsSimp = simpList(args)
               mkApp(f, argsSimp)
           }
+        case Rational(n, d) =>
+          assert(args.isEmpty, "Applied arguments to a rational [termSimp0]")
+          val sign: Int = d.sign
+          val greatestCommonDivisor: Int = gcd(n ,d).abs * sign
+          mkRational(n / greatestCommonDivisor, d / greatestCommonDivisor)
+        case Real(w,d,e) =>
+          assert(args.isEmpty, "Applied arguments to a real [termSimp0]")
+          t
         case _          =>
           val argsSimp = simpList(args)
           if (f.isAtom) {
