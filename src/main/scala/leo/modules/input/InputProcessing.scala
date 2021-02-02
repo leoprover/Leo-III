@@ -299,7 +299,7 @@ object InputProcessing {
 
       case NumberTerm(number) =>
         // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-//        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is recognized as a number, but there is no guarantee for completeless whatsoever.")
         convertNumber(sig)(number)
     }
   }
@@ -710,7 +710,7 @@ object InputProcessing {
 
       case NumberTerm(number) =>
         // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-//        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is recognized as a number, but there is no guarantee for completeless whatsoever.")
         Left(convertNumber(sig)(number))
 
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
