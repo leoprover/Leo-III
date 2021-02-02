@@ -475,10 +475,11 @@ object SeqLoop {
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
       try {
-        val proofOutput = userSignatureToTPTP(symbolsInProof(proof))(sig)
+        val proofSignature = userSignatureToTPTP(symbolsInProof(proof))(sig)
         val proofString = if (Configuration.isSet("compressProof")) proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get))
         else proofToTPTP(proof)
-        Out.output(SZSOutput(SZS_Refutation, Configuration.PROBLEMFILE, proofOutput + "\n" + proofString))
+        val proofOutput: String = if (proofSignature.isEmpty) proofString else proofSignature + "\n" + proofString
+        Out.output(SZSOutput(SZS_Refutation, Configuration.PROBLEMFILE, proofOutput))
       } catch {
         case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
           Out.warn(e.toString)
