@@ -167,21 +167,24 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
-  final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
-  final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
-  final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
-  final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
-  final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
-  final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
-  final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
-  final def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
-  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
+  override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
+  override final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
+  override final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
+  override final def mkInteger(n: Int): Term = TermImpl.mkInteger(n)
+  override final def mkRational(numerator: Int, denominator: Int): Term = TermImpl.mkRational(numerator,denominator)
+  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = TermImpl.mkReal(wholePart, decimalPart, exponent)
+  override final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
+  override final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
+  override final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
+  override final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
+  override final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
+  override final def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
+  override final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
 
   // Term bank method delegation
-  final val local: TermFactory = TermImpl.local
-  final def insert(term: Term): Term = TermImpl.insert(term)
-  final def reset(): Unit = TermImpl.reset()
+  override final val local: TermFactory = TermImpl.local
+  override final def insert(term: Term): Term = TermImpl.insert(term)
+  override final def reset(): Unit = TermImpl.reset()
 
   // Utility
   /** Checks if a term is well-typed. Does does check whether free variables
@@ -232,6 +235,10 @@ object Term extends TermBank {
    * }}}
    */
   final object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
+
+  final object Integer { def unapply(t: Term): Option[Int] = TermImpl.integerMatcher(t) }
+  final object Rational { def unapply(t: Term): Option[(Int, Int)] = TermImpl.rationalMatcher(t) }
+  final object Real { def unapply(t: Term): Option[(Int, Int, Int)] = TermImpl.realMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where

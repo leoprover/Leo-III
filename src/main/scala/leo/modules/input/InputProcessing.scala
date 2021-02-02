@@ -1,7 +1,7 @@
 package leo.modules.input
 
-import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTP}
-import leo.datastructures.Term.{mkAtom, mkBound, mkTermApp, mkTypeApp, Λ, λ}
+import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
+import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
@@ -299,7 +299,7 @@ object InputProcessing {
 
       case NumberTerm(number) =>
         // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+//        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
         convertNumber(sig)(number)
     }
   }
@@ -656,7 +656,7 @@ object InputProcessing {
     import TPTP.TFF.{AtomicTerm, Variable, DistinctObject, NumberTerm, Tuple}
 
     term match {
-      case ft@AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
+      case AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
         val meta = sig(getOrCreateSymbolWithWarning(sig)(f, mkSimpleFunctionType(args.size)))
         if (meta.isTypeConstructor) {
           val result = if (args.isEmpty) Type.mkType(meta.key)
@@ -710,7 +710,7 @@ object InputProcessing {
 
       case NumberTerm(number) =>
         // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
+//        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
         Left(convertNumber(sig)(number))
 
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
@@ -1091,14 +1091,17 @@ object InputProcessing {
   @inline private[this] final def convertNumber(sig: Signature)(number: TPTP.Number): Term = {
     number match {
       case TPTP.Integer(value) =>
-        val constName = s"$$$$int_$value"
-        mkAtom(getOrCreateSymbol(sig)(constName, int, force = true))(sig)
+        mkInteger(value)
+//        val constName = s"$$$$int_$value"
+//        mkAtom(getOrCreateSymbol(sig)(constName, int, force = true))(sig)
       case TPTP.Rational(numerator, denominator) =>
-        val constName = s"$$$$rat_${numerator}_$denominator"
-        mkAtom(getOrCreateSymbol(sig)(constName, rat, force = true))(sig)
+        mkRational(numerator, denominator)
+//        val constName = s"$$$$rat_${numerator}_$denominator"
+//        mkAtom(getOrCreateSymbol(sig)(constName, rat, force = true))(sig)
       case TPTP.Real(wholePart, decimalPlaces, exponent) =>
-        val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-        mkAtom(getOrCreateSymbol(sig)(constName, real, force = true))(sig)
+        mkReal(wholePart, decimalPlaces, exponent)
+//        val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
+//        mkAtom(getOrCreateSymbol(sig)(constName, real, force = true))(sig)
     }
   }
 

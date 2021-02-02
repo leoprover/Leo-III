@@ -1303,36 +1303,39 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
-  final val local = new TermFactory {
+  final val local: TermFactory = new TermFactory {
     @inline final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => App(t, sp)})
     @inline final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => TyApp(t, sp)})
     @inline final private def mkGenSpine(args: Seq[Either[Term, Type]]): Spine = args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp)))
 
-    final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
-    final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
-    final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
+    override final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
+    override final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    override final def mkInteger(n: Int): Term = Root(Integer(n), SNil)
+    override final def mkRational(numerator: Int, denominator: Int): Term = Root(RationalNumber(numerator, denominator), SNil)
+    override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
 
-    final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
-    final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+    override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
+    override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
       func else func match {
       case Root(h, SNil) => Root(h, mkSpine(args.toVector))
       case Root(h,sp)  => Root(h,sp ++ mkSpine(args.toVector))
       case Redex(r,sp) => Redex(r, sp ++ mkSpine(args.toVector))
       case other       => Redex(other, mkSpine(args.toVector))
     }
-    final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    override final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
 
-    final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
-    final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
+    override final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
+    override final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
       func else func match {
       case Root(h, SNil) => Root(h, mkTySpine(args.toVector))
       case Root(h,sp)  => Root(h,sp ++ mkTySpine(args.toVector))
       case Redex(r,sp) => Redex(r, sp ++ mkTySpine(args.toVector))
       case other       => Redex(other, mkTySpine(args.toVector))
     }
-    final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
+    override final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
 
-    final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
+    override final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
       func else func match {
         case Root(h, SNil) => Root(h, mkGenSpine(args.toVector))
         case Root(h,sp)  => Root(h,sp ++ mkGenSpine(args.toVector))
@@ -1341,31 +1344,35 @@ object TermImpl extends TermBank {
       }
   }
 
-  final def mkAtom(id: Signature.Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
-  final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
-  final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
+  override final def mkAtom(id: Signature.Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
+  override final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
+  override final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
-  final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+  override final def mkInteger(n: Int): Term = mkRoot(Integer(n), SNil)
+  override final def mkRational(numerator: Int, denominator: Int): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
+  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
+
+  override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
+  override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
     func else func match {
       case Root(h, SNil) => mkRoot(h, mkSpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args.toVector))
       case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args.toVector))
       case other       => mkRedex(other, mkSpine(args.toVector))
     }
-  final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
+  override final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
-  final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
+  override final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
+  override final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args.toVector))
       case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args.toVector))
       case other       => mkRedex(other, mkTySpine(args.toVector))
     }
 
-  final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
+  override final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
 
-  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
+  override final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
     func else func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args.toVector))
@@ -1377,7 +1384,7 @@ object TermImpl extends TermBank {
   // Further TermBank methods
   /////////////////////////////////////////////
 
-  final def insert(term: Term): Term = {
+  override final def insert(term: Term): Term = {
     if (Term.isLocal(term))
       insert0(term)
     else
@@ -1421,7 +1428,7 @@ object TermImpl extends TermBank {
     }
   }
 
-  final def reset(): Unit = {
+  override final def reset(): Unit = {
     boundAtoms.clear()
     symbolAtoms.clear()
     termAbstractions.clear()
@@ -1440,6 +1447,7 @@ object TermImpl extends TermBank {
 
   @tailrec
   final private def wellTyped0(t: TermImpl, boundVars: Map[Int, Type]): Boolean = {
+    import leo.modules.HOLSignature
     t match {
       case Root(hd, args) => hd match {
         case BoundIndex(typ0, scope) => if (boundVars.isDefinedAt(scope)) {
@@ -1452,6 +1460,12 @@ object TermImpl extends TermBank {
         } else true // assume free variables are consistently typed.
         case Atom(_, ty) => // atoms type can be polymorphic
           wellTypedArgCheck(t, ty, args, boundVars, true)
+        case Integer(_) =>
+          wellTypedArgCheck(t, HOLSignature.int, args, boundVars, false)
+        case RationalNumber(_, _) =>
+          wellTypedArgCheck(t, HOLSignature.rat, args, boundVars, false)
+        case RealNumber(_, _, _) =>
+          wellTypedArgCheck(t, HOLSignature.real, args, boundVars, false)
         case _ => throw new IllegalArgumentException("wellTyped0 on this head type currently not supported.")
       }
       case Redex(hd, args) => wellTypedArgCheck(hd, hd.ty, args,boundVars, true) && wellTyped0(hd.asInstanceOf[TermImpl], boundVars)
@@ -1504,8 +1518,20 @@ object TermImpl extends TermBank {
     case Root(Atom(k,_),SNil) => Some(k)
     case _ => None
   }
+  final protected[datastructures] def integerMatcher(t: Term): Option[Int] = t match {
+    case Root(Integer(n),SNil) => Some(n)
+    case _ => None
+  }
+  final protected[datastructures] def rationalMatcher(t: Term): Option[(Int, Int)] = t match {
+    case Root(RationalNumber(n, d),SNil) => Some((n,d))
+    case _ => None
+  }
+  final protected[datastructures] def realMatcher(t: Term): Option[(Int, Int, Int)] = t match {
+    case Root(RealNumber(w, d, e),SNil) => Some((w,d,e))
+    case _ => None
+  }
   final protected[datastructures] def appMatcher(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
-    case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
+    case Root(h, sp) => Some((h.toTerm, sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
     case _ => None
   }
