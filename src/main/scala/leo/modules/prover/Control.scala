@@ -2199,7 +2199,7 @@ package inferenceControl {
         }
         // only reachable if not rewritten so far
         term match {
-          case Bound(_,_) | Symbol(_) => term
+          case Bound(_,_) | Symbol(_) | Integer(_) | Rational(_, _) | Real(_, _, _) => term
           case hd ∙ args =>
             val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed, depth)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
@@ -2992,7 +2992,7 @@ package  externalProverControl {
         } catch {
           case e: Exception =>
             Out.warn(s"Translation of external proof obligation failed for some reason.")
-            Out.debug(e.toString)
+            Out.warn(s"${e.toString}: ${e.getMessage}")
             null
         }
       } else if (proverCaps.contains(FOF)) {
@@ -3011,7 +3011,7 @@ package  externalProverControl {
       try {
         prover.call(referenceProblem, problem, sig, language, timeout, extraArgs)
       } catch {
-        case e: Exception => Out.warn(e.toString); null
+        case e: Exception => Out.warn(e.toString); Out.warn(e.getMessage); null
       }
     }
 

@@ -281,7 +281,7 @@ object Monomorphization {
 
   private final def apply0(t: Term, newSig: Signature, instanceInfo: InstanceInfo)(implicit sig: Signature): Term = {
     import Term.local._
-    import Term.{Symbol, ∙, Bound, :::>}
+    import Term.{Symbol, ∙, Bound, :::>, Integer, Rational, Real}
     leo.Out.finest(s"[Monomorphization] Translate term ${t.pretty(sig)}")
     t match {
       case f ∙ args => f match {
@@ -316,7 +316,8 @@ object Monomorphization {
           val newF = mkBound(convertType(ty, sig, newSig), idx)
           val newArgs = args.map(arg => apply0(arg.left.get, newSig, instanceInfo))
           mkTermApp(newF, newArgs)
-        case _ => throw new IllegalArgumentException
+        case Integer(_) | Rational(_, _) | Real(_, _, _) => f
+        case _ => throw new IllegalArgumentException("apply0 something")
       }
       case ty :::> body =>
         val convertedType = convertType(ty, sig, newSig)
@@ -340,7 +341,7 @@ object Monomorphization {
         val convertedIn = convertType(in, oldSig,newSig)
         val convertedOut = convertType(out, oldSig, newSig)
         mkFunType(convertedIn, convertedOut)
-      case _ => throw new IllegalArgumentException
+      case _ => throw new IllegalArgumentException("convertType(.)")
     }
   }
 

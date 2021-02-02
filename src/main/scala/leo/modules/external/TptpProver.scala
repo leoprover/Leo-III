@@ -87,12 +87,12 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
         writer.print(translatedProblem)
         writer.flush()
       } catch {
-        case e: Exception => leo.Out.warn(e.toString)
+        case e: Exception => leo.Out.warn(e.toString); leo.Out.warn(e.getMessage)
       } finally {
         writer.close()
       }
     } catch {
-      case e: Exception => leo.Out.warn(e.toString)
+      case e: Exception => leo.Out.warn(e.toString); leo.Out.warn(e.getMessage)
     }
     /* invoke prover as external process */
     if (Configuration.isSet("atpdebug")) {
