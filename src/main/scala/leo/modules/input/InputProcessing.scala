@@ -1090,18 +1090,9 @@ object InputProcessing {
 
   @inline private[this] final def convertNumber(sig: Signature)(number: TPTP.Number): Term = {
     number match {
-      case TPTP.Integer(value) =>
-        mkInteger(value)
-//        val constName = s"$$$$int_$value"
-//        mkAtom(getOrCreateSymbol(sig)(constName, int, force = true))(sig)
-      case TPTP.Rational(numerator, denominator) =>
-        mkRational(numerator, denominator)
-//        val constName = s"$$$$rat_${numerator}_$denominator"
-//        mkAtom(getOrCreateSymbol(sig)(constName, rat, force = true))(sig)
-      case TPTP.Real(wholePart, decimalPlaces, exponent) =>
-        mkReal(wholePart, decimalPlaces, exponent)
-//        val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-//        mkAtom(getOrCreateSymbol(sig)(constName, real, force = true))(sig)
+      case TPTP.Integer(value) => mkInteger(value)
+      case TPTP.Rational(numerator, denominator) => mkRational(numerator, denominator)
+      case TPTP.Real(wholePart, decimalPlaces, exponent) => mkReal(wholePart, decimalPlaces, exponent)
     }
   }
 

@@ -353,6 +353,10 @@ object ToTPTP {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
         tptpEscapeExpression(name)
+      // Numbers
+      case Integer(n) => n.toString
+      case Rational(n,d) => s"$n/$d"
+      case Real(w,d,e) => if (e == 0) s"$w.$d" else s"$w.${d}E$e"
       // Give Bound variables names
       case Bound(_, scope) => bVars(scope)
       // Unary connectives
