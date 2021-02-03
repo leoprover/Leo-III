@@ -297,10 +297,7 @@ object InputProcessing {
 
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
 
-      case NumberTerm(number) =>
-        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is recognized as a number, but there is no guarantee for completeless whatsoever.")
-        convertNumber(sig)(number)
+      case NumberTerm(number) => convertNumber(number)
     }
   }
 
@@ -708,10 +705,7 @@ object InputProcessing {
 
       case DistinctObject(name) => Left(mkAtom(getOrCreateSymbol(sig)(name, i))(sig))
 
-      case NumberTerm(number) =>
-        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is recognized as a number, but there is no guarantee for completeless whatsoever.")
-        Left(convertNumber(sig)(number))
+      case NumberTerm(number) => Left(convertNumber(number))
 
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
     }
@@ -938,7 +932,7 @@ object InputProcessing {
         if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term expression.")
         else mkBound(i, index)
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
-      case NumberTerm(value) => convertNumber(sig)(value)
+      case NumberTerm(value) => convertNumber(value)
     }
   }
 
@@ -1088,7 +1082,12 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertNumber(sig: Signature)(number: TPTP.Number): Term = {
+  lazy val numberWarning: Unit = {
+    leo.Out.warn(s"Leo-III currently does not fully support arithmetic. " +
+      s"Numbers in the problem file are recognized, but there is no guarantee for adequateness of processing them whatsoever.")
+  }
+  @inline private[this] final def convertNumber(number: TPTP.Number): Term = {
+    numberWarning
     number match {
       case TPTP.Integer(value) => mkInteger(value)
       case TPTP.Rational(numerator, denominator) => mkRational(numerator, denominator)
