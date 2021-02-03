@@ -2774,11 +2774,11 @@ package  externalProverControl {
         }
       }
 
-      if(Configuration.CONCURRENT_TRANSLATE) {
+      /*if(Configuration.CONCURRENT_TRANSLATE) {
         val maxTrans = Configuration.ATP_MAX_JOBS
         val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
         registerAsyncTranslation(asyncTrans)
-      }
+      }*/
 
       state.setLastCallStat(new MixedInfoLastCallStat)
     }
@@ -3080,7 +3080,6 @@ package  externalProverControl {
 }
 
 package schedulingControl {
-  import leo.modules.agent.multisearch.EquiScheduleImpl
   import leo.modules.control.Control.{RunConfiguration, RunSchedule}
 
   object StrategyControl {
@@ -3162,7 +3161,7 @@ package schedulingControl {
     }
   }
 
-  object ParStrategyControl {
+  /*object ParStrategyControl {
     import leo.modules.agent.multisearch.Schedule
     //TODO  Mintime is set in Schedule!!! Move here
     val STRATEGIES: Seq[RunStrategy] = StrategyControl.STRATEGIES // TODO Own strategies? Reorder?
@@ -3182,5 +3181,5 @@ package schedulingControl {
     final def defaultStrategy: RunStrategy = {
       RunStrategy.defaultStrategy
     }
-  }
+  }*/
 }

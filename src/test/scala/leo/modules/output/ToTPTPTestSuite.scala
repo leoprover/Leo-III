@@ -1,10 +1,8 @@
 package leo.modules.output
 
 import leo.datastructures.ClauseAnnotation.NoAnnotation
-import leo.datastructures.context.Context
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.{Ignored, LeoTestSuite}
-import leo.datastructures.blackboard.Blackboard
 
 /**
 * This suite tests the backward translation of internal formulae.
