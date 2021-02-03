@@ -38,12 +38,13 @@ native:
 		$(GRAALVM_HOME)/bin/native-image -jar bin/leo3.jar \
 		-H:+ReportExceptionStackTraces \
 		-H:Name="leo3-bin" \
-		--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
-		-H:ReflectionConfigurationFiles=${CONTRIB}/graalvm/reflect-config.json \
-		-H:ResourceConfigurationFiles=${CONTRIB}/graalvm/resource-config.json \
+		--initialize-at-build-time=scala.runtime.Statics$$VM \
+		-H:ConfigurationFileDirectories=${CONTRIB}/graalvm/ \
 		-O2 \
 		--no-server \
-		--static
+		--no-fallback \
+		--static \
+		--libc=musl
 		mv leo3-bin bin/leo3-bin
 
 
@@ -53,9 +54,10 @@ native-profile:
 		-H:+ReportExceptionStackTraces \
 		-H:Name="leo3-profile" \
 		--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
-		-H:ReflectionConfigurationFiles=${CONTRIB}/graalvm/reflect-config.json \
-		-H:ResourceConfigurationFiles=${CONTRIB}/graalvm/resource-config.json \
+		--initialize-at-build-time=scala.runtime.Statics$$VM \
+		-H:ConfigurationFileDirectories=${CONTRIB}/graalvm/ \
 		--no-server \
+		--no-fallback \
 		--pgo-instrument
 
 
