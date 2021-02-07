@@ -35,7 +35,7 @@ final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
     val maxSize: Int = Math.min(maxAbsoluteSize, (maxProportion * totatAxiomCount).toInt)
 
     if (zeroStepTriggeredSymbols.nonEmpty) {
-      val maxDepth0: Float = if (maxDepth < 0) Float.PositiveInfinity else maxDepth
+      val maxDepth0: Float = if (maxDepth < 0) Float.PositiveInfinity else maxDepth.toFloat
 
       var depthRemaining: Float = maxDepth0
       var lastSelectedAxiomsSize: Int = -1

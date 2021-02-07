@@ -28,6 +28,12 @@ package object prover {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
+    import leo.modules.relevance.SymbolDistribution
+    val distribution = SymbolDistribution.apply(effectiveInput)
+    distribution.addAll(conjs)
+    println(distribution.toString)
+    System.exit(0)
+
     if (state.negConjecture.nonEmpty) {
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
@@ -127,6 +133,135 @@ package object prover {
       }
     }
     (result,conj)
+  }
+
+  final def effectiveInputNew(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
+    Out.info(s"Parsing finished. Scanning for conjecture ...")
+    val (axioms, definitions, conjectures) = splitInput(input)(state)
+
+    println(state.symbolDistribution.toString)
+    System.exit(0)
+
+    if (state.negConjecture.nonEmpty) {
+      Out.info(s"Found a conjecture and ${axioms.size} axioms. Running axiom selection ...")
+      // Do relevance filtering: Filter hopefully unnecessary axioms
+      val (relevantAxioms, removedAxioms) = Control.getRelevantAxiomsNew(axioms, definitions, conjectures)(state)
+      state.setFilteredAxioms(removedAxioms)
+      Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
+        s"(removed ${removedAxioms.size} axioms).")
+      val result = relevantAxioms.map(ax => processInput(ax, state))
+      Out.info(s"Problem is ${state.languageLevel.pretty}.")
+      result
+    } else {
+      Out.info(s"${axioms.size} axioms and no conjecture found.")
+      val result = axioms.map(ax => processInput(ax, state))
+      Out.info(s"Problem is ${state.languageLevel.pretty}.")
+      result
+    }
+  }
+
+  type Conjecture = TPTP.AnnotatedFormula
+  type Axiom = TPTP.AnnotatedFormula
+  type Definition = (String, TPTP.AnnotatedFormula)
+  final def splitInput(input: Seq[TPTP.AnnotatedFormula])(state: LocalGeneralState): (Seq[Axiom], Seq[Definition], Seq[Conjecture]) = {
+    import leo.datastructures.{Lang_Unknown, Lang_Mixed}
+    import scala.collection.mutable
+
+    val axioms: mutable.ListBuffer[Axiom] = mutable.ListBuffer.empty
+    val defs: mutable.ListBuffer[Definition] = mutable.ListBuffer.empty
+    val conjs: mutable.ListBuffer[Conjecture] = mutable.ListBuffer.empty
+
+    val dist = state.symbolDistribution
+
+    input.foreach { annotatedFormula =>
+      val langLevelFromFormula = LanguageLevel.fromFormulaType(annotatedFormula.formulaType)
+      if (state.languageLevel == Lang_Unknown) state.setLanguageLevel(langLevelFromFormula)
+      else {
+        val cmp = langLevelFromFormula.compare(state.languageLevel)
+        if (cmp > 0) state.setLanguageLevel(Lang_Mixed(langLevelFromFormula))
+        else if (cmp < 0) state.setLanguageLevel(Lang_Mixed(state.languageLevel.flatten))
+      }
+      annotatedFormula.role match {
+        case "type" => Input.processFormula(annotatedFormula)(state.signature)
+        case "definition" =>
+          import leo.datastructures.Role_Definition
+          val res = Input.processFormula(annotatedFormula)(state.signature)
+          if (res._3 != Role_Definition) {
+            // If it is not a definition, then it was not recognized to be one.
+            // So we are treating it like an axiom and add it to the result.
+            dist.add(annotatedFormula)
+            axioms.append(annotatedFormula)
+          } else {
+            val nameSymbols = definitionNameAndSymbols(annotatedFormula)
+            nameSymbols match {
+              case Some((name, symbols)) =>
+                defs.append((name, annotatedFormula))
+                dist.incrementAll(symbols)
+              case None =>
+            }
+          }
+        case "axiom" | "hypothesis" =>
+          dist.add(annotatedFormula)
+          axioms.append(annotatedFormula)
+        case "conjecture" =>
+          if (state.conjecture == null && state.negConjecture.isEmpty) {
+            if (Configuration.CONSISTENCY_CHECK) {
+              Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
+              /* skip */
+            } else {
+              // Convert and negate and add conjecture
+              dist.add(annotatedFormula)
+              val translated = Input.processFormula(annotatedFormula)(state.signature)
+              val conjectureClause = AnnotatedClause(
+                termToClause(translated._2),
+                leo.datastructures.Role_Conjecture,
+                leo.datastructures.ClauseAnnotation.FromFile(Configuration.PROBLEMFILE, translated._1),
+                ClauseAnnotation.PropNoProp
+              )
+              state.setConjecture(conjectureClause)
+              val negConjectureClause = AnnotatedClause(
+                termToClause(translated._2, polarity = false),
+                leo.datastructures.Role_NegConjecture,
+                InferredFrom(NegateConjecture, conjectureClause),
+                ClauseAnnotation.PropSOS
+              )
+              state.addNegConjecture(negConjectureClause)
+              conjs.append(annotatedFormula)
+            }
+          } else throw new SZSException(SZS_InputError, "Problem contains either multiple conjectures or both conjecture and negated_conjecture formulas. This is not allowed.")
+        case "negated_conjecture" =>
+          if (state.conjecture == null) {
+            if (Configuration.CONSISTENCY_CHECK) {
+              Out.info(s"Input (negated) conjecture(s) ignored since 'consistency-only' is set.")
+              /* skip */
+            } else {
+              dist.add(annotatedFormula)
+              val translated = Input.processFormula(annotatedFormula)(state.signature)
+              val negConjectureClause = AnnotatedClause(
+                termToClause(translated._2),
+                leo.datastructures.Role_NegConjecture,
+                leo.datastructures.ClauseAnnotation.FromFile(Configuration.PROBLEMFILE, translated._1),
+                ClauseAnnotation.PropSOS
+              )
+              state.addNegConjecture(negConjectureClause)
+              conjs.append(annotatedFormula)
+            }
+          } else throw new SZSException(SZS_InputError, "Problem contains both conjecture and negated_conjecture formulas. This is not allowed.")
+        case "unknown" => throw new SZSException(SZS_InputError, s"Formula '${annotatedFormula.name}' has role 'unknown' which is regarded an error.")
+        case role => throw new SZSException(SZS_InputError, s"Formula '${annotatedFormula.name}' has unexpected role '$role' and it's not clear how to proceed from here.")
+      }
+    }
+    (axioms.toSeq, defs.toSeq, conjs.toSeq)
+  }
+
+  private final def definitionNameAndSymbols(formula: TPTP.AnnotatedFormula): Option[(String, Set[String])] = {
+    import leo.datastructures.TPTP.THFAnnotated
+    import leo.datastructures.TPTP.THF
+    formula match {
+      case THFAnnotated(_, _, THF.Logical(THF.BinaryFormula(THF.Eq, THF.FunctionTerm(name, Seq()), definition)), _) =>
+        Some(name, definition.symbols)
+      case _ => None
+    }
   }
 
   final private def processInput(input: TPTP.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {

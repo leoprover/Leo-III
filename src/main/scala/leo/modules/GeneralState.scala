@@ -4,6 +4,7 @@ import leo.datastructures._
 import TPTP.AnnotatedFormula
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
+import leo.modules.relevance.SymbolDistribution
 import leo.modules.prover.{FVIndex, RunStrategy}
 
 import scala.collection.mutable
@@ -70,6 +71,7 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def runStrategy: RunStrategy
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
+  def symbolDistribution: SymbolDistribution
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: Set[T]): Unit
 
@@ -117,6 +119,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
   protected var timeout0: Int = _
   protected var domainConstr0 : Map[Type, Set[Term]] = Map()
+  protected val dist0: SymbolDistribution = SymbolDistribution.empty
   val renamingCash : mutable.Map[Term, (Term, Boolean, Boolean)] = mutable.Map()
 
   final def timeout: Int = timeout0
@@ -145,6 +148,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
+  final def symbolDistribution: SymbolDistribution = dist0
   final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0.toSet
   final def defConjSymbols(negConj: Set[T]): Unit = {
     val negConjIt = negConj.iterator

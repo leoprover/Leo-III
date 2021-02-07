@@ -81,6 +81,7 @@ object Control {
 
   // Relevance filtering
   @inline final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(implicit sig: Signature): Seq[AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
+  @inline final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula], definitions: Seq[(String, AnnotatedFormula)], conjectures: Seq[AnnotatedFormula])(implicit state: LocalState): (Seq[AnnotatedFormula], Seq[AnnotatedFormula]) = indexingControl.RelevanceFilterControl.getRelevantAxiomsNew(axioms, definitions, conjectures)(state)
   @inline final def relevanceFilterAdd(formula: AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
 
   // External prover call
@@ -2665,6 +2666,11 @@ package indexingControl {
 
   object RelevanceFilterControl {
     import leo.modules.relevance_filter._
+    import leo.modules.control.Control.LocalState
+
+    final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula], definitions: Seq[(String, AnnotatedFormula)], conjectures: Seq[AnnotatedFormula])(state: LocalState): (Seq[AnnotatedFormula], Seq[AnnotatedFormula]) = {
+      ???
+    }
 
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
