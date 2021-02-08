@@ -4,6 +4,7 @@ import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
 import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.prover.{Interaction, RunStrategy, State}
 import leo.modules.{FVState, GeneralState, myAssert}
+import leo.modules.relevance.AxiomFilterConfig
 import leo.{Configuration, Out}
 
 /**
@@ -80,6 +81,7 @@ object Control {
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
 
   // Relevance filtering
+  @inline final def getBestFilterConfig(state: LocalState): AxiomFilterConfig = indexingControl.RelevanceFilterControl.getBestFilterConfig(state)
   @inline final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(implicit sig: Signature): Seq[AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
   @inline final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula], definitions: Seq[(String, AnnotatedFormula)], conjectures: Seq[AnnotatedFormula])(implicit state: LocalState): (Seq[AnnotatedFormula], Seq[AnnotatedFormula]) = indexingControl.RelevanceFilterControl.getRelevantAxiomsNew(axioms, definitions, conjectures)(state)
   @inline final def relevanceFilterAdd(formula: AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
@@ -2666,10 +2668,49 @@ package indexingControl {
 
   object RelevanceFilterControl {
     import leo.modules.relevance_filter._
+    import leo.modules.relevance._
     import leo.modules.control.Control.LocalState
 
-    final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula], definitions: Seq[(String, AnnotatedFormula)], conjectures: Seq[AnnotatedFormula])(state: LocalState): (Seq[AnnotatedFormula], Seq[AnnotatedFormula]) = {
-      ???
+    final val passingThreshold = 25
+    // Get this from CLI parameter or let Control infer the "best setting"
+    final def getBestFilterConfig(state: LocalState): AxiomFilterConfig = {
+      if (Configuration.NO_AXIOM_SELECTION) NoAxiomFilter
+      else {
+        // If number of axioms below magic threshold, just pass them all.
+        // Otherwise, decide based on problem statistics (now only axiom count, later more complex)
+        val filterconfig = state.problemStatistics match {
+          case n if Configuration.isSet("sine") =>
+            try {
+              val str = Configuration.valueOf("sine").get.head.split(";")
+              val threshold = str(0).toDouble
+              val maxAbsoluteSize = str(1).toInt
+              val maxDepth = str(2).toInt
+              SineConfig(threshold, maxAbsoluteSize, 1, maxDepth)
+            } catch {
+              case _:Exception =>
+                Out.warn("Parsing of --sine parameter failed; use default sine setting.")
+                SineConfig(1.5, 1000, 1, -1)
+            }
+          case n if n <= 100 => SineConfig(5, 1000, 1, -1)
+          case n if n <= 1000 => SineConfig(1.5, 1000, 1, -1)
+          case _ => SineConfig(1.2, 1000, 1, -1)
+        }
+        ThresholdPassFilterConfig(passingThreshold, filterconfig)
+      }
+    }
+
+    final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula],
+                                   definitions: Seq[(String, AnnotatedFormula)],
+                                   conjectures: Seq[AnnotatedFormula])(state: LocalState): (Seq[AnnotatedFormula], Seq[AnnotatedFormula]) = {
+      if (axioms.isEmpty) (axioms, Seq.empty)
+      else {
+          state.getAxiomFilterConfig match {
+          case NoAxiomFilter => (axioms, Seq.empty)
+          case config@ThresholdPassFilterConfig(_, _) => ThresholdPassFilter.apply(axioms, definitions, conjectures)(state.symbolDistribution, config)
+          case config@SineConfig(_, _, _, _) => SineFilter.apply(axioms, definitions, conjectures)(state.symbolDistribution, config)
+          case config@MePoConfig(_, _) => MePoFilter.apply(axioms, definitions, conjectures)(state.symbolDistribution, config)
+        }
+      }
     }
 
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(sig: Signature): Seq[AnnotatedFormula] = {

@@ -4,7 +4,7 @@ import leo.datastructures._
 import TPTP.AnnotatedFormula
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
-import leo.modules.relevance.SymbolDistribution
+import leo.modules.relevance.{SymbolDistribution, AxiomFilterConfig}
 import leo.modules.prover.{FVIndex, RunStrategy}
 
 import scala.collection.mutable
@@ -71,10 +71,14 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def runStrategy: RunStrategy
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
+  def setAxiomCount(count: Int): Unit
+  def problemStatistics: Int // TODO: FOr now, just an int for number of axioms. Later: Aggregate object
   def symbolDistribution: SymbolDistribution
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: Set[T]): Unit
 
+  def setAxiomFilterConfig(filterConfig: AxiomFilterConfig): Unit
+  def getAxiomFilterConfig: AxiomFilterConfig
   def setFilteredAxioms(axioms: Seq[AnnotatedFormula]): Unit
   def filteredAxioms: Seq[AnnotatedFormula]
 
@@ -107,6 +111,7 @@ object GeneralState {
 }
 
 protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) extends GeneralState[T] {
+  import leo.modules.relevance.NoAxiomFilter
   protected var current_szs : StatusSZS = SZS_Unknown
   protected var conjecture0: T = _
   protected val negConjecture0: mutable.Set[T] = mutable.Set.empty
@@ -148,6 +153,9 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
+  private var axiomCount0 = 0
+  def setAxiomCount(count: Int): Unit = {axiomCount0 = count}
+  final def problemStatistics: Int = axiomCount0
   final def symbolDistribution: SymbolDistribution = dist0
   final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0.toSet
   final def defConjSymbols(negConj: Set[T]): Unit = {
@@ -164,6 +172,12 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
       s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
   }
 
+
+  private[this] var axiomfilter0: AxiomFilterConfig = NoAxiomFilter
+  final def setAxiomFilterConfig(filterConfig: AxiomFilterConfig): Unit = {
+    axiomfilter0 = filterConfig
+  }
+  final def getAxiomFilterConfig: AxiomFilterConfig = axiomfilter0
   private var filteredAxioms0: Seq[AnnotatedFormula] = Seq.empty
   final def setFilteredAxioms(axioms: Seq[AnnotatedFormula]): Unit = {filteredAxioms0 = axioms}
   final def filteredAxioms: Seq[AnnotatedFormula] = filteredAxioms0

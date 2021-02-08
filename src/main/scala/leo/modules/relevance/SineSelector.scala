@@ -22,24 +22,26 @@ import scala.collection.mutable
   */
 final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
                          specialAxioms: Seq[AnnotatedFormula],
-                         totatAxiomCount: Int) {
+                         axioms: Seq[AnnotatedFormula],
+                         definitions: Seq[(String, AnnotatedFormula)]) {
 
   def apply(conjectures: Seq[AnnotatedFormula],
-                              maxDepth: Int,
-                              maxProportion: Double,
-                              maxAbsoluteSize: Int): Seq[AnnotatedFormula] = {
+            maxDepth: Int,
+            maxProportion: Double,
+            maxAbsoluteSize: Int): Seq[AnnotatedFormula] = {
     val triggeredSymbols: mutable.Set[String] = mutable.Set.empty
     val triggeredAxioms: mutable.Set[AnnotatedFormula] = mutable.Set.empty // The set of all transitively triggered axiom
     val zeroStepTriggeredSymbols = conjectures.flatMap(_.symbols).distinct // is distinct necessary?
+    val definitionSymbolsMap = Map.from(definitions)
 
-    val maxSize: Int = Math.min(maxAbsoluteSize, (maxProportion * totatAxiomCount).toInt)
+    val maxSize: Int = Math.min(maxAbsoluteSize, (maxProportion * axioms.size).toInt)
 
     if (zeroStepTriggeredSymbols.nonEmpty) {
       val maxDepth0: Float = if (maxDepth < 0) Float.PositiveInfinity else maxDepth.toFloat
 
       var depthRemaining: Float = maxDepth0
       var lastSelectedAxiomsSize: Int = -1
-      var kTriggeredSymbols = zeroStepTriggeredSymbols // initial setting
+      var kTriggeredSymbols = zeroStepTriggeredSymbols.toVector // initial setting
 
       while (depthRemaining > 0 && (triggeredAxioms.size > lastSelectedAxiomsSize)) {
         lastSelectedAxiomsSize = triggeredAxioms.size
@@ -55,7 +57,9 @@ final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
           depthRemaining = 0
         } else {
           triggeredAxioms.addAll(kTriggeredAxioms)
-          kTriggeredSymbols = kTriggeredAxioms.flatMap(_.symbols)
+          // We do not need to remove sym from kTriggeredDefSymbols, as it was already triggered)
+          val kTriggeredDefSymbols = kTriggeredSymbols.flatMap(sym => definitionSymbolsMap.get(sym).fold(Set.empty[String])(_.symbols))
+          kTriggeredSymbols = kTriggeredAxioms.flatMap(_.symbols).concat(kTriggeredDefSymbols)
           depthRemaining = depthRemaining - 1
         }
       }
@@ -76,13 +80,13 @@ final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
   }
 }
 
-// TODO: Add definitions
 object SineSelector {
   type TriggerRelation = Map[String, Seq[AnnotatedFormula]]
 
   final def apply(tolerance: Double,
                   distribution: SymbolDistribution,
-                  axioms: Seq[AnnotatedFormula]): SineSelector = {
+                  axioms: Seq[AnnotatedFormula],
+                  definitions: Seq[(String, AnnotatedFormula)]): SineSelector = {
 
     // triggerRelation: symbol -> set(axioms triggered by symbol)
     val triggerRelation: mutable.Map[String, Seq[AnnotatedFormula]] = mutable.Map.empty
@@ -112,7 +116,7 @@ object SineSelector {
       }
     }
     // That's it!
-    new SineSelector(triggerRelation.toMap.withDefaultValue(Vector.empty),specialAxioms.toSeq, axioms.size)
+    new SineSelector(triggerRelation.toMap.withDefaultValue(Vector.empty),specialAxioms.toSeq, axioms, definitions)
   }
 
   @inline

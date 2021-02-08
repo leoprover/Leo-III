@@ -28,12 +28,6 @@ package object prover {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
-    import leo.modules.relevance.SymbolDistribution
-    val distribution = SymbolDistribution.apply(effectiveInput)
-    distribution.addAll(conjs)
-    println(distribution.toString)
-    System.exit(0)
-
     if (state.negConjecture.nonEmpty) {
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
@@ -139,25 +133,24 @@ package object prover {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (axioms, definitions, conjectures) = splitInput(input)(state)
 
-    println(state.symbolDistribution.toString)
-    System.exit(0)
+    // Set axiom selection filter, after processing of input is done in 'effectiveInput'
+    state.setAxiomFilterConfig(Control.getBestFilterConfig(state))
 
-    if (state.negConjecture.nonEmpty) {
-      Out.info(s"Found a conjecture and ${axioms.size} axioms. Running axiom selection ...")
+    val selectedAxioms = if (state.negConjecture.nonEmpty) {
+      Out.info(s"Found a conjecture and ${axioms.size} axioms. Running axiom selection (using ${state.getAxiomFilterConfig.toString}) ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
       val (relevantAxioms, removedAxioms) = Control.getRelevantAxiomsNew(axioms, definitions, conjectures)(state)
       state.setFilteredAxioms(removedAxioms)
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${removedAxioms.size} axioms).")
-      val result = relevantAxioms.map(ax => processInput(ax, state))
-      Out.info(s"Problem is ${state.languageLevel.pretty}.")
-      result
+      relevantAxioms
     } else {
       Out.info(s"${axioms.size} axioms and no conjecture found.")
-      val result = axioms.map(ax => processInput(ax, state))
-      Out.info(s"Problem is ${state.languageLevel.pretty}.")
-      result
+      axioms
     }
+    val result = selectedAxioms.map(ax => processInput(ax, state))
+    Out.info(s"Problem is ${state.languageLevel.pretty}.")
+    result
   }
 
   type Conjecture = TPTP.AnnotatedFormula
@@ -251,7 +244,8 @@ package object prover {
         case role => throw new SZSException(SZS_InputError, s"Formula '${annotatedFormula.name}' has unexpected role '$role' and it's not clear how to proceed from here.")
       }
     }
-    (axioms.toSeq, defs.toSeq, conjs.toSeq)
+    state.setAxiomCount(axioms.size)
+    (axioms.toVector, defs.toVector, conjs.toVector)
   }
 
   private final def definitionNameAndSymbols(formula: TPTP.AnnotatedFormula): Option[(String, Set[String])] = {
@@ -354,9 +348,9 @@ package object prover {
   }
 
 
-  @tailrec final def exhaustive[T](f: Set[T] => Set[T])(set: Set[T]): Set[T] = {
-    val result = f(set)
-    if (result == set) set
-    else exhaustive(f)(result)
-  }
+//  @tailrec final def exhaustive[T](f: Set[T] => Set[T])(set: Set[T]): Set[T] = {
+//    val result = f(set)
+//    if (result == set) set
+//    else exhaustive(f)(result)
+//  }
 }
