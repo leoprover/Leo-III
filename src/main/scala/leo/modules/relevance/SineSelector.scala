@@ -31,7 +31,7 @@ final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
             maxAbsoluteSize: Int): Seq[AnnotatedFormula] = {
     val triggeredSymbols: mutable.Set[String] = mutable.Set.empty
     val triggeredAxioms: mutable.Set[AnnotatedFormula] = mutable.Set.empty // The set of all transitively triggered axiom
-    val zeroStepTriggeredSymbols = conjectures.flatMap(_.symbols).distinct // is distinct necessary?
+    val zeroStepTriggeredSymbols: Set[String] = conjectures.flatMap(_.symbols).toSet
     val definitionSymbolsMap = Map.from(definitions)
 
     val maxSize: Int = Math.min(maxAbsoluteSize, (maxProportion * axioms.size).toInt)
@@ -41,11 +41,11 @@ final class SineSelector(triggerRelation: SineSelector.TriggerRelation,
 
       var depthRemaining: Float = maxDepth0
       var lastSelectedAxiomsSize: Int = -1
-      var kTriggeredSymbols = zeroStepTriggeredSymbols.toVector // initial setting
+      var kTriggeredSymbols: Set[String] = zeroStepTriggeredSymbols // initial setting
 
       while (depthRemaining > 0 && (triggeredAxioms.size > lastSelectedAxiomsSize)) {
         lastSelectedAxiomsSize = triggeredAxioms.size
-        val kTriggeredAxioms = kTriggeredSymbols.flatMap { symbol =>
+        val kTriggeredAxioms: Set[AnnotatedFormula] = kTriggeredSymbols.flatMap { symbol =>
           if (triggeredSymbols(symbol)) Seq.empty
           else {
             triggeredSymbols.addOne(symbol)

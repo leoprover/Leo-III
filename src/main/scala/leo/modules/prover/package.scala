@@ -143,6 +143,7 @@ package object prover {
       state.setFilteredAxioms(removedAxioms)
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${removedAxioms.size} axioms).")
+      Out.debug(s"Selected axioms: ${relevantAxioms.map(_.name).mkString(",")}")
       relevantAxioms
     } else {
       Out.info(s"${axioms.size} axioms and no conjecture found.")
