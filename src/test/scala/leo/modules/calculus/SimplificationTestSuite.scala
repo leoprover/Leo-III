@@ -5,7 +5,7 @@ import leo.datastructures._
 import leo.modules.HOLSignature._
 import leo.{Checked, LeoTestSuite}
 import leo.modules.input.Input.{readFormula => read}
-import leo.modules.procedures.BooleanSimplification
+import leo.modules.procedures.Simplification
 
 /**
  * Created by Max Wisniewski on 6/10/14.
@@ -47,7 +47,7 @@ class SimplificationTestSuite extends LeoTestSuite {
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
     test("Simplification Test: "+t.pretty(s), Checked) {
-      val st = BooleanSimplification.apply(t) //Simp.normalize(t)
+      val st = Simplification.apply(t) //Simp.normalize(t)
       println("Simplicifcation: '" + t.pretty(s) + "' was simplified to '" + st.pretty(s))
       if (st != t1) {
         println("The simplified Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")

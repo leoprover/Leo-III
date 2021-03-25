@@ -3,12 +3,12 @@ package leo.modules.procedures
 import leo.datastructures.{Term, Type}
 import leo.datastructures.Term.local._
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 /**
-  * Applies Boolean simplification to formulas.
-  * The simplification is defined as the exhaustive recursive transformation of
-  * a formula wrt. to the following rules (where Π denotes universal type quantification):
+  * Applies simplification transformations to formulas/terms.
+  * The simplification result is given by the exhaustive (recursive) application of
+  * the following rules (where Π denotes universal type quantification):
   *
   *   - `s \/ s -> s`
   *   - `~s \/ s -> T`
@@ -30,40 +30,42 @@ import scala.annotation.switch
   *   - `∀x. s -> s` if `x` not free in `s`
   *   - `∃x. s -> s` if `x` not free in `s`
   *   - `Πx. s -> s` if `x` is not free in `s`
+  *   - `n/m -> n'/m'` where `n/m` is a rational number and `n'/m'` is its canonical rational representation
+  *   - `(w,d,e) -> (w',d',e')` where `r = (w,d,e)` is a real number and `r' = (w',d',e')` is its canonical representation
   *
-  * The four cases marked with (*) are only applied if simplifying extensionally, cf. [[BooleanSimplification.apply]].
+  * The four cases marked with (*) are only applied if simplifying extensionally, cf. [[Simplification.apply]].
   *
   * @author Alexander Steen
   */
-object BooleanSimplification extends Function1[Term, Term] {
+object Simplification extends Function1[Term, Term] {
 
   /**
-    * Applies Boolean simplification to `term`, using the well-known Boolean identities (or "Boolean laws") as given
-    * in the description of [[BooleanSimplification]].
+    * Applies simplification to `term` using the transformation rules given in
+    * the description of [[Simplification]].
     *
     * @param term The term to be simplified
     * @param extensional If set to `true`, the term will be simplified using the additional four extensional simplification rules.
-    *                    Default value is `true`.
-    * @return The term that is created by exhaustively applying all the rewriting rules given in [[BooleanSimplification]].
+    *
+    * @return The term that is created by exhaustively applying all the rewriting rules given in [[Simplification]].
     */
-  final def apply(term: Term, extensional: Boolean = true): Term = {
+  final def apply(term: Term, extensional: Boolean): Term = {
     val term0 = term.betaNormalize
     apply0(term0, extensional).betaNormalize
   }
 
   /**
-    * Applies Boolean simplification to `term`, using the well-known Boolean identities (or "Boolean laws") as given
-    * in the description of [[BooleanSimplification]], including the extensional ones.
+    * Applies simplification to `term` using the transformation rules given in
+    * the description of [[Simplification]], including the extensional ones.
     *
     * @param term The term to be simplified
-    * @return The term that is created by exhaustively applying all the rewriting rules given in [[BooleanSimplification]].
+    * @return The term that is created by exhaustively applying all the rewriting rules given in [[Simplification]].
     */
   final def apply(term: Term): Term = apply(term, extensional = true)
 
   // TODO: Check if the four simplifications are really "extensional" and not just straight-forward
   // Boolean (with equality) identities
   private[this] final def apply0(term: Term, extensional: Boolean): Term = {
-    import leo.datastructures.Term.{:::>, TypeLambda, Bound, Symbol, ∙}
+    import leo.datastructures.Term.{:::>, TypeLambda, Bound, Symbol, ∙, Rational, Real}
     import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>}
 
     @inline def simpTermOrType(arg: Either[Term, Type]): Either[Term, Type] = arg match {
@@ -76,6 +78,11 @@ object BooleanSimplification extends Function1[Term, Term] {
       case Symbol(_) => term
       case ty :::> body => mkTermAbs(ty, apply0(body, extensional))
       case TypeLambda(body) => mkTypeAbs(apply0(body, extensional))
+      case Rational(n, d) =>
+        val sign: Int = d.sign
+        val greatestCommonDivisor: Int = gcd(n ,d).abs * sign
+        mkRational(n / greatestCommonDivisor, d / greatestCommonDivisor)
+      case Real(w,d,e) => normalizeReal(w,d,e)
       case f ∙ args if f.isConstant && args.length <= 3 =>
         (f: @unchecked) match {
           case Symbol(id) =>
@@ -165,8 +172,8 @@ object BooleanSimplification extends Function1[Term, Term] {
                 if (extensional) {
                   (simpLeft, simpRight) match {
                     // - `s = T -> s`
-                    case (_, LitTrue()) => simpRight
-                    case (LitTrue(), _) => simpLeft
+                    case (_, LitTrue()) => simpLeft
+                    case (LitTrue(), _) => simpRight
                     // - `s = F -> ~s`
                     case (_, LitFalse()) =>
                       val intermediate = mkTermApp(mkAtom(Not.key, Not.ty), simpLeft)
@@ -245,5 +252,17 @@ object BooleanSimplification extends Function1[Term, Term] {
         // f is a variable or a constant because `term` is in beta nf.
         mkApp(f, args.map(simpTermOrType))
     }
+  }
+
+  @tailrec private[this] final def gcd(a: Int, b: Int): Int = if (b == 0) a.abs else gcd(b, a % b)
+  private[this] final def normalizeReal(wholePart: Int, decimalPlaces: Int, exponent: Int): Term = { // TODO
+    //    val decimalPlacesWithoutTrailingZeroes = if (decimalPlaces != 0) decimalPlaces.toString.reverse.dropWhile(_ == '0').reverse.toInt else 0
+    //    val decimalPlacesWithoutTrailingZeroesLength = decimalPlacesWithoutTrailingZeroes.toString.length
+    //    val wholePartAsString = wholePart.toString
+    //    if (wholePartAsString.length > 3) {
+    //      val (newWholePart, newRest) = wholePartAsString.splitAt(3)
+    //      val newDecimalPlaces = decimalPlaces.toString.prependedAll(newRest)
+    //    }
+    mkReal(wholePart, decimalPlaces, exponent)
   }
 }

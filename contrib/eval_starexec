@@ -56,12 +56,12 @@ with open(inputFile,'r') as f:
             
 for prover in results.keys():
   for config in results[prover].keys():
-    print "-------------------"
-    print prover + " (" + config + ")"
-    print "-------------------"
-    for status,problems in results[prover][config].iteritems():
-      print status + ": " + str(len(problems))
+    print("-------------------")
+    print(prover + " (" + config + ")")
+    print("-------------------")
+    for status,problems in results[prover][config].items():
+      print(status + ": " + str(len(problems)))
       if (verbose):
-        print problems
-    print
+        print(problems)
+    print()
 
