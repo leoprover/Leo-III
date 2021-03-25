@@ -116,7 +116,7 @@ object ToTFF {
           if (args.isEmpty) name
           else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
         }
-      case _ => throw new IllegalArgumentException
+      case _ => throw new IllegalArgumentException("formulaToTFF(.)")
     }
   }
 
@@ -126,18 +126,21 @@ object ToTFF {
   }
 
   private final def termToTFF(fvMap: Map[Int, String], tyFvCount: Int, t: Term)(sig: Signature): String = {
-    import leo.datastructures.Term.{∙, Symbol, Bound}
+    import leo.datastructures.Term.{∙, Symbol, Bound, Integer, Rational, Real}
     val interpretedSymbols = sig.fixedSymbols
     t match {
       case Bound(_, scope) => fvMap(scope)
+      case Integer(n) => n.toString
+      case Rational(n,d) => s"$n/$d"
+      case Real(w,d,e) => if (e == 0) s"$w.$d" else s"$w.${d}E$e"
       case Symbol(id) ∙ args =>
-          if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
+          if (interpretedSymbols.contains(id)) throw new IllegalArgumentException("termToTFF(.) #1")
           else {
             val name = tptpEscapeExpression(sig(id).name)
             if (args.isEmpty) name
             else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
           }
-      case _ => throw new IllegalArgumentException
+      case _ => throw new IllegalArgumentException("termToTFF(.) #2")
     }
   }
 

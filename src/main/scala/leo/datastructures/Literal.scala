@@ -1,5 +1,7 @@
 package leo.datastructures
 
+import scala.annotation.tailrec
+
 /**
  * Interface for literals, companion object `Literal` provides constructor methods.
  *
@@ -387,12 +389,15 @@ object Literal {
   final def distinctSides(l: Literal): Boolean = {
     distinctSides0(l.left, l.right, 0)
   }
-  private final def distinctSides0(left: Term, right: Term, depth: Int): Boolean = {
+  @tailrec final def distinctSides0(left: Term, right: Term, depth: Int): Boolean = {
     import leo.modules.HOLSignature.Not
     import leo.modules.myAssert
-    import leo.datastructures.Term.{Symbol, Bound, :::>}
+    import leo.datastructures.Term.{Symbol, Bound, :::>, Integer, Rational, Real}
     (left, right) match {
       case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= leo.modules.HOLSignature.lastId && idr <= leo.modules.HOLSignature.lastId
+      case (Integer(_), Integer(_)) => left != right
+      case (Rational(_, _), Rational(_, _)) => left != right
+      case (Real(_, _, _), Real(_, _, _)) => left != right
       case (Bound(_, scopeL), Bound(_, scopeR)) if scopeL <= depth && scopeR <= depth => scopeL != scopeR
       case (Not(a),b) if a == b => true
       case (a, Not(b)) if a == b => true

@@ -65,9 +65,9 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   protected[impl] def markBetaNormal(): Unit
   protected[impl] def markBetaEtaNormal(): Unit
 
-  final def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
-  final def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
-  final def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
+  final def closure(termSubst: Subst, typeSubst: Subst): Term = TermClos(this, (termSubst, typeSubst))
+  final def termClosure(subst: Subst): Term = TermClos(this, (subst, Subst.id))
+  final def typeClosure(tySubst: Subst): Term = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
 //  override final def hashCode(): Int = super.hashCode()
@@ -94,36 +94,37 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
 /////////////////////////////////////////////////
 
 /** Representation of terms that are in (weak) head normal form. */
-protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
+protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm, mkRedex, mkRoot}
 
-  final protected[impl] def markBetaNormal(): Unit = {
+  protected[impl] def markBetaNormal(): Unit = {
     this.normal = true
     args.markBetaNormal()
   }
-  final protected[impl] def markBetaEtaNormal(): Unit = {
+  protected[impl] def markBetaEtaNormal(): Unit = {
     this.normal = true; this.etanormal = true
     args.markBetaEtaNormal()
   }
 
   // Predicates on terms
-  final val isAtom = args == SNil
-  final val isConstant = isAtom && hd.isConstant
-  final val isVariable = isAtom && !hd.isConstant
-  final val isTermAbs = false
-  final val isTypeAbs = false
-  final val isApp = args != SNil
+  override def isAtom: Boolean = args == SNil
+  override def isConstant: Boolean = isAtom && hd.isConstant
+  override def isVariable: Boolean = isAtom && hd.isBound
+  override def isNumber: Boolean = isAtom && hd.isNumber
+  override def isTermAbs: Boolean = false
+  override def isTypeAbs: Boolean = false
+  override def isApp: Boolean = args != SNil
 
-  final protected[impl] def flexHead0(depth: Int): Boolean = hd match {
+  override protected[impl] def flexHead0(depth: Int): Boolean = hd match {
     case BoundIndex(_, scope) => scope > depth
     case _ => false
   }
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature) = hd.δ_expandable(sig) || args.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(hd.δ_expand(rep)(sig), args.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature) = mkRedex(hd.δ_expand(sig), args.δ_expand(sig))
-  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
+  override def δ_expandable(implicit sig: Signature): Boolean = hd.defExpandable(sig) || args.δ_expandable(sig)
+  override def δ_expand(rep: Int)(implicit sig: Signature): Term = mkRedex(hd.defExpand(rep)(sig), args.δ_expand(rep)(sig))
+  override def δ_expand(implicit sig: Signature): Term = mkRedex(hd.defExpand(sig), args.δ_expand(sig))
+  override def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
     case Atom(key,_) if !symbs.contains(key) => {
       val meta = sig(key)
       if (meta.hasDefn) {
@@ -136,8 +137,8 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   // Queries on terms
-  lazy val ty = ty0(hd.ty, args)
-  private def ty0(funty: Type, s: Spine): Type = s match {
+  override def ty: Type = ty0(hd.ty, args)
+  @tailrec private[this] def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
       case (t -> out) if t.isProdType => ty0(out, s.drop(t.numberOfComponents))
@@ -145,22 +146,22 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
-      case tt@(∀(body)) => ty0(tt.instantiate(s0), tail)
+      case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
-  lazy val fv: Set[(Int, Type)] = hd match {
+  override lazy val fv: Set[(Int, Type)] = hd match {
     case BoundIndex(ty,i) => args.fv + ((i, ty))
     case _ => args.fv
   }
-  lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
-  def vars0(depth: Int): Multiset[Int] = hd match {
+  override lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
+  override def vars0(depth: Int): Multiset[Int] = hd match {
     case BoundIndex(_, idx) if idx > depth => args.vars0(depth) + (idx-depth)
     case _ => args.vars0(depth)
   }
 
-  lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
+  override lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
     hd match {
       case BoundIndex(_,_) => Map()
       case Atom(key,_)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
@@ -175,23 +176,16 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
     }
   }
 
-  lazy val headSymbol = Root(hd, SNil)
-  val headSymbolDepth = 0
-  lazy val feasibleOccurrences = if (args.length == 0)
+  override lazy val headSymbol = Root(hd, SNil)
+  override val headSymbolDepth = 0
+  override lazy val feasibleOccurrences = if (args.length == 0)
     Map(this.asInstanceOf[Term] -> Set(Position.root))
   else
     fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), args.feasibleOccurences)
-  lazy val size = 2 + args.size
-//  def subterm(pos: Position): Term = {
-//    import leo.datastructures.Position._
-//    pos match {
-//      case Position.root => this
-//      case ArgsPos(i) => args.
-//    }
-//  }
+  override lazy val size = 2 + args.size
 
   // Other operations
-  lazy val etaExpand0: TermImpl = {
+  override lazy val etaExpand0: TermImpl = {
     if (hd.ty.isFunType) {
       val hdFunParamTypes = hd.ty.funParamTypes
       if (args.length < hdFunParamTypes.length) {
@@ -244,24 +238,24 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
         Root(hd, args.etaExpand)
     } else this
   }
-  private final def getFirstNTyArgs(sp: Spine, n: Int): (Seq[Type], Spine) = getFirstNTyArgs0(sp, n, Seq())
-  private final def getFirstNTyArgs0(sp: Spine, n: Int, acc: Seq[Type]): (Seq[Type], Spine) = n match {
+  private def getFirstNTyArgs(sp: Spine, n: Int): (Seq[Type], Spine) = getFirstNTyArgs0(sp, n, Seq())
+  private def getFirstNTyArgs0(sp: Spine, n: Int, acc: Seq[Type]): (Seq[Type], Spine) = n match {
     case 0 => (acc.reverse, sp)
     case _ => sp match {
       case TyApp(typ, tail) => getFirstNTyArgs0(tail, n-1, typ +: acc)
       case _ => throw new IllegalArgumentException
     }
   }
-  def etaContract0: TermImpl = Root(hd, args.etaContract)
+  override def etaContract0: TermImpl = Root(hd, args.etaContract)
 
-  final def replace(what: Term, by: Term): Term = if (this == what)
-                                              by
-                                            else
-                                              hd.replace(what, by) match {
-                                                case Some(repl) => Redex(repl, args.replace(what, by))
-                                                case None => Root(hd, args.replace(what, by))
-                                              }
-  final def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+  override def replace(what: Term, by: Term): Term = {
+    if (this == what) by
+    else {
+      if (hd.toTerm == what) Redex(by, args.replace(what, by))
+      else Root(hd, args.replace(what, by))
+    }
+  }
+  override def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
                                                   by
                                                 else
                                                   at match {
@@ -269,19 +263,19 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
                                                     case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
-  final def normalize(termSubst: Subst, typeSubst: Subst) = {
+  override def normalize(termSubst: Subst, typeSubst: Subst): TermImpl = {
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
 
     hd match {
-      case Atom(_,_)  => Root(hd, normalizeSpine(args,termSubstNF, typeSubstNF))
+      case Atom(_,_) | Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _) => Root(hd, normalizeSpine(args,termSubstNF, typeSubstNF))
       case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
         case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubstNF), j), normalizeSpine(args,termSubstNF, typeSubstNF))
         case TermFront(t) => Redex(t, args).normalize0(Subst.id,Subst.id, termSubstNF, typeSubstNF)
         case _ => throw new IllegalArgumentException("type front found where it was not expected")
       }
       case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
-        case Atom(_,_) => Root(h2, normalizeSpine(args,termSubst, typeSubst))
+        case Atom(_,_) | Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _)  => Root(h2, normalizeSpine(args,termSubst, typeSubst))
         case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
           case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubst2 o typeSubst), j), args.normalize(termSubst, typeSubst))
           case TermFront(t) => Redex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
@@ -295,8 +289,8 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = sp.normalize(termSubst, typeSubst)
 
   /** Pretty */
-  final def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
-  final def pretty(sig: Signature): String = if (args == SNil)
+  override def pretty: String = s"${hd.pretty} ⋅ (${args.pretty})"
+  override def pretty(sig: Signature): String = if (args == SNil)
     s"${hd.pretty(sig)}"
   else
     s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
@@ -318,6 +312,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = false
   @inline final val isApp = true
@@ -410,6 +405,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = true
   @inline final val isTypeAbs = false
   @inline final val isApp = false
@@ -521,6 +517,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = true
   @inline final val isApp = false
@@ -580,6 +577,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   @inline final val isAtom = false
   @inline final val isConstant = false
   @inline final val isVariable = false
+  @inline final def isNumber: Boolean = false
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = false
   @inline final val isApp = false
@@ -623,51 +621,58 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 /////////////////////////////////////////////////
 
 protected[impl] sealed abstract class Head extends Pretty with Prettier {
+  import TermImpl.{mkRoot, mkSpineNil}
   // Predicates
   def isBound: Boolean
   def isConstant: Boolean
+  @inline final def isNumber: Boolean = isInteger || isRational || isReal
+  def isInteger: Boolean
+  def isRational: Boolean
+  def isReal: Boolean
 
   // Queries
   def ty: Type
-  final def replace(what: Term, by: Term): Option[Term] = if (TermImpl.headToTerm(this) == what)
-                                              Some(by)
-                                            else
-                                              None
+  final def toTerm: Term = mkRoot(this, mkSpineNil)
 
   // Handling def. expansion
-  def δ_expandable(sig: Signature): Boolean
-  def δ_expand(rep: Int)(sig: Signature): Term
-  def δ_expand(sig: Signature): Term
+  def defExpandable(sig: Signature): Boolean
+  def defExpand(rep: Int)(sig: Signature): Term
+  def defExpand(sig: Signature): Term
 }
 
-protected[impl] case class BoundIndex(ty: Type, scope: Int) extends Head {
+protected[impl] final case class BoundIndex(ty: Type, scope: Int) extends Head {
   // Predicates
-  @inline final val isBound = true
-  @inline final val isConstant = false
+  @inline override def isBound = true
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Handling def. expansion
-  @inline final def δ_expandable(sig: Signature) = false
-  @inline final def δ_expand(rep: Int)(sig: Signature) = δ_expand(sig)
-  @inline final def δ_expand(sig: Signature) = TermImpl.headToTerm(this)
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override lazy val pretty = s"$scope:${ty.pretty}"
-  final def pretty(sig: Signature) = s"$scope:${ty.pretty(sig)}"
+  override def pretty: String = s"$scope:${ty.pretty}"
+  override def pretty(sig: Signature): String = s"$scope:${ty.pretty(sig)}"
 
   // Local definitions
-  final def substitute(s: Subst) = s.substBndIdx(scope)
+  def substitute(s: Subst): Front = s.substBndIdx(scope)
 }
 
 
-protected[impl] case class Atom(id: Signature.Key, ty: Type) extends Head {
-
+protected[impl] final case class Atom(id: Signature.Key, ty: Type) extends Head {
   // Predicates
-  @inline final val isBound = false
-  @inline final val isConstant = true
+  @inline override def isBound = false
+  @inline override def isConstant = true
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Handling def. expansion
-  @inline final def δ_expandable(sig: Signature) = sig(id).hasDefn
-  final def δ_expand(rep: Int)(sig: Signature) = if (rep == 0) TermImpl.headToTerm(this)
+  override def defExpandable(sig: Signature): Boolean = sig(id).hasDefn
+  override def defExpand(rep: Int)(sig: Signature): Term = if (rep == 0) TermImpl.headToTerm(this)
   else if (rep > 0) {
     val meta = sig(id)
     if (meta.hasDefn) meta._defn.δ_expand(rep-1)(sig)
@@ -678,30 +683,99 @@ protected[impl] case class Atom(id: Signature.Key, ty: Type) extends Head {
     if (meta.hasDefn) meta._defn.δ_expand(rep)(sig)
     else TermImpl.headToTerm(this)
   }
-  @inline final def δ_expand(sig: Signature) = δ_expand(-1)(sig)
+  override def defExpand(sig: Signature): Term = defExpand(-1)(sig)
 
   // Pretty printing
-  override lazy val pretty = s"const($id, ${ty.pretty})"
-  final def pretty(sig: Signature) = sig(id).name
+  override def pretty: String = s"const($id, ${ty.pretty})"
+  override def pretty(sig: Signature): String = sig(id).name
+}
+
+protected[impl] final case class Integer(value: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = true
+  @inline override def isRational = false
+  @inline override def isReal = false
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.int
+
+  // Pretty printing
+  override def pretty: String = s"int($value)"
+  override def pretty(sig: Signature): String = pretty
+}
+
+protected[impl] final case class RationalNumber(numerator: Int, denominator: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = true
+  @inline override def isReal = false
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.rat
+
+  // Pretty printing
+  override def pretty: String = s"rat($numerator/$denominator)"
+  override def pretty(sig: Signature): String = pretty
+}
+
+protected[impl] final case class RealNumber(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Head {
+  import leo.modules.HOLSignature
+  // Predicates
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = true
+
+  // Handling def. expansion
+  @inline def defExpandable(sig: Signature): Boolean = false
+  @inline def defExpand(rep: Int)(sig: Signature): Term = defExpand(sig)
+  @inline def defExpand(sig: Signature): Term = TermImpl.headToTerm(this)
+
+  // Queries
+  override def ty: Type = HOLSignature.real
+
+  // Pretty printing
+  override def pretty: String = s"real($wholePart.${decimalPlaces}E$exponent)"
+  override def pretty(sig: Signature): String = pretty
 }
 
 
-protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
+protected[impl] final case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
   // Predicates
-  @inline final val isBound = false
-  @inline final val isConstant = false
+  @inline override def isBound = false
+  @inline override def isConstant = false
+  @inline override def isInteger = false
+  @inline override def isRational = false
+  @inline override def isReal = false
 
   // Queries
-  final def ty = hd.ty
+  override def ty: Type = hd.ty
 
   // Handling def. expansion
-  final def δ_expandable(sig: Signature) = ???
-  final def δ_expand(rep: Int)(sig: Signature) = ???
-  final def δ_expand(sig: Signature) = ???
+  override def defExpandable(sig: Signature): Boolean = false
+  override def defExpand(rep: Int)(sig: Signature): Term = throw new IllegalArgumentException
+  override def defExpand(sig: Signature): Term = throw new IllegalArgumentException
 
   // Pretty printing
-  final def pretty = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
-  final def pretty(sig: Signature) = s"${hd.pretty(sig)}[${subst._1.pretty}/${subst._2.pretty}}]"
+  override def pretty: String = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
+  override def pretty(sig: Signature): String = s"${hd.pretty(sig)}[${subst._1.pretty}/${subst._2.pretty}}]"
 }
 
 
@@ -1229,36 +1303,39 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
-  final val local = new TermFactory {
+  final val local: TermFactory = new TermFactory {
     @inline final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => App(t, sp)})
     @inline final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => TyApp(t, sp)})
     @inline final private def mkGenSpine(args: Seq[Either[Term, Type]]): Spine = args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp)))
 
-    final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
-    final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
-    final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
+    override final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
+    override final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    override final def mkInteger(n: Int): Term = Root(Integer(n), SNil)
+    override final def mkRational(numerator: Int, denominator: Int): Term = Root(RationalNumber(numerator, denominator), SNil)
+    override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
 
-    final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
-    final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+    override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
+    override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
       func else func match {
       case Root(h, SNil) => Root(h, mkSpine(args.toVector))
       case Root(h,sp)  => Root(h,sp ++ mkSpine(args.toVector))
       case Redex(r,sp) => Redex(r, sp ++ mkSpine(args.toVector))
       case other       => Redex(other, mkSpine(args.toVector))
     }
-    final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    override final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
 
-    final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
-    final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
+    override final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
+    override final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
       func else func match {
       case Root(h, SNil) => Root(h, mkTySpine(args.toVector))
       case Root(h,sp)  => Root(h,sp ++ mkTySpine(args.toVector))
       case Redex(r,sp) => Redex(r, sp ++ mkTySpine(args.toVector))
       case other       => Redex(other, mkTySpine(args.toVector))
     }
-    final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
+    override final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
 
-    final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
+    override final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
       func else func match {
         case Root(h, SNil) => Root(h, mkGenSpine(args.toVector))
         case Root(h,sp)  => Root(h,sp ++ mkGenSpine(args.toVector))
@@ -1267,31 +1344,35 @@ object TermImpl extends TermBank {
       }
   }
 
-  final def mkAtom(id: Signature.Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
-  final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
-  final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
+  override final def mkAtom(id: Signature.Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
+  override final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
+  override final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
-  final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+  override final def mkInteger(n: Int): Term = mkRoot(Integer(n), SNil)
+  override final def mkRational(numerator: Int, denominator: Int): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
+  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
+
+  override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
+  override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
     func else func match {
       case Root(h, SNil) => mkRoot(h, mkSpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args.toVector))
       case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args.toVector))
       case other       => mkRedex(other, mkSpine(args.toVector))
     }
-  final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
+  override final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
-  final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
+  override final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
+  override final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args.toVector))
       case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args.toVector))
       case other       => mkRedex(other, mkTySpine(args.toVector))
     }
 
-  final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
+  override final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
 
-  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
+  override final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
     func else func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args.toVector))
       case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args.toVector))
@@ -1303,7 +1384,7 @@ object TermImpl extends TermBank {
   // Further TermBank methods
   /////////////////////////////////////////////
 
-  final def insert(term: Term): Term = {
+  override final def insert(term: Term): Term = {
     if (Term.isLocal(term))
       insert0(term)
     else
@@ -1316,6 +1397,7 @@ object TermImpl extends TermBank {
         val h2 = h match {
           case BoundIndex(ty, scope) => mkBoundAtom(ty, scope)
           case Atom(id,ty) => mkAtom0(id, ty)
+          case Integer(_) | RationalNumber(_, _) | RealNumber(_, _, _) => h
           case hc@HeadClosure(chd, s) => hc // TODO: do we need closures in bank?
         }
         global(mkRoot(h2, sp2))
@@ -1346,7 +1428,7 @@ object TermImpl extends TermBank {
     }
   }
 
-  final def reset(): Unit = {
+  override final def reset(): Unit = {
     boundAtoms.clear()
     symbolAtoms.clear()
     termAbstractions.clear()
@@ -1365,6 +1447,7 @@ object TermImpl extends TermBank {
 
   @tailrec
   final private def wellTyped0(t: TermImpl, boundVars: Map[Int, Type]): Boolean = {
+    import leo.modules.HOLSignature
     t match {
       case Root(hd, args) => hd match {
         case BoundIndex(typ0, scope) => if (boundVars.isDefinedAt(scope)) {
@@ -1377,6 +1460,12 @@ object TermImpl extends TermBank {
         } else true // assume free variables are consistently typed.
         case Atom(_, ty) => // atoms type can be polymorphic
           wellTypedArgCheck(t, ty, args, boundVars, true)
+        case Integer(_) =>
+          wellTypedArgCheck(t, HOLSignature.int, args, boundVars, false)
+        case RationalNumber(_, _) =>
+          wellTypedArgCheck(t, HOLSignature.rat, args, boundVars, false)
+        case RealNumber(_, _, _) =>
+          wellTypedArgCheck(t, HOLSignature.real, args, boundVars, false)
         case _ => throw new IllegalArgumentException("wellTyped0 on this head type currently not supported.")
       }
       case Redex(hd, args) => wellTypedArgCheck(hd, hd.ty, args,boundVars, true) && wellTyped0(hd.asInstanceOf[TermImpl], boundVars)
@@ -1429,8 +1518,20 @@ object TermImpl extends TermBank {
     case Root(Atom(k,_),SNil) => Some(k)
     case _ => None
   }
+  final protected[datastructures] def integerMatcher(t: Term): Option[Int] = t match {
+    case Root(Integer(n),SNil) => Some(n)
+    case _ => None
+  }
+  final protected[datastructures] def rationalMatcher(t: Term): Option[(Int, Int)] = t match {
+    case Root(RationalNumber(n, d),SNil) => Some((n,d))
+    case _ => None
+  }
+  final protected[datastructures] def realMatcher(t: Term): Option[(Int, Int, Int)] = t match {
+    case Root(RealNumber(w, d, e),SNil) => Some((w,d,e))
+    case _ => None
+  }
   final protected[datastructures] def appMatcher(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
-    case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
+    case Root(h, sp) => Some((h.toTerm, sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
     case _ => None
   }
@@ -1447,5 +1548,6 @@ object TermImpl extends TermBank {
   ////////////////////////////////////////////
   // Utility, night be removed in the future
   ////////////////////////////////////////////
+  @deprecated("headToTerm will be removed at some point, use Head#toTerm instead.", "1.5.X")
   implicit final def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
 }

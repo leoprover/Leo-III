@@ -13,6 +13,11 @@ lazy val leo = (project in file("."))
     mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
 
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+    ),
+
     libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
 
     // set stack size to 4m 

@@ -2199,7 +2199,7 @@ package inferenceControl {
         }
         // only reachable if not rewritten so far
         term match {
-          case Bound(_,_) | Symbol(_) => term
+          case Bound(_,_) | Symbol(_) | Integer(_) | Rational(_, _) | Real(_, _, _) => term
           case hd ∙ args =>
             val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed, depth)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
@@ -2774,11 +2774,11 @@ package  externalProverControl {
         }
       }
 
-      if(Configuration.CONCURRENT_TRANSLATE) {
+      /*if(Configuration.CONCURRENT_TRANSLATE) {
         val maxTrans = Configuration.ATP_MAX_JOBS
         val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
         registerAsyncTranslation(asyncTrans)
-      }
+      }*/
 
       state.setLastCallStat(new MixedInfoLastCallStat)
     }
@@ -2992,7 +2992,7 @@ package  externalProverControl {
         } catch {
           case e: Exception =>
             Out.warn(s"Translation of external proof obligation failed for some reason.")
-            Out.debug(e.toString)
+            Out.warn(s"${e.toString}: ${e.getMessage}")
             null
         }
       } else if (proverCaps.contains(FOF)) {
@@ -3011,7 +3011,7 @@ package  externalProverControl {
       try {
         prover.call(referenceProblem, problem, sig, language, timeout, extraArgs)
       } catch {
-        case e: Exception => Out.warn(e.toString); null
+        case e: Exception => Out.warn(e.toString); Out.warn(e.getMessage); null
       }
     }
 
@@ -3080,7 +3080,6 @@ package  externalProverControl {
 }
 
 package schedulingControl {
-  import leo.modules.agent.multisearch.EquiScheduleImpl
   import leo.modules.control.Control.{RunConfiguration, RunSchedule}
 
   object StrategyControl {
@@ -3162,7 +3161,7 @@ package schedulingControl {
     }
   }
 
-  object ParStrategyControl {
+  /*object ParStrategyControl {
     import leo.modules.agent.multisearch.Schedule
     //TODO  Mintime is set in Schedule!!! Move here
     val STRATEGIES: Seq[RunStrategy] = StrategyControl.STRATEGIES // TODO Own strategies? Reorder?
@@ -3182,5 +3181,5 @@ package schedulingControl {
     final def defaultStrategy: RunStrategy = {
       RunStrategy.defaultStrategy
     }
-  }
+  }*/
 }

@@ -1,6 +1,8 @@
 {
-  "resources":[
-    {"pattern":"scripts/TreeLimitedRun"}, 
-    {"pattern":"scripts/run-script-cascj8-tfa"}
-  ]
+  "resources":{
+  "includes":[
+    {"pattern":"\\Qscripts/TreeLimitedRun\\E"}, 
+    {"pattern":"\\Qscripts/run-script-cascj8-tfa\\E"}
+  ]},
+  "bundles":[]
 }

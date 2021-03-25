@@ -1,7 +1,7 @@
 package leo.modules.input
 
-import leo.datastructures.{Kind, Role, Signature, Term, Type, TPTP}
-import leo.datastructures.Term.{mkAtom, mkBound, mkTermApp, mkTypeApp, Λ, λ}
+import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
+import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
@@ -297,10 +297,7 @@ object InputProcessing {
 
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
 
-      case NumberTerm(number) =>
-        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
-        convertNumber(sig)(number)
+      case NumberTerm(number) => convertNumber(number)
     }
   }
 
@@ -656,7 +653,7 @@ object InputProcessing {
     import TPTP.TFF.{AtomicTerm, Variable, DistinctObject, NumberTerm, Tuple}
 
     term match {
-      case ft@AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
+      case AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
         val meta = sig(getOrCreateSymbolWithWarning(sig)(f, mkSimpleFunctionType(args.size)))
         if (meta.isTypeConstructor) {
           val result = if (args.isEmpty) Type.mkType(meta.key)
@@ -708,10 +705,7 @@ object InputProcessing {
 
       case DistinctObject(name) => Left(mkAtom(getOrCreateSymbol(sig)(name, i))(sig))
 
-      case NumberTerm(number) =>
-        // This is not yet how it should be. When Leo-III gets arithmetic, this need to be updated.
-        leo.Out.warn(s"Leo-III currently does not support arithmetic. Number '${number.pretty}' in the problem file is considered an uninterpreted constant.")
-        Left(convertNumber(sig)(number))
+      case NumberTerm(number) => Left(convertNumber(number))
 
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
     }
@@ -938,7 +932,7 @@ object InputProcessing {
         if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term expression.")
         else mkBound(i, index)
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
-      case NumberTerm(value) => convertNumber(sig)(value)
+      case NumberTerm(value) => convertNumber(value)
     }
   }
 
@@ -1068,10 +1062,10 @@ object InputProcessing {
   private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
   private[this] case object TypeVariableMarker extends VariableMarker
 
-  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type): Signature.Key = {
+  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, force: Boolean = false): Signature.Key = {
     if (sig.exists(name)) sig(name).key
     else {
-      if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
+      if (name.startsWith("$") && !force) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
       else sig.addUninterpreted(name, ty)
     }
   }
@@ -1088,17 +1082,16 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertNumber(sig: Signature)(number: TPTP.Number): Term = {
+  lazy val numberWarning: Unit = {
+    leo.Out.warn(s"Leo-III currently does not fully support arithmetic. " +
+      s"Numbers in the problem file are recognized, but there is no guarantee for adequateness of processing them whatsoever.")
+  }
+  @inline private[this] final def convertNumber(number: TPTP.Number): Term = {
+    numberWarning
     number match {
-      case TPTP.Integer(value) =>
-        val constName = s"$$$$int_$value"
-        mkAtom(getOrCreateSymbol(sig)(constName, int))(sig)
-      case TPTP.Rational(numerator, denominator) =>
-        val constName = s"$$$$rat_${numerator}_$denominator"
-        mkAtom(getOrCreateSymbol(sig)(constName, rat))(sig)
-      case TPTP.Real(wholePart, decimalPlaces, exponent) =>
-        val constName = s"$$$$real_${wholePart}_${decimalPlaces}_E_$exponent"
-        mkAtom(getOrCreateSymbol(sig)(constName, real))(sig)
+      case TPTP.Integer(value) => mkInteger(value)
+      case TPTP.Rational(numerator, denominator) => mkRational(numerator, denominator)
+      case TPTP.Real(wholePart, decimalPlaces, exponent) => mkReal(wholePart, decimalPlaces, exponent)
     }
   }
 

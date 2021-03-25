@@ -423,7 +423,8 @@ object TO_CPO_Naive extends TermOrdering {
     }
     // #######################################################
     else {
-      assert(false)
+//      assert(false)
+      leo.Out.debug(s"[TO_CPO] Unhandled ordering cases: ${s.pretty(sig)} / ${t.pretty(sig)}")
       false
     }
   }

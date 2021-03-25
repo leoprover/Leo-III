@@ -43,6 +43,6 @@ package object encoding {
   @inline protected[encoding] final def safeName(name: String): String = s"$escapeChar$name"
   @inline protected[encoding] final def deSafeName(name: String): String = {
     if (name.startsWith(escapeChar.toString)) name.tail
-    else throw new IllegalArgumentException
+    else throw new IllegalArgumentException(s"deSafeName(${name})")
   }
 }

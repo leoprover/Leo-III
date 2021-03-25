@@ -283,7 +283,7 @@ object TypedFOLEncoding {
   protected[encoding] final def translateTerm(t: Term, les: LambdaElimination)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term.local._
-    import Term.{Bound, :::>, ∙, Symbol, TypeLambda}
+    import Term.{Bound, :::>, ∙, Symbol, TypeLambda, Integer, Rational, Real}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue, Choice => HOLChoice}
@@ -312,6 +312,7 @@ object TypedFOLEncoding {
               mkAtom(encodingSignature(fName).key)(encodingSignature)
           }
           case Bound(boundTy, boundIdx) => leo.Out.finest(s"Translate bound $boundIdx of type ${boundTy.pretty(holSignature)}"); mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
+          case Integer(_) | Rational(_, _) | Real(_, _, _) => f
           case _ => assert(false); f
         }
         Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
@@ -653,7 +654,7 @@ trait TypedFOLEncodingSignature extends Signature {
     *            This sequence must not be empty.
     * @throws IllegalArgumentException if an empty sequence is passed for `tys`. */
   final def funTy(tys: Seq[Type]): Type = {
-    if (tys.isEmpty) throw new IllegalArgumentException
+    if (tys.isEmpty) throw new IllegalArgumentException("empty tys in funTy(.)")
     else funTy0(tys)
   }
   private final def funTy0(tys: Seq[Type]): Type = {
@@ -724,7 +725,7 @@ trait TypedFOLEncodingSignature extends Signature {
       usedProxies += apply(name).key
       apply(name).key
     }
-    else throw new IllegalArgumentException
+    else throw new IllegalArgumentException("proxyId(.)")
   }
 
   final protected[encoding] def applyArgs(func: Term, args: Seq[Term]): Term = {

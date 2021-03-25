@@ -4,7 +4,7 @@ import leo.Configuration
 import leo.agents.{Agent, Task}
 import leo.datastructures.blackboard.impl.AuctionBlackboard
 import leo.datastructures.blackboard.scheduler.{Scheduler, SchedulerImpl}
-
+xxxxxxxxxxx
 object Blackboard {
   def newBlackboard : (Blackboard, Scheduler) = {
     val bl = new AuctionBlackboard

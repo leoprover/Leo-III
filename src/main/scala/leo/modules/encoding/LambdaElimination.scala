@@ -271,7 +271,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
       case _ => // this would be: (1) TypeLambda, (2) Lambda.
         // Cannot happen since (1) is not in the valid term fragment
         // (2) was checked by eliminateLambda before
-        throw new IllegalArgumentException
+        throw new IllegalArgumentException("eliminateLambdaNewShallow(.)")
     }
   }
 
@@ -344,7 +344,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
       case _ => // this would be: (1) TypeLambda, (2) Lambda.
         // Cannot happen since (1) is not in the valid term fragment
         // (2) was checked by eliminateLambda before
-        throw new IllegalArgumentException
+        throw new IllegalArgumentException("eliminateLambdaNew0(.)")
     }
   }
 
@@ -382,7 +382,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
         mkhApp(C(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)), 3), mkBound(Yty,2)), mkBound(Zty,1)),
         mkhApp(mkBound(funTy(Zty, funTy(Yty, Xty)), 3), Seq(mkBound(Zty,1), mkBound(Yty,2)))
       )
-      case _ => throw new IllegalArgumentException
+      case _ => throw new IllegalArgumentException("axiomOf(.)")
     }
   }
 }
