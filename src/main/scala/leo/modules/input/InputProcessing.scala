@@ -33,7 +33,7 @@ object InputProcessing {
   // Ad-hoc polymorphic arithmetic constants of TPTP.
   // This is a bit hacky, as they are defined on multiple different types; so we make a case distinction below
   // and list all of the relevant operators here.
-  private[this] final val adHocPolymorphicArithmeticConstants: Seq[Signature.Key] = Seq(
+  private[modules] final val adHocPolymorphicArithmeticConstants: Seq[Signature.Key] = Seq(
     HOLSignature.HOLLess.key,
     HOLSignature.HOLLessEq.key,
     HOLSignature.HOLGreater.key,
@@ -251,6 +251,7 @@ object InputProcessing {
             val func = mkAtom(meta.key)(sig)
             if (func.ty.isPolyType) {
               if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
+                numberWarning
                 // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
                 // just get the type from the argument and apply it explicitly.
                 // The ad-hoc constant have at least one argument, so we can do that.
@@ -651,6 +652,7 @@ object InputProcessing {
         else {
           if (func.ty.isPolyType) {
             if (adHocPolymorphicArithmeticConstants.contains(key)) {
+              numberWarning
               // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
               // just get the type from the argument and apply it explicitly.
               // The ad-hoc constant have at least one argument, so we can do that.
@@ -716,6 +718,7 @@ object InputProcessing {
             val func = mkAtom(meta.key)(sig)
             if (func.ty.isPolyType) {
               if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
+                numberWarning
                 // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
                 // just get the type from the argument and apply it explicitly.
                 // The ad-hoc constant have at least one argument, so we can do that.
