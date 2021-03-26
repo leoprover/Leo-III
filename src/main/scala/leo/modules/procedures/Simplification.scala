@@ -32,6 +32,10 @@ import scala.annotation.{switch, tailrec}
   *   - `Πx. s -> s` if `x` is not free in `s`
   *   - `n/m -> n'/m'` where `n/m` is a rational number and `n'/m'` is its canonical rational representation
   *   - `(w,d,e) -> (w',d',e')` where `r = (w,d,e)` is a real number and `r' = (w',d',e')` is its canonical representation
+  *   - `$difference(x,y) -> $sum(x,$uminus(y))` where `x` and `y` are arbitrary terms
+  *   - `$greatereq(x,y) -> $less(y,x) \/ x = y`
+  *   - `$greater(x,y) -> $less(y,x)`
+  *   - `$lesseq(x,y) -> $less(x,y) \/ x = y`
   *
   * The four cases marked with (*) are only applied if simplifying extensionally, cf. [[Simplification.apply]].
   *
