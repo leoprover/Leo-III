@@ -1,0 +1,1 @@
+thf(c, conjecture, ![X:$int, Y:$int]: ($greatereq(X,Y) <=> ($less(Y,X) | X = Y))).
