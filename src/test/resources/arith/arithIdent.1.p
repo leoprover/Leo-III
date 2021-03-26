@@ -1,0 +1,1 @@
+thf(c, conjecture, ![X:$int, Y: $int]: ($difference(X,Y) = $sum(X, $uminus(Y)))).

@@ -66,7 +66,8 @@ object Simplification extends Function1[Term, Term] {
   // Boolean (with equality) identities
   private[this] final def apply0(term: Term, extensional: Boolean): Term = {
     import leo.datastructures.Term.{:::>, TypeLambda, Bound, Symbol, ∙, Rational, Real}
-    import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>}
+    import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>,
+      HOLDifference, HOLUnaryMinus, HOLSum, HOLLess, HOLLessEq, HOLGreaterEq, HOLGreater}
 
     @inline def simpTermOrType(arg: Either[Term, Type]): Either[Term, Type] = arg match {
       case Left(arg0) => Left(apply0(arg0, extensional))
@@ -242,6 +243,26 @@ object Simplification extends Function1[Term, Term] {
                   case TypeLambda(absBody) if !absBody.tyFV.contains(1) => absBody.lift(0, -1)
                   case _ => mkTermApp(f, simpBody)
                 }
+              case HOLDifference.key =>
+                val (left, right) = HOLDifference.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkTypeApp(HOLSum, simpLeft.ty), Seq(simpLeft, mkTermApp(mkTypeApp(HOLUnaryMinus, simpRight.ty), simpRight)))
+              case HOLLessEq.key =>
+                val (left, right) = HOLLessEq.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkAtom(|||.key, |||.ty), Seq(mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpLeft, simpRight)), ===(simpLeft, simpRight)))
+              case HOLGreater.key =>
+                val (left, right) = HOLGreater.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpRight, simpLeft))
+              case HOLGreaterEq.key =>
+                val (left, right) = HOLGreaterEq.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkAtom(|||.key, |||.ty), Seq(mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpRight, simpLeft)), ===(simpLeft, simpRight)))
               case _ => mkApp(f, args.map(simpTermOrType))
             }
         }

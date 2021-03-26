@@ -12,6 +12,9 @@ package object datastructures {
   type Rat = (Int, Int)
   type Real = (Int, Int, Int)
 
+  final def prettyRat(n: Rat): String = s"${n._1}/${n._2}"
+  final def prettyReal(n: Real): String = s"${n._1}.${n._2}E${n._3}"
+
   /////////////////////////////////
   // More or less general traits used throughout the project
   /////////////////////////////////
