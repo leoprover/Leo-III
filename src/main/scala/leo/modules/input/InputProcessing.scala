@@ -23,7 +23,7 @@ import scala.annotation.tailrec
   */
 object InputProcessing {
   import leo.modules.HOLSignature
-  import HOLSignature.{i, o, rat, int, real, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
+  import HOLSignature.{i, o, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
 
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
@@ -222,11 +222,18 @@ object InputProcessing {
             val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
             mkTermApp(intermediate, convertedRight)
           } else {
-            // Standard polymorphic case: Expect type argument
-            val convertedRight = convertTHFType0(sig)(right, typeVars)
-            convertedRight match {
-              case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
-              case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+            convertedLeft match {
+              case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
+                // AdHoc polymorphic case for arithmetic constants, applied with @
+                val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+                val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+                mkTermApp(intermediate, convertedRight)
+              case _ => // Standard polymorphic case: Expect type argument
+                val convertedRight = convertTHFType0(sig)(right, typeVars)
+                convertedRight match {
+                  case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
+                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                }
             }
           }
         } else {
