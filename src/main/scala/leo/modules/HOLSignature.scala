@@ -45,7 +45,7 @@ object HOLSignature {
   private final val lessEqKey = lessKey + 1
   private final val greaterKey = lessEqKey + 1
   private final val greaterEqKey = greaterKey + 1
-  private final val choiceKey = iteKey + 1
+  private final val choiceKey = greaterEqKey + 1
   private final val descKey = choiceKey + 1
 
   private final val uminusKey = descKey + 1
@@ -69,7 +69,7 @@ object HOLSignature {
   private final val isRatKey = toRealKey + 1
   private final val isIntKey = isRatKey + 1*/
   // Th1 constants
-  private final val tyForallKey = descKey + 1
+  private final val tyForallKey = quotKey + 1
 
   private final val existsKey = tyForallKey + 1
   private final val andKey = existsKey + 1
