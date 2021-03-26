@@ -89,6 +89,9 @@ object ToTFF {
         s"${termToTFF(fvMap, tyFvCount, left)(sig)} = ${termToTFF(fvMap, tyFvCount, right)(sig)}"
       case `neg_equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
         s"${termToTFF(fvMap, tyFvCount, left)(sig)} != ${termToTFF(fvMap, tyFvCount, right)(sig)}"
+      case Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
+        val translatedF = tptpEscapeExpression(sig(id).name)
+        s"$translatedF(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
       case Symbol(id) ∙ args =>
         if (interpretedSymbols.contains(id)) {
           // Formula level (binary/unary)
@@ -133,6 +136,9 @@ object ToTFF {
       case Integer(n) => n.toString
       case Rational(n,d) => s"$n/$d"
       case Real(w,d,e) => if (e == 0) s"$w.$d" else s"$w.${d}E$e"
+      case Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
+        val translatedF = tptpEscapeExpression(sig(id).name)
+        s"$translatedF(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})" 
       case Symbol(id) ∙ args =>
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException("termToTFF(.) #1")
           else {
