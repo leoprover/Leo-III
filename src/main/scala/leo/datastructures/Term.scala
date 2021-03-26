@@ -236,9 +236,9 @@ object Term extends TermBank {
    */
   final object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
-  final object Integer { def unapply(t: Term): Option[Int] = TermImpl.integerMatcher(t) }
-  final object Rational { def unapply(t: Term): Option[(Int, Int)] = TermImpl.rationalMatcher(t) }
-  final object Real { def unapply(t: Term): Option[(Int, Int, Int)] = TermImpl.realMatcher(t) }
+  final object Integer { def unapply(t: Term): Option[Int0] = TermImpl.integerMatcher(t) }
+  final object Rational { def unapply(t: Term): Option[Rat] = TermImpl.rationalMatcher(t) }
+  final object Real { def unapply(t: Term): Option[Real] = TermImpl.realMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where

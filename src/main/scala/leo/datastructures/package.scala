@@ -8,6 +8,10 @@ import scala.annotation.tailrec
   * @since 01/06/15
   */
 package object datastructures {
+  type Int0 = Int
+  type Rat = (Int, Int)
+  type Real = (Int, Int, Int)
+
   /////////////////////////////////
   // More or less general traits used throughout the project
   /////////////////////////////////
