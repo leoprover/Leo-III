@@ -4,7 +4,7 @@ lazy val leo = (project in file("."))
     description := "A Higher-Order Theorem Prover.",
     version := "1.5",
     organization := "org.leo",
-    scalaVersion := "2.13.4",
+    scalaVersion := "2.13.5",
 
     test in assembly := {},
     logLevel := Level.Warn,
@@ -18,7 +18,7 @@ lazy val leo = (project in file("."))
       "-feature",
     ),
 
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.2" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.5" % "test"),
 
     // set stack size to 4m 
     javaOptions += "-Xss4m",
