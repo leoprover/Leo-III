@@ -446,7 +446,7 @@ object ToTPTP {
       case f@Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
         val translatedF = tptpEscapeExpression(sig(id).name)
         val translatedArgs: Seq[String] = args.tail.map(argToTPTP(_, tyVarCount, bVars)(sig))
-        s"$translatedF(${translatedArgs.mkString(",")})"
+        s"$translatedF @ ${translatedArgs.mkString(" @ ")}"
       case f ∙ args =>
         val translatedF = toTPTP0(f,tyVarCount, bVars)(sig)
         val translatedArgs: Seq[String] = args.map(argToTPTP(_, tyVarCount, bVars)(sig))
