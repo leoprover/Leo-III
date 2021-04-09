@@ -224,6 +224,7 @@ object SeqLoop {
             } else {
               endplay(null, state)
             }
+            Out.comment(s"External prover '${extResAnswer.prover.name}' found a proof!")
           }
         } else {
           var cur = state.nextUnprocessed
