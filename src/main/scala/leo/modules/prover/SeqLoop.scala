@@ -394,8 +394,7 @@ object SeqLoop {
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
     /* Output additional information about the reasoning process. */
-    Out.comment(s"Time passed: ${time}ms")
-    Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
+    Out.comment(s"Time passed: ${time}ms (effective reasoning time: ${timeWOParsing}ms)")
     if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
     val proof = state.proof
     if (proof != null) {
@@ -408,16 +407,18 @@ object SeqLoop {
         case _:Exception => ()
       }
     }
-    Out.comment(s"No. of processed clauses: ${state.processed.size}")
-    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
-    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
-    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-    Out.comment(s"No. of ground rewrite rules in store: ${state.groundRewriteRules.size}")
-    Out.comment(s"No. of non-ground rewrite rules in store: ${state.nonGroundRewriteRules.size}")
-    Out.comment(s"No. of positive (non-rewrite) units in store: ${state.posNonRewriteUnits.size}")
-    Out.comment(s"No. of negative (non-rewrite) units in store: ${state.negNonRewriteUnits.size}")
-    Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
-    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINE)) {
+      Out.comment(s"No. of processed clauses: ${state.processed.size}")
+      Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
+      Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+      Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
+      Out.comment(s"No. of ground rewrite rules in store: ${state.groundRewriteRules.size}")
+      Out.comment(s"No. of non-ground rewrite rules in store: ${state.nonGroundRewriteRules.size}")
+      Out.comment(s"No. of positive (non-rewrite) units in store: ${state.posNonRewriteUnits.size}")
+      Out.comment(s"No. of negative (non-rewrite) units in store: ${state.negNonRewriteUnits.size}")
+      Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
+      Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+    }
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
     Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => c.cl.maxLits).size}")
     Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
