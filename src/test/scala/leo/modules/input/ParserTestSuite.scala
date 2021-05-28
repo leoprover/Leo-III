@@ -28,7 +28,7 @@ class ParserTestSuite extends LeoTestSuite {
     "SYN000^3.p" -> "TPTP TH1 syntax features",
     "SYN000_3.p" -> "TPTP TF1 syntax features",
     "SYN000=2.p" -> "TPTP TFA with arithmetic advanced syntax features",
-    "SYN000~1.p" -> "Modal THF format with logic specification"
+    "SYN000-CNF.p" -> "Modal THF format with logic specification"
   )
 
   for (p <- problems) {
