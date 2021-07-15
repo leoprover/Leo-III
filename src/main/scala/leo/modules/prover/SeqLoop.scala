@@ -96,7 +96,8 @@ object SeqLoop {
       // Check if external provers were defined
       if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
       // Split input in conjecture/definitions/axioms etc.
-      val remainingInput: Seq[AnnotatedClause] = effectiveInputNew(parsedProblem, state)
+      val remainingInput: Seq[AnnotatedClause] =
+        if (Configuration.isSet("sine")) effectiveInputNew(parsedProblem, state) else effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
       Out.info(s"Type checking passed. Searching for refutation ...")

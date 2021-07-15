@@ -2689,7 +2689,10 @@ package indexingControl {
             } catch {
               case _:Exception =>
                 Out.warn("Parsing of --sine parameter failed; use default sine setting.")
-                SineConfig(1.5, 1000, 1, -1)
+                if (n <= 100) SineConfig(3.5, 1000, 1, -1)
+                else if (n <= 500) SineConfig(2.5, 1000, 1, -1)
+                else if (n <= 1000) SineConfig(1.5, 1000, 1, -1)
+                else SineConfig(1.25, 1000, 1, 3)
             }
           case n if n <= 100 => SineConfig(5, 1000, 1, -1)
           case n if n <= 1000 => SineConfig(1.5, 1000, 1, -1)
