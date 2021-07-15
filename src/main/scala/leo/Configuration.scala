@@ -100,7 +100,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   def isInit: Boolean = configMap != null
 
-  final val VERSION: String = "1.5"
+  final val VERSION: String = "1.6"
   final val LEODIR_NAME: String = "leo3"
   final lazy val LEODIR: Path = {
     val dir = Files.createTempDirectory(LEODIR_NAME)
@@ -464,7 +464,7 @@ trait DefaultConfiguration {
   val DEFAULT_PRE_PRIMSUBST = 59
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
   val DEFAULT_ATPCALLINTERVAL = 35
-  val DEFAULT_ATP_TIMEOUT = 10
+  val DEFAULT_ATP_TIMEOUT = 15
   val DEFAULT_ATPMAXJOBS = 2
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35
