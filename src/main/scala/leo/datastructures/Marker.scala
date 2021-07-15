@@ -220,10 +220,9 @@ object ClauseAnnotation {
     final val fromRule: CalculusRule = null
     final def parents = Seq.empty
   }
-  case class FromSystem(hint: String) extends ClauseAnnotation {
+  case class FromSystem[A <: ClauseProxy](hint: String, parents: Seq[A]) extends ClauseAnnotation {
     final def pretty = s"introduced($hint)"
     final val fromRule: CalculusRule = null
-    final def parents = Seq.empty
   }
 
   type ClauseProp = Int
