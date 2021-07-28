@@ -690,7 +690,7 @@ protected[impl] final case class Atom(id: Signature.Key, ty: Type) extends Head 
   override def pretty(sig: Signature): String = sig(id).name
 }
 
-protected[impl] final case class Integer(value: Int) extends Head {
+protected[impl] final case class Integer(value: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -712,7 +712,7 @@ protected[impl] final case class Integer(value: Int) extends Head {
   override def pretty(sig: Signature): String = pretty
 }
 
-protected[impl] final case class RationalNumber(numerator: Int, denominator: Int) extends Head {
+protected[impl] final case class RationalNumber(numerator: BigInt, denominator: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -734,7 +734,7 @@ protected[impl] final case class RationalNumber(numerator: Int, denominator: Int
   override def pretty(sig: Signature): String = pretty
 }
 
-protected[impl] final case class RealNumber(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Head {
+protected[impl] final case class RealNumber(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -1311,9 +1311,9 @@ object TermImpl extends TermBank {
     override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
     override final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
     override final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
-    override final def mkInteger(n: Int): Term = Root(Integer(n), SNil)
-    override final def mkRational(numerator: Int, denominator: Int): Term = Root(RationalNumber(numerator, denominator), SNil)
-    override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
+    override final def mkInteger(n: BigInt): Term = Root(Integer(n), SNil)
+    override final def mkRational(numerator: BigInt, denominator: BigInt): Term = Root(RationalNumber(numerator, denominator), SNil)
+    override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
 
     override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
     override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
@@ -1348,9 +1348,9 @@ object TermImpl extends TermBank {
   override final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
   override final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  override final def mkInteger(n: Int): Term = mkRoot(Integer(n), SNil)
-  override final def mkRational(numerator: Int, denominator: Int): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
-  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
+  override final def mkInteger(n: BigInt): Term = mkRoot(Integer(n), SNil)
+  override final def mkRational(numerator: BigInt, denominator: BigInt): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
+  override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
 
   override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
   override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
@@ -1518,15 +1518,15 @@ object TermImpl extends TermBank {
     case Root(Atom(k,_),SNil) => Some(k)
     case _ => None
   }
-  final protected[datastructures] def integerMatcher(t: Term): Option[Int] = t match {
+  final protected[datastructures] def integerMatcher(t: Term): Option[BigInt] = t match {
     case Root(Integer(n),SNil) => Some(n)
     case _ => None
   }
-  final protected[datastructures] def rationalMatcher(t: Term): Option[(Int, Int)] = t match {
+  final protected[datastructures] def rationalMatcher(t: Term): Option[(BigInt, BigInt)] = t match {
     case Root(RationalNumber(n, d),SNil) => Some((n,d))
     case _ => None
   }
-  final protected[datastructures] def realMatcher(t: Term): Option[(Int, Int, Int)] = t match {
+  final protected[datastructures] def realMatcher(t: Term): Option[(BigInt, BigInt, BigInt)] = t match {
     case Root(RealNumber(w, d, e),SNil) => Some((w,d,e))
     case _ => None
   }

@@ -40,7 +40,7 @@ object InputProcessing {
   @inline final def processAll(sig: Signature)(statements: Seq[TPTP.AnnotatedFormula]): Seq[Result] = statements.map(process(sig))
 
   final def process(sig: Signature)(statement: TPTP.AnnotatedFormula): Result = {
-    import TPTP.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated}
+    import TPTP.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
     import leo.datastructures.Role_Definition
 
     val name = statement.name
@@ -52,6 +52,7 @@ object InputProcessing {
         case f@FOFAnnotated(_, _, _, _) => processAnnotatedFOF(sig)(f)
         case f@CNFAnnotated(_, _, _, _) => Some(processAnnotatedCNF(sig)(f))
         case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported (yet).")
+        case TCFAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TCF format not supported (yet).")
       }
       maybeFormula match {
         case None => (name, LitTrue, role)
@@ -291,6 +292,7 @@ object InputProcessing {
         conn match {
           case unaryConnective: THF.UnaryConnective => convertTHFUnaryConnective(unaryConnective)
           case binaryConnective: THF.BinaryConnective => convertTHFBinaryConnective(binaryConnective)
+          case _ => throw new SZSException(SZS_Inappropriate, "Non-classical operators not supported.")
         }
 
       case DefinedTH1ConstantTerm(constant) => convertTH1DefinedConstant(constant)
@@ -549,7 +551,7 @@ object InputProcessing {
                                                              termVars: Seq[String],
                                                              typeVars: Seq[String],
                                                              vars: Map[String, VariableMarker]): Term = {
-    import TPTP.TFF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality}
+    import TPTP.TFF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality, FormulaVariable}
     import leo.modules.HOLSignature.{===, !===, Not}
 
 
@@ -643,6 +645,18 @@ object InputProcessing {
             else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in function application: ${convertedTypeArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
           }
         }
+
+        // TODO: Tuples, let-terms, conditionals in TFX
+      case FormulaVariable(name) =>
+        if (vars.isDefinedAt(name)) {
+          vars(name) match {
+            case TermVariableMarker(typ) => mkBound(typ, getDeBruijnIndexOf(termVars)(name))
+            case TypeVariableMarker => throw new SZSException(SZS_InputError, s"Naked type variable '$name' at formula-level.")
+          }
+        } else throw new SZSException(SZS_InputError, s"Unbound variable '$name' at formula-level.")
+
+      case _ => throw new SZSException(SZS_InputError, s"Unsupported input: '${formula.pretty}'.")
+
     }
   }
 
@@ -650,7 +664,7 @@ object InputProcessing {
                                                          termVars: Seq[String],
                                                          typeVars: Seq[String],
                                                          vars: Map[String, VariableMarker]): TermOrType = {
-    import TPTP.TFF.{AtomicTerm, Variable, DistinctObject, NumberTerm, Tuple}
+    import TPTP.TFF.{AtomicTerm, Variable, DistinctObject, NumberTerm, Tuple, FormulaTerm}
 
     term match {
       case AtomicTerm(f, args) => // Expect type constructors and polymorpic symbols here
@@ -708,6 +722,10 @@ object InputProcessing {
       case NumberTerm(number) => Left(convertNumber(number))
 
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+
+      case FormulaTerm(formula) =>
+        val convertedFormula = convertTFFFormula0(sig)(formula, termVars, typeVars, vars)
+        Left(convertedFormula)
     }
   }
 
