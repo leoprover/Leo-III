@@ -14,7 +14,7 @@ thf(spec, logic, ($modal := [
 %--- Specify an uninterpreted predicate symbol f
 thf(f_type, type, f: ($i > $o)).
 
-%--- Does CBF: (□∀x.f(x)) → ∀x.□f(x) hold?
+%--- Converse Barcan Formula (□∀x.f(x)) → ∀x.□f(x) holds for cumulative domains
 thf(barcan_formula, conjecture, (
-          ($box @ ( ![X: $i]: ( f @ X ) ))
-            => (![X:$i]: ( $box @ (f @ X) )) ) ).
+          ({$box} @ ( ![X: $i]: ( f @ X ) ))
+            => (![X:$i]: ( {$box} @ (f @ X) )) ) ).
