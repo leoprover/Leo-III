@@ -14,7 +14,7 @@ thf(spec, logic, ($modal := [
 %--- Specify an uninterpreted predicate symbol f
 thf(f_type, type, f: ($i > $o)).
 
-%--- Does BF: (∀x.□f(x)) → □∀x.f(x) hold?
+%--- Barcan formula (∀x.□f(x)) → □∀x.f(x) holds for decreasing domains
 thf(barcan_formula, conjecture, (
-          (![X:$i]: ( $box @ (f @ X) ))
-            => ($box @ ( ![X: $i]: ( f @ X ) )) ) ).
+          (![X:$i]: ( {$box} @ (f @ X) ))
+            => ({$box} @ ( ![X: $i]: ( f @ X ) )) ) ).
