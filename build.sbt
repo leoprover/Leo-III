@@ -18,6 +18,7 @@ lazy val leo = (project in file("."))
       "-feature",
     ),
 
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.4",
     libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.5" % "test"),
 
     // set stack size to 4m 
