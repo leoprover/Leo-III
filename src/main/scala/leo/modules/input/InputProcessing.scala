@@ -305,7 +305,7 @@ object InputProcessing {
 
         // (0) create consolidatedBindingMap
         val bindingWithHeadSymbol: Map[String, (THF.Formula, THF.Formula)] = binding.map { case (lhs, rhs) =>
-          getHeadsymbolFromSimpleTerm(lhs) match {
+          thfLetGetHeadsymbolFromSimpleTerm(lhs) match {
             case Some(atom) => atom -> (lhs, rhs)
             case None => throw new SZSException(SZS_InputError, s"Left-hand side of binding '${lhs.pretty} := ${rhs.pretty}' malformed in let binding '${formula.pretty}'" +
             s"Only atoms or atoms applied to (distinct) top-level variables allowed.")
@@ -320,13 +320,13 @@ object InputProcessing {
         // (1) transform implicit variables to lambda form (i.e., reduce case 1 to case 3):
         // transformedBindingMap is a map: atom -> (RHS of atom's binding in transformed lambda form)
         val transformedBindingMap: Map[String, THF.Formula] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
-          stripVariablesFromSimpleTerm(lhs) match {
+          thfLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, args)) =>
               if (args.isEmpty) {
                 atom -> rhs
               } else {
                 if (args.distinct == args) {
-                  getFirstNParamTypes(typ, args.length) match {
+                  thfLetgetFirstNParamTypes(typ, args.length) match {
                     case Some(argTys) =>
                       val typedVariables = args.zip(argTys)
                       val transformedRHS = THF.QuantifiedFormula(THF.^, typedVariables, rhs)
@@ -342,7 +342,8 @@ object InputProcessing {
           }
         }
         // (2) traverse body and replace every occurrence of LHS by transformed RHS (case 1 and case 3 are, in fact, identical cases)
-        val transformedBody = replaceAll0(transformedBindingMap, body)
+        val transformedBody = thfLetreplaceAll0(transformedBindingMap, body)
+        letInfo
         convertTHFFormula0(sig)(transformedBody, termVars, typeVars, vars)
 
       case ConnectiveTerm(conn) =>
@@ -361,33 +362,37 @@ object InputProcessing {
     }
   }
 
-  @tailrec private[this] def getHeadsymbolFromSimpleTerm(formula: TPTP.THF.Formula): Option[String] = {
+  lazy val letInfo: Unit = {
+    leo.Out.info(s"Let expressions in the input problem have been expanded exhaustively.")
+  }
+  ////// Functions related to THF let-expression expansion BEGIN
+  @tailrec private[this] def thfLetGetHeadsymbolFromSimpleTerm(formula: TPTP.THF.Formula): Option[String] = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, _) => Some(f)
-      case THF.BinaryFormula(THF.App, left, THF.Variable(_)) => getHeadsymbolFromSimpleTerm(left)
+      case THF.BinaryFormula(THF.App, left, THF.Variable(_)) => thfLetGetHeadsymbolFromSimpleTerm(left)
       case _ => None
     }
   }
-  private[this] def stripVariablesFromSimpleTerm(formula: TPTP.THF.Formula): Option[(String, Seq[String])] = {
+  private[this] def thfLetstripVariablesFromSimpleTerm(formula: TPTP.THF.Formula): Option[(String, Seq[String])] = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, Seq()) => Some((f, Seq.empty))
       case THF.BinaryFormula(THF.App, left, THF.Variable(variable)) =>
-        stripVariablesFromSimpleTerm(left).map { case (hs, args) => (hs, args :+ variable)}
+        thfLetstripVariablesFromSimpleTerm(left).map { case (hs, args) => (hs, args :+ variable)}
       case _ => None
     }
   }
-  private[this] def getFirstNParamTypes(typ: TPTP.THF.Type, n: Int): Option[Seq[TPTP.THF.Type]] = {
+  private[this] def thfLetgetFirstNParamTypes(typ: TPTP.THF.Type, n: Int): Option[Seq[TPTP.THF.Type]] = {
     import leo.datastructures.TPTP.THF
     if (n == 0) Some(Seq.empty)
     else typ match {
       case THF.BinaryFormula(THF.FunTyConstructor, left, right) =>
-        getFirstNParamTypes(right, n-1).map(rest => left +: rest)
+        thfLetgetFirstNParamTypes(right, n-1).map(rest => left +: rest)
       case _ => None
     }
   }
-  private[this] def replaceAll0(replacements: Map[String, TPTP.THF.Formula], formula: TPTP.THF.Formula): TPTP.THF.Formula = {
+  private[this] def thfLetreplaceAll0(replacements: Map[String, TPTP.THF.Formula], formula: TPTP.THF.Formula): TPTP.THF.Formula = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, args) =>
@@ -398,32 +403,33 @@ object InputProcessing {
           case None => formula
         }
       case THF.QuantifiedFormula(quantifier, variableList, body) =>
-        val replacedBody = replaceAll0(replacements, body)
+        val replacedBody = thfLetreplaceAll0(replacements, body)
         THF.QuantifiedFormula(quantifier, variableList, replacedBody)
       case THF.UnaryFormula(connective, body) =>
-        val replacedBody = replaceAll0(replacements, body)
+        val replacedBody = thfLetreplaceAll0(replacements, body)
         THF.UnaryFormula(connective, replacedBody)
       case THF.BinaryFormula(connective, left, right) =>
-        val replacedLeft = replaceAll0(replacements, left)
-        val replacedRight = replaceAll0(replacements, right)
+        val replacedLeft = thfLetreplaceAll0(replacements, left)
+        val replacedRight = thfLetreplaceAll0(replacements, right)
         THF.BinaryFormula(connective, replacedLeft, replacedRight)
       case THF.Tuple(elements) =>
-        val replacedElements = elements.map(replaceAll0(replacements, _))
+        val replacedElements = elements.map(thfLetreplaceAll0(replacements, _))
         THF.Tuple(replacedElements)
       case THF.ConditionalTerm(condition, thn, els) =>
-        val replacedCondition = replaceAll0(replacements, condition)
-        val replacedThn = replaceAll0(replacements, thn)
-        val replacedEls = replaceAll0(replacements, els)
+        val replacedCondition = thfLetreplaceAll0(replacements, condition)
+        val replacedThn = thfLetreplaceAll0(replacements, thn)
+        val replacedEls = thfLetreplaceAll0(replacements, els)
         THF.ConditionalTerm(replacedCondition, replacedThn, replacedEls)
       case THF.LetTerm(typing, binding, body) =>
-        val replacedBinding = binding.map { case (lhs, rhs) => (lhs, replaceAll0(replacements, rhs))}
+        val replacedBinding = binding.map { case (lhs, rhs) => (lhs, thfLetreplaceAll0(replacements, rhs))}
         // Remove from replacements those which are bound by the new let binding
         val updatedReplacements = replacements -- typing.keys
-        val replacedBody = replaceAll0(updatedReplacements, body)
+        val replacedBody = thfLetreplaceAll0(updatedReplacements, body)
         THF.LetTerm(typing, replacedBinding, replacedBody)
       case _ => formula
     }
   }
+  ////// Functions related to let-expression expansion END
 
   ////// Little workaround to have a corresponding HOLUnaryConnective for the equality as polymorphic prefix symbol
   // Though I don't understand why it's called unary ...
@@ -673,7 +679,7 @@ object InputProcessing {
                                                              termVars: Seq[String],
                                                              typeVars: Seq[String],
                                                              vars: Map[String, VariableMarker]): Term = {
-    import TPTP.TFF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality, FormulaVariable}
+    import TPTP.TFF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality, FormulaVariable, LetFormula, ConditionalFormula}
     import leo.modules.HOLSignature.{===, !===, Not}
 
 
@@ -768,7 +774,52 @@ object InputProcessing {
           }
         }
 
-        // TODO: Tuples, let-terms, conditionals in TFX
+      // TFX world from here
+      case LetFormula(typing, binding, body) =>
+        import leo.datastructures.TPTP.TFF
+        // (0) create consolidatedBindingMap
+        val bindingWithHeadSymbol: Map[String, (TFF.Term, TFF.Term)] = binding.map { case (lhs, rhs) =>
+          tffLetGetHeadsymbolFromSimpleTerm(lhs) match {
+            case Some(atom) => atom -> (lhs, rhs)
+            case None => throw new SZSException(SZS_InputError, s"Left-hand side of binding '${lhs.pretty} := ${rhs.pretty}' malformed in let binding '${formula.pretty}'" +
+              s"Only atoms or atoms applied to (distinct) top-level variables allowed.")
+          }
+        }.toMap
+        val consolidatedBindingMap: Map[String, (TFF.Type, TFF.Term, TFF.Term)] = typing.map { case (atom, typing) =>
+          bindingWithHeadSymbol.get(atom) match {
+            case Some((lhs, rhs)) => atom -> (typing, lhs, rhs)
+            case None => throw new SZSException(SZS_InputError, s"No binding found for atom '$atom' in let binding '${formula.pretty}'")
+          }
+        }
+        // (1) transform implicit variables to lambda form:
+        // transformedBindingMap is a map: atom -> (RHS of atom's binding in transformed lambda form)
+        val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
+          tffLetstripVariablesFromSimpleTerm(lhs) match {
+            case Some((_, params)) =>
+              if (params.isEmpty) {
+                atom -> (_ => rhs)
+              } else {
+                if (params.distinct == params) {
+                  atom -> { args =>
+                    val paramToArgs: Map[String, TFF.Term] = params.zip(args).toMap
+                    tffInstantiateTerm(rhs, paramToArgs)
+                  }
+                } else throw new SZSException(SZS_InputError, s"Variables in LHS of let binding '${lhs.pretty} := ${rhs.pretty}' are not distinct.")
+              }
+            case None => throw new SZSException(SZS_InputError, s"Left-hand side '${lhs.pretty}' malformed in let binding ${formula.pretty}.")
+          }
+        }
+        // (2) traverse body and replace every occurrence of LHS by transformed RHS (case 1 and case 3 are, in fact, identical cases)
+        val transformedBody0 = tffLetReplaceTermAll(transformedBindingMap, body)
+        letInfo
+        val transformedBody = transformedBody0 match {
+          case TFF.AtomicTerm(f, args) => TFF.AtomicFormula(f, args)
+          case TFF.Variable(name) => TFF.FormulaVariable(name)
+          case TFF.FormulaTerm(formula) => formula
+          case _ => throw new SZSException(SZS_InputError, s"Let expansion of expression '${formula.pretty}' on formula level yielded unexpected term '${transformedBody0.pretty}'.")
+        }
+        convertTFFFormula0(sig)(transformedBody, termVars, typeVars, vars)
+
       case FormulaVariable(name) =>
         if (vars.isDefinedAt(name)) {
           vars(name) match {
@@ -776,6 +827,26 @@ object InputProcessing {
             case TypeVariableMarker => throw new SZSException(SZS_InputError, s"Naked type variable '$name' at formula-level.")
           }
         } else throw new SZSException(SZS_InputError, s"Unbound variable '$name' at formula-level.")
+
+      case ConditionalFormula(condition, thn, els) =>
+        val c = convertTFFFormula0(sig)(condition, termVars, typeVars, vars)
+        val t0 = convertTFFTerm(sig)(thn, termVars, typeVars, vars)
+        val e0 = convertTFFTerm(sig)(els, termVars, typeVars, vars)
+
+        (t0,e0) match {
+          case (Left(t), Left(e)) =>
+            if (c.ty == o) {
+              if (t.ty == e.ty) {
+                import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+                val ty = t.ty
+                Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
+                  Impl(Not(c), ===(mkBound(ty, 1), e)))))
+              } else throw new SZSException(SZS_TypeError, s"Alternatives of conditional expression '${formula.pretty}' are not of same type.")
+            } else throw new SZSException(SZS_TypeError, s"Condition of conditional expression '${formula.pretty}' is not Boolean typed.")
+
+          case _ => throw new SZSException(SZS_InputError, s"At least one branch of the conditional expression '${formula.pretty}' yields" +
+          s"an unexpected type (instead of a term or a formula).")
+        }
 
       case _ => throw new SZSException(SZS_InputError, s"Unsupported input: '${formula.pretty}'.")
 
@@ -850,6 +921,140 @@ object InputProcessing {
         Left(convertedFormula)
     }
   }
+
+  ////// Functions related to TFF let-expression expansion BEGIN
+  private[this] def tffLetGetHeadsymbolFromSimpleTerm(formula: TPTP.TFF.Term): Option[String] = {
+    import leo.datastructures.TPTP.TFF
+    formula match {
+      case TFF.AtomicTerm(f, _) => Some(f)
+      case _ => None
+    }
+  }
+  private[this] def tffLetstripVariablesFromSimpleTerm(formula: TPTP.TFF.Term): Option[(String, Seq[String])] = {
+    import leo.datastructures.TPTP.TFF
+    formula match {
+      case TFF.AtomicTerm(f, args) =>
+        val maybeVars = args.map {
+          case TFF.Variable(name) => Some(name)
+          case _ => None
+        }
+        if (maybeVars.forall(_.isDefined)) Some((f, maybeVars.map(_.get)))
+        else None
+      case _ => None
+    }
+  }
+  private[this] def tffInstantiateTerm(term: TPTP.TFF.Term, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Term = {
+    import leo.datastructures.TPTP.TFF
+    term match {
+      case TFF.AtomicTerm(f, args) =>
+        val instantiatedArgs = args.map(tffInstantiateTerm(_, instances))
+        TFF.AtomicTerm(f, instantiatedArgs)
+      case TFF.Variable(name) => instances.get(name) match {
+        case Some(value) => value
+        case None => term
+      }
+      case TFF.Tuple(elements) =>
+        val instantiatedElements = elements.map(tffInstantiateTerm(_, instances))
+        TFF.Tuple(instantiatedElements)
+      case TFF.FormulaTerm(formula) => TFF.FormulaTerm(tffInstantiateFormula(formula, instances))
+      case _ => term
+    }
+  }
+  private[this] def tffInstantiateFormula(formula: TPTP.TFF.Formula, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Formula = {
+    import leo.datastructures.TPTP.TFF
+    formula match {
+      case TFF.AtomicFormula(f, args) =>
+        val instantiatedArgs = args.map(tffInstantiateTerm(_, instances))
+        TFF.AtomicFormula(f, instantiatedArgs)
+      case TFF.QuantifiedFormula(quantifier, variableList, body) =>
+        val instances0 = instances.removedAll(variableList.map(_._1))
+        val instantiatedBody = tffInstantiateFormula(body, instances0)
+        TFF.QuantifiedFormula(quantifier, variableList, instantiatedBody)
+      case TFF.UnaryFormula(connective, body) =>
+        TFF.UnaryFormula(connective, tffInstantiateFormula(body, instances))
+      case TFF.BinaryFormula(connective, left, right) =>
+        TFF.BinaryFormula(connective, tffInstantiateFormula(left, instances), tffInstantiateFormula(right, instances))
+      case TFF.Equality(left, right) =>
+        TFF.Equality(tffInstantiateTerm(left, instances), tffInstantiateTerm(right, instances))
+      case TFF.Inequality(left, right) =>
+        TFF.Inequality(tffInstantiateTerm(left, instances), tffInstantiateTerm(right, instances))
+      case TFF.FormulaVariable(name) => instances.get(name) match {
+        case Some(value) => value match {
+          case TFF.AtomicTerm(f, args) => TFF.AtomicFormula(f, args)
+          case TFF.Variable(name) => TFF.FormulaVariable(name)
+          case TFF.FormulaTerm(formula) => formula
+          case _ => throw new SZSException(SZS_InputError, "Unexpected binding of term shape when a formula was expected.")
+        }
+        case None => formula
+      }
+      case TFF.ConditionalFormula(condition, thn, els) =>
+        TFF.ConditionalFormula(tffInstantiateFormula(condition, instances),
+          tffInstantiateTerm(thn, instances), tffInstantiateTerm(els, instances))
+      case TFF.LetFormula(typing, binding, body) =>
+        val updatedBinding = binding.map { case (lhs, rhs) =>
+          val varsOfLHS = tffLetstripVariablesFromSimpleTerm(lhs)
+          varsOfLHS match {
+            case Some((_, vars)) =>
+              val instances0 = instances.removedAll(vars)
+              (lhs, tffInstantiateTerm(rhs, instances0))
+            case None => throw new SZSException(SZS_InputError)
+          }
+        }
+        TFF.LetFormula(typing, updatedBinding, tffInstantiateTerm(body, instances))
+      case TFF.NonclassicalPolyaryFormula(connective, args) =>
+        TFF.NonclassicalPolyaryFormula(connective, args.map(tffInstantiateFormula(_, instances)))
+      case _ => formula
+    }
+  }
+  private[this] def tffLetReplaceTermAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], term: TPTP.TFF.Term): TPTP.TFF.Term = {
+    import leo.datastructures.TPTP.TFF
+    term match {
+      case TFF.AtomicTerm(f, args) => replacements.get(f) match {
+        case Some(instantiateFunction) => instantiateFunction(args)
+        case None => term
+      }
+      case TFF.FormulaTerm(formula) => TFF.FormulaTerm(tffLetReplaceFormulaAll(replacements, formula))
+      case _ => term
+    }
+  }
+  private[this] def tffLetReplaceFormulaAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
+    import leo.datastructures.TPTP.TFF
+    formula match {
+      case TFF.AtomicFormula(f, args) => replacements.get(f) match {
+        case Some(instantiateFunction) => instantiateFunction(args) match {
+          case TFF.AtomicTerm(f, args) => TFF.AtomicFormula(f, args)
+          case TFF.Variable(name) => TFF.FormulaVariable(name)
+          case TFF.FormulaTerm(formula) => formula
+          case _ => throw new SZSException(SZS_InputError, "Unexpected term binding when a formula was expected.")
+        }
+        case None => formula
+      }
+      case TFF.QuantifiedFormula(quantifier, variableList, body) =>
+        TFF.QuantifiedFormula(quantifier, variableList, tffLetReplaceFormulaAll(replacements, body))
+      case TFF.UnaryFormula(connective, body) =>
+        TFF.UnaryFormula(connective, tffLetReplaceFormulaAll(replacements, body))
+      case TFF.BinaryFormula(connective, left, right) =>
+        TFF.BinaryFormula(connective, tffLetReplaceFormulaAll(replacements, left), tffLetReplaceFormulaAll(replacements, right))
+      case TFF.Equality(left, right) =>
+        TFF.Equality(tffLetReplaceTermAll(replacements, left), tffLetReplaceTermAll(replacements, right))
+      case TFF.Inequality(left, right) =>
+        TFF.Inequality(tffLetReplaceTermAll(replacements, left), tffLetReplaceTermAll(replacements, right))
+      case TFF.ConditionalFormula(condition, thn, els) =>
+        TFF.ConditionalFormula(tffLetReplaceFormulaAll(replacements, condition),
+          tffLetReplaceTermAll(replacements, thn), tffLetReplaceTermAll(replacements,els))
+      case TFF.LetFormula(typing, binding, body) =>
+        val updatedBinding = binding.map { case (lhs, rhs) =>
+          (lhs, tffLetReplaceTermAll(replacements, rhs))
+        }
+        val updatedReplacements = replacements.removedAll(typing.keys)
+        val replacedBody = tffLetReplaceTermAll(updatedReplacements, body)
+        TFF.LetFormula(typing, updatedBinding, replacedBody)
+      case TFF.NonclassicalPolyaryFormula(connective, args) =>
+        TFF.NonclassicalPolyaryFormula(connective, args.map(tffLetReplaceFormulaAll(replacements, _)))
+      case _ => formula
+    }
+  }
+  ////// Functions related to TFF let-expression expansion END
 
 
   private[this] final def convertTFFBinaryConnective(connective: TPTP.TFF.BinaryConnective): HOLBinaryConnective = {
