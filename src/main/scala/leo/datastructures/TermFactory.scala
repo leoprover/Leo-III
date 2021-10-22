@@ -15,9 +15,9 @@ trait TermFactory {
   /** Create bound index with de-Bruijn index `scope` and type `t` */
   def mkBound(t: Type, scope: Int): Term
 
-  def mkInteger(n: Int): Term
-  def mkRational(numerator: Int, denominator: Int): Term
-  def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term
+  def mkInteger(n: BigInt): Term
+  def mkRational(numerator: BigInt, denominator: BigInt): Term
+  def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term
 
   /** Create application term `(func arg)` */
   def mkTermApp(func: Term, arg: Term): Term

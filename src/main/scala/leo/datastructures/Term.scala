@@ -170,9 +170,9 @@ object Term extends TermBank {
   override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
   override final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
   override final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
-  override final def mkInteger(n: Int): Term = TermImpl.mkInteger(n)
-  override final def mkRational(numerator: Int, denominator: Int): Term = TermImpl.mkRational(numerator,denominator)
-  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = TermImpl.mkReal(wholePart, decimalPart, exponent)
+  override final def mkInteger(n: BigInt): Term = TermImpl.mkInteger(n)
+  override final def mkRational(numerator: BigInt, denominator: BigInt): Term = TermImpl.mkRational(numerator,denominator)
+  override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = TermImpl.mkReal(wholePart, decimalPart, exponent)
   override final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
   override final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
   override final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
@@ -236,9 +236,9 @@ object Term extends TermBank {
    */
   final object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
-  final object Integer { def unapply(t: Term): Option[Int] = TermImpl.integerMatcher(t) }
-  final object Rational { def unapply(t: Term): Option[(Int, Int)] = TermImpl.rationalMatcher(t) }
-  final object Real { def unapply(t: Term): Option[(Int, Int, Int)] = TermImpl.realMatcher(t) }
+  final object Integer { def unapply(t: Term): Option[BigInt] = TermImpl.integerMatcher(t) }
+  final object Rational { def unapply(t: Term): Option[(BigInt, BigInt)] = TermImpl.rationalMatcher(t) }
+  final object Real { def unapply(t: Term): Option[(BigInt, BigInt, BigInt)] = TermImpl.realMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
