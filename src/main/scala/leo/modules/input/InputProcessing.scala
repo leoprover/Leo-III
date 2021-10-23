@@ -792,7 +792,7 @@ object InputProcessing {
           }
         }
         // (1) transform implicit variables to lambda form:
-        // transformedBindingMap is a map: atom -> (RHS of atom's binding in transformed lambda form)
+        // transformedBindingMap is a map: atom -> (function that maps given arguments to the RHS in which the formal parameters are replaced by them.)
         val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
           tffLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, params)) =>
@@ -809,10 +809,10 @@ object InputProcessing {
             case None => throw new SZSException(SZS_InputError, s"Left-hand side '${lhs.pretty}' malformed in let binding ${formula.pretty}.")
           }
         }
-        // (2) traverse body and replace every occurrence of LHS by transformed RHS (case 1 and case 3 are, in fact, identical cases)
+        // (2) traverse body and replace every occurrence of LHS by transformed RHS
         val transformedBody0 = tffLetReplaceTermAll(transformedBindingMap, body)
         letInfo
-        val transformedBody = transformedBody0 match {
+        val transformedBody = transformedBody0 match { // On formula level: Check if results are indeed (potential) formulas
           case TFF.AtomicTerm(f, args) => TFF.AtomicFormula(f, args)
           case TFF.Variable(name) => TFF.FormulaVariable(name)
           case TFF.FormulaTerm(formula) => formula
