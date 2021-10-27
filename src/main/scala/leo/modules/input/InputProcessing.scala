@@ -279,9 +279,12 @@ object InputProcessing {
         if (c.ty == o) {
           if (t.ty == e.ty) {
             import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+            val cLift = c.lift(1)
+            val tLift = t.lift(1)
+            val eLift = e.lift(1)
             val ty = t.ty
-            Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
-              Impl(Not(c), ===(mkBound(ty, 1), e)))))
+            Choice(λ(ty)(&(Impl(cLift, ===(mkBound(ty, 1), tLift)),
+              Impl(Not(cLift), ===(mkBound(ty, 1), eLift)))))
           } else throw new SZSException(SZS_TypeError, s"Alternatives of if-then-else are not of same type.")
         } else throw new SZSException(SZS_TypeError, s"Condition of if-then-else is not Boolean typed.")
 
@@ -818,7 +821,10 @@ object InputProcessing {
           case TFF.FormulaTerm(formula) => formula
           case _ => throw new SZSException(SZS_InputError, s"Let expansion of expression '${formula.pretty}' on formula level yielded unexpected term '${transformedBody0.pretty}'.")
         }
-        convertTFFFormula0(sig)(transformedBody, termVars, typeVars, vars)
+        Out.trace(s"[Input] Expanding $$let expression in ${formula.pretty} ...")
+        Out.trace(s"[Input] $$let expansion result: ${transformedBody.pretty}")
+        val res = convertTFFFormula0(sig)(transformedBody, termVars, typeVars, vars)
+        res
 
       case FormulaVariable(name) =>
         if (vars.isDefinedAt(name)) {
@@ -829,18 +835,22 @@ object InputProcessing {
         } else throw new SZSException(SZS_InputError, s"Unbound variable '$name' at formula-level.")
 
       case ConditionalFormula(condition, thn, els) =>
+        Out.trace(s"[Input] Transforming TFF conditional expression ${formula.pretty} ...")
         val c = convertTFFFormula0(sig)(condition, termVars, typeVars, vars)
         val t0 = convertTFFTerm(sig)(thn, termVars, typeVars, vars)
         val e0 = convertTFFTerm(sig)(els, termVars, typeVars, vars)
 
         (t0,e0) match {
           case (Left(t), Left(e)) =>
+            val cLift = c.lift(1)
+            val tLift = t.lift(1)
+            val eLift = e.lift(1)
             if (c.ty == o) {
               if (t.ty == e.ty) {
                 import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
                 val ty = t.ty
-                Choice(λ(ty)(&(Impl(c, ===(mkBound(ty, 1), t)),
-                  Impl(Not(c), ===(mkBound(ty, 1), e)))))
+                Choice(λ(ty)(&(Impl(cLift, ===(mkBound(ty, 1), tLift)),
+                  Impl(Not(cLift), ===(mkBound(ty, 1), eLift)))))
               } else throw new SZSException(SZS_TypeError, s"Alternatives of conditional expression '${formula.pretty}' are not of same type.")
             } else throw new SZSException(SZS_TypeError, s"Condition of conditional expression '${formula.pretty}' is not Boolean typed.")
 
