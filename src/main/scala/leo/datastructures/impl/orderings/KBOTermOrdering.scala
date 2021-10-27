@@ -51,12 +51,12 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
         val tWeight = termWeight(t)
 
         if (sWeight > tWeight) {
-          compareVars(s.vars, t.vars) match {
+          compareVars(s, t) match {
             case CMP_GT | CMP_EQ => CMP_GT
             case _ => CMP_NC
           }
         } else if (sWeight < tWeight) {
-          compareVars(s.vars, t.vars) match {
+          compareVars(s, t) match {
             case CMP_LT | CMP_EQ => CMP_LT
             case _ => CMP_NC
           }
@@ -66,22 +66,22 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
               prec.compare(f1,f2) match {
                 case CMP_NC => CMP_NC
                 case CMP_GT =>
-                  compareVars(s.vars, t.vars) match {
+                  compareVars(s, t) match {
                     case CMP_GT | CMP_EQ => CMP_GT
                     case _ => CMP_NC
                   }
                 case CMP_LT =>
-                  compareVars(s.vars, t.vars) match {
+                  compareVars(s, t) match {
                     case CMP_LT | CMP_EQ => CMP_LT
                     case _ => CMP_NC
                   }
                 case CMP_EQ =>
                   lexCompare(args1, args2) match {
-                    case CMP_GT => compareVars(s.vars, t.vars) match {
+                    case CMP_GT => compareVars(s, t) match {
                       case CMP_GT | CMP_EQ => CMP_GT
                       case _ => CMP_NC
                     }
-                    case CMP_LT => compareVars(s.vars, t.vars) match {
+                    case CMP_LT => compareVars(s, t) match {
                       case CMP_LT | CMP_EQ => CMP_LT
                       case _ => CMP_NC
                     }
@@ -92,11 +92,11 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
               if (idx1 == idx2) {
                 // same as f(args) > g(args) with f ~ g
                 lexCompare(args1, args2) match {
-                  case CMP_GT => compareVars(s.vars, t.vars) match {
+                  case CMP_GT => compareVars(s, t) match {
                     case CMP_GT | CMP_EQ => CMP_GT
                     case _ => CMP_NC
                   }
-                  case CMP_LT => compareVars(s.vars, t.vars) match {
+                  case CMP_LT => compareVars(s, t) match {
                     case CMP_LT | CMP_EQ => CMP_LT
                     case _ => CMP_NC
                   }
@@ -110,18 +110,18 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
                 case (Symbol(f1), Symbol(f2)) =>
                   prec.compare(f1,f2) match {
                     case CMP_GT =>
-                      compareVars(s.vars, t.vars) match {
+                      compareVars(s, t) match {
                         case CMP_GT | CMP_EQ => CMP_GT
                         case _ => CMP_NC
                       }
                     case CMP_LT =>
-                      compareVars(s.vars, t.vars) match {
+                      compareVars(s, t) match {
                         case CMP_LT | CMP_EQ => CMP_LT
                         case _ => CMP_NC
                       }
                     case CMP_NC => CMP_NC
                     case CMP_EQ =>
-                      compareVars(s.vars, t.vars) match {
+                      compareVars(s, t) match {
                         case CMP_EQ => CMP_EQ
                         case _ => CMP_NC
                       }
@@ -133,9 +133,9 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
         }
       }
     }
-    println(s"compare(\n" +
-      s"\t${s.pretty(sig)},\n\t${t.pretty(sig)}\n" +
-    "):", s"KBO: ${Orderings.pretty(result)}", s"CPO: ${Orderings.pretty(TO_CPO_Naive.compare(s,t))}")
+//    println(s"compare(\n" +
+//      s"\t${s.pretty(sig)},\n\t${t.pretty(sig)}\n" +
+//    "):", s"KBO: ${Orderings.pretty(result)}", s"CPO: ${Orderings.pretty(TO_CPO_Naive.compare(s,t))}")
     result
   }
 
@@ -159,13 +159,18 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
     else result.get
   }
 
-  def compareVars(sVars: Multiset[Int], tVars: Multiset[Int]): CMP_Result = {
-    val subsetST = sVars.subset(tVars)
-    val subsetTS = tVars.subset(sVars)
-    if (subsetST && subsetTS) CMP_EQ
-    else if (subsetST) CMP_LT
-    else if (subsetTS) CMP_GT
-    else CMP_NC
+  def compareVars(s: Term, t: Term): CMP_Result = {
+    if (s.headVars.nonEmpty || t.headVars.nonEmpty) CMP_NC
+    else {
+      val sVars: Multiset[Int] = s.vars
+      val tVars: Multiset[Int] = t.vars
+      val subsetST = sVars.subset(tVars)
+      val subsetTS = tVars.subset(sVars)
+      if (subsetST && subsetTS) CMP_EQ
+      else if (subsetST) CMP_LT
+      else if (subsetTS) CMP_GT
+      else CMP_NC
+    }
   }
 //  final def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result = {
 //    val sVars = s.vars
@@ -258,6 +263,17 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
         for (arg <- args) {
           val wArg = termWeight2(arg)
 //          val shiftedwArg = ((wArg - (wArg.lsp - 1)) << 1)
+          weight = weight + wArg
+        }
+        weight
+      case f ∙ args =>
+        var weight = termWeight2(f)
+        for (arg <- args) {
+          val wArg = arg match {
+            case Left(termArg) =>
+              termWeight2(termArg)
+            case Right(tyArg) => Ordinal(1)
+          }
           weight = weight + wArg
         }
         weight

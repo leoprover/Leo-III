@@ -84,10 +84,12 @@ object KBOTest {
     assert(wellTyped(eq1._1)); assert(wellTyped(eq1._2))
     assert(wellTyped(eq2._1), "eq21"); assert(wellTyped(eq2._2), "eq22")
     println(ordering.termWeight(eq1._1))
+    println(s"headVars ${eq1._1.pretty(sig)}, ${eq1._2.pretty(sig)}:", eq1._1.headVars, eq1._2.headVars)
+    println(s"headVars ${eq2._1.pretty(sig)}, ${eq2._2.pretty(sig)}:", eq2._1.headVars, eq2._2.headVars)
     println(ordering.termWeight(eq1._2))
     compareTerms(eq1._1, eq1._2)
     compareTerms(eq2._1, eq2._2)
-
+//
     compare("f1", "^[X:$i]: (f1 @ X)")
   }
 

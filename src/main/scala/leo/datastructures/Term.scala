@@ -98,6 +98,7 @@ trait Term extends Pretty with Prettier {
   def symbols: Multiset[Signature.Key]
   /** Multiset of all free variables contained within the term. */
   def vars: Multiset[Int]
+  def headVars: Set[Int]
 
   // Functions for FV-Indexing
   def fvi_symbolFreqOf(symbol: Signature.Key): Int
