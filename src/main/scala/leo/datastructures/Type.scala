@@ -7,7 +7,7 @@ import scala.language.implicitConversions
  * Abstract type for modeling types.
  * At the moment, types are constructed by:
  *
- * t1, t2 ::= s (ti) | t1 -> t2 | t1 * t2 | t1 + t2 | forall a. t1
+ * t1, t2, ... ::= s (ti) | t1 -> t2 | ty1 x ty2 x ... x tyN | forall a. t1
  * with s is a sort from a set S of sort symbols. If s is of kind * -> ... -> * (n times)
  * then the ti is a sequence of (n-1) type arguments. If s is of kind *, then s is
  * called base type.
@@ -24,6 +24,7 @@ import scala.language.implicitConversions
  * @note Updated 30.06.2014 Inserted type constructors for product types (*) and union types (+). These
  *       will be removed from the type language as soon as it is expressive enough for general type constructors. Probably. Or not. We'll see.
  * @note Updated 14.06.2016 Introduced sort symbols to support TH1
+ * @note Updated October 2021. Removed union types (will never be supported), simplified product types.
  */
 abstract class Type extends Pretty with Prettier {
 
@@ -32,7 +33,6 @@ abstract class Type extends Pretty with Prettier {
   val isComposedType: Boolean = false
   val isFunType: Boolean = false
   val isProdType: Boolean = false
-  val isUnionType: Boolean = false
   val isPolyType: Boolean = false
   val isBoundTypeVar: Boolean = false
   def isApplicableWith(arg: Type): Boolean
@@ -80,8 +80,6 @@ abstract class Type extends Pretty with Prettier {
   /** Create abstraction type from `hd` to `this` */
   def ->:(hd: Type): Type = Type.mkFunType(hd, this)
 
-  /** Create union type `this + ty`*/
-  def +(ty: Type): Type = Type.mkUnionType(this, ty)
   /** Create type application: If `this` is a sort symbol t = `s` of non-zero arity (or not fully applied type t = `s a1 a2 ...`)
     * the, it creates the type application t @ ty. Otherwise, it fails. */
   def app(ty: Type): Type
@@ -131,18 +129,6 @@ object Type {
   /** Create product type `t1 x t2 x ... x tn` (type of an n-ary tuple with respective element types). */
   final def mkProdType(tys: Seq[Type]): Type = TypeImpl.mkProdType(tys)
 
-  /** Create union type (t1+t2). */
-  final def mkUnionType(t1: Type, t2: Type): Type = TypeImpl.mkUnionType(t1,t2)
-  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  final def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(mkUnionType(t1, t2))((arg,f) => mkUnionType(arg,f))
-  }
-  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  final def mkUnionType(ti: Seq[Type]): Type = ti match {
-    case Seq(ty)        => ty
-    case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
-  }
-
   final def clear(): Unit = TypeImpl.clear()
 
   @inline final def ground(ty: Type): Boolean = ty.typeVars.isEmpty
@@ -170,7 +156,7 @@ object Type {
   // Pattern matchers for types
   ///////////////////////////////
   import leo.datastructures.impl.{GroundTypeNode, BoundTypeNode, ProductTypeNode,
-  AbstractionTypeNode, UnionTypeNode, ForallTypeNode}
+  AbstractionTypeNode, ForallTypeNode}
 
   object BaseType {
     def unapply(ty: Type): Option[Signature.Key] = ty match {
@@ -207,13 +193,6 @@ object Type {
     }
   }
 
-  object + {
-    def unapply(ty: Type): Option[(Type, Type)] = ty match {
-      case UnionTypeNode(l, r) => Some((l,r))
-      case _ => None
-    }
-  }
-
   object ∀ {
     def unapply(ty: Type): Option[Type] = ty match {
       case ForallTypeNode(t) => Some(t)
@@ -246,7 +225,6 @@ object Type {
       case (BoundType(t1), BoundType(t2)) => t1 compare t2
       case (->(h1,t1), ->(h2,t2)) => compareTwo(h1,t1, h2, t2)
       case (*(tys1), *(tys2)) => compareSeq(tys1,tys2)
-      case (+(h1,t1), +(h2,t2)) => compareTwo(h1,t1, h2, t2)
       case (∀(x), ∀(y)) => this.compare(x, y)
       case (BaseType(x), _) => 1
       case (_, BaseType(x)) => -1
@@ -258,8 +236,6 @@ object Type {
       case (_, ->(k,t)) => -1
       case (*(_), _) => 1
       case (_, *(_)) => -1
-      case (+(k,t), _) => 1
-      case (_, +(k,t)) => -1
       case (∀(x), _) => 1
       case (_, ∀(x)) => -1
     }

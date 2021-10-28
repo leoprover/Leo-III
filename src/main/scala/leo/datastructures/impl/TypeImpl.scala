@@ -161,36 +161,6 @@ protected[datastructures] case class ProductTypeNode(tys: Seq[Type]) extends Typ
   final override val numberOfComponents: Int = tys.size
 }
 
-/** Product type `l + r` */
-protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends TypeImpl {
-  // Pretty printing
-  final def pretty: String = s"(${l.pretty} + ${r.pretty})"
-  final def pretty(sig: Signature): String =  s"(${l.pretty(sig)} + ${r.pretty(sig)})"
-
-  // Predicates on types
-  final override val isUnionType        = true
-  final def isApplicableWith(arg: Type) = false
-
-  // Queries on types
-  final lazy val typeVars = l.typeVars ++ r.typeVars
-  final lazy val symbols = l.symbols ++ r.symbols
-
-  final val funDomainType   = None
-  final val codomainType = this
-  final val arity = 0
-  final val funParamTypesWithResultType = Vector(this)
-  final val order = 0
-  final val polyPrefixArgsCount = 0
-
-  final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to union type")
-  final def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
-
-  // Substitutions
-  final def replace(what: Type, by: Type): Type = if (what == this) by
-  else UnionTypeNode(l.replace(what,by), r.replace(what,by))
-  final def substitute(subst: Subst) = UnionTypeNode(l.substitute(subst), r.substitute(subst))
-}
-
 /**
  * Type of a polymorphic function
  * @param body The type in which a type variable is now bound to this binder
@@ -312,7 +282,6 @@ object TypeImpl {
   }
 
   final def mkProdType(tys: Seq[Type]): Type = ProductTypeNode(tys)
-  final def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
 
   final def clear(): Unit = {
     types.clear()

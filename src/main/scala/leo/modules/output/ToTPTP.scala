@@ -487,7 +487,6 @@ object ToTPTP {
     case BoundType(scope) => "T" + intToName(scope-1)
     case t1 -> t2 => s"(${typeToTHF1(t1)(sig)} > ${typeToTHF1(t2)(sig)})"
     case *(tys) => tys.map(typeToTHF1(_)(sig)).mkString("[", ",", "]")
-    case t1 + t2 => s"(${typeToTHF1(t1)(sig)} + ${typeToTHF1(t2)(sig)})"
     case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
   }
 
