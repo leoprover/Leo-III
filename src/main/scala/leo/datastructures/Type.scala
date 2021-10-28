@@ -80,8 +80,6 @@ abstract class Type extends Pretty with Prettier {
   /** Create abstraction type from `hd` to `this` */
   def ->:(hd: Type): Type = Type.mkFunType(hd, this)
 
-  /** Create product type `this * ty` */
-  def *(ty: Type): Type = Type.mkProdType(this, ty)
   /** Create union type `this + ty`*/
   def +(ty: Type): Type = Type.mkUnionType(this, ty)
   /** Create type application: If `this` is a sort symbol t = `s` of non-zero arity (or not fully applied type t = `s a1 a2 ...`)
@@ -130,17 +128,8 @@ object Type {
     case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
 
-  /** Create product type (t1,t2). */
-  final def mkProdType(t1: Type, t2: Type): Type = TypeImpl.mkProdType(t1,t2)
-  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  final def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(mkProdType(t1, t2))((arg,f) => mkProdType(arg,f))
-  }
-  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  final def mkProdType(ti: Seq[Type]): Type = ti match {
-    case Seq(ty)        => ty
-    case Seq(ty1, ty2, tys @ _*) => mkProdType(ty1, ty2, tys)
-  }
+  /** Create product type `t1 x t2 x ... x tn` (type of an n-ary tuple with respective element types). */
+  final def mkProdType(tys: Seq[Type]): Type = TypeImpl.mkProdType(tys)
 
   /** Create union type (t1+t2). */
   final def mkUnionType(t1: Type, t2: Type): Type = TypeImpl.mkUnionType(t1,t2)
@@ -212,8 +201,8 @@ object Type {
   }
 
   object * {
-    def unapply(ty: Type): Option[(Type, Type)] = ty match {
-      case ProductTypeNode(l, r) => Some((l,r))
+    def unapply(ty: Type): Option[Seq[Type]] = ty match {
+      case ProductTypeNode(tys) => Some(tys)
       case _ => None
     }
   }
@@ -256,7 +245,7 @@ object Type {
         if(c != 0) c else compareSeq(t1, t2)
       case (BoundType(t1), BoundType(t2)) => t1 compare t2
       case (->(h1,t1), ->(h2,t2)) => compareTwo(h1,t1, h2, t2)
-      case (*(h1,t1), *(h2,t2)) => compareTwo(h1,t1, h2, t2)
+      case (*(tys1), *(tys2)) => compareSeq(tys1,tys2)
       case (+(h1,t1), +(h2,t2)) => compareTwo(h1,t1, h2, t2)
       case (∀(x), ∀(y)) => this.compare(x, y)
       case (BaseType(x), _) => 1
@@ -267,8 +256,8 @@ object Type {
       case (_, BoundType(x)) => -1
       case (->(k,t), _) => 1
       case (_, ->(k,t)) => -1
-      case (*(k,t), _) => 1
-      case (_, *(k,t)) => -1
+      case (*(_), _) => 1
+      case (_, *(_)) => -1
       case (+(k,t), _) => 1
       case (_, +(k,t)) => -1
       case (∀(x), _) => 1

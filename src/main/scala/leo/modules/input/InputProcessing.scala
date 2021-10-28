@@ -2,7 +2,7 @@ package leo.modules.input
 
 import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
 import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
-import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkUnionType, mkVarType, typeKind}
+import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkType, mkVarType, mkProdType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
@@ -585,15 +585,13 @@ object InputProcessing {
         import TPTP.THF.{FunTyConstructor, ProductTyConstructor, SumTyConstructor, App}
 
         connective match {
-          case FunTyConstructor | ProductTyConstructor | SumTyConstructor | App =>
+          case FunTyConstructor | App =>
             val convertedLeft = convertTHFType0(sig)(left, vars)
             val convertedRight = convertTHFType0(sig)(right, vars)
             (convertedLeft, convertedRight) match {
               case (Left(left0), Left(right0)) =>
                 val result = (connective: @unchecked) match { // Exhaustiveness guaranteed by match-case condition a few lines above
                   case FunTyConstructor => mkFunType(left0, right0)
-                  case ProductTyConstructor => mkProdType(left0, right0)
-                  case SumTyConstructor => mkUnionType(left0, right0)
                   case App => left0.app(right0)
                 }
                 Left(result)
@@ -601,19 +599,19 @@ object InputProcessing {
               case _ => throw new SZSException(SZS_TypeError, s"Binary type '${typ.pretty}' either contains both types and $$tType which is not allowed," +
                 s"or contains $$tType outside the context of the function type constructor '>'.")
             }
+          case ProductTyConstructor => throw new SZSException(SZS_Inappropriate, "Leo-III does not support legacy product type using the '*' type constructor." +
+            "Consider using tuple types [ty1,ty2,...,tyN] instead.")
+          case SumTyConstructor => throw new SZSException(SZS_Inappropriate, "Leo-III does not support union types. ")
           case _ => throw new SZSException(SZS_TypeError, s"Top-level binary type (one of '>', '*', '+', or '@') expected but term connective '${connective.pretty}' was given.")
         }
 
-      case Tuple(elements) =>
+      case Tuple(elements) => // Tuple term doubles as product type expression.
         val convertedTys = elements.map(convertTHFType0(sig)(_, vars))
-        val (_, kinds) = convertedTys.partitionMap(identity)
-        if (kinds.isEmpty) {
-          throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
-        } else throw new SZSException(SZS_TypeError, s"Tuple type '${typ.pretty}' contains kinds (such as $$tType) which is not allowed.")
+        val (tys, kinds) = convertedTys.partitionMap(identity)
+        if (kinds.isEmpty) Left(mkProdType(tys))
+        else throw new SZSException(SZS_TypeError, s"Tuple type '${typ.pretty}' contains kinds (such as $$tType) which is not allowed.")
 
-      //      case LetTerm(typing, binding, body) => ??? // TODO: We could, in principle, allow let-terms in type expressions.
-      //      case DistinctObject(name) => ??? // TODO: Can a distinct object serve as type identifier?
-      case _ => throw new SZSException(SZS_InputError, s"Malformed type-expression: '${typ.pretty}'.")
+      case _ => throw new SZSException(SZS_InputError, s"Unrecognized type expression: '${typ.pretty}'.")
     }
   }
 
@@ -1179,7 +1177,12 @@ object InputProcessing {
           }
         } else throw new SZSException(SZS_TypeError, s"Unexpected mixed types and kinds on left-hand side of mapping type '${mt.pretty}'. ")
 
-      case TupleType(_) => throw new SZSException(SZS_Inappropriate, "Leo-III currently does not support tuples.")
+      case TupleType(tys) =>
+        val convertedTys = tys.map(convertTFFType0(sig)(_, typeVars))
+        val (convertedTypeArgs, convertedKindArgs) = convertedTys.partitionMap(identity)
+        if (convertedTypeArgs.nonEmpty && convertedKindArgs.isEmpty) {
+          Left(Type.mkProdType(convertedTypeArgs))
+        } else throw new SZSException(SZS_TypeError, s"Unexpected mixed types and kinds in tuple type '${typ.pretty}'. ")
     }
   }
 

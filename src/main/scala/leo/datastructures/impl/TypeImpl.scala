@@ -126,21 +126,23 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   final def substitute(subst: Subst) = AbstractionTypeNode(in.substitute(subst), out.substitute(subst))
 }
 
-/** Product type `l * r` */
-protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends TypeImpl {
+/** Product type `ty1 x ty2 x ... x tyN` (type of n-ary tuple). */
+protected[datastructures] case class ProductTypeNode(tys: Seq[Type]) extends TypeImpl {
+  assert(tys.nonEmpty, "Empty product type.")
+
   // Pretty printing
-  final def pretty = s"(${l.pretty} * ${r.pretty})"
-  final def pretty(sig: Signature) =  s"(${l.pretty(sig)} * ${r.pretty(sig)})"
+  final def pretty = tys.map(_.pretty).mkString("(", " × ", ")")
+  final def pretty(sig: Signature) =  tys.map(_.pretty(sig)).mkString("(", " × ", ")")
 
   // Predicates on types
   final override val isProdType          = true
   final def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  final lazy val typeVars = l.typeVars ++ r.typeVars
-  final lazy val symbols = l.symbols ++ r.symbols
+  final lazy val typeVars = Set.concat(tys.map(_.typeVars):_*)
+  final lazy val symbols = Set.concat(tys.map(_.symbols):_*)
 
-  final val funDomainType   = None
+  final val funDomainType = None
   final val codomainType = this
   final val arity = 0
   final val funParamTypesWithResultType = Vector(this)
@@ -148,15 +150,15 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   final val polyPrefixArgsCount = 0
 
   final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to product type")
-  final def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
+  final def occurs(ty: Type) = tys.exists(_.occurs(ty))
 
   // Substitutions
   final def replace(what: Type, by: Type) = if (what == this) by
-  else ProductTypeNode(l.replace(what,by), r.replace(what,by))
-  final def substitute(subst: Subst) = ProductTypeNode(l.substitute(subst), r.substitute(subst))
+  else ProductTypeNode(tys.map(_.replace(what,by)))
+  final def substitute(subst: Subst) = ProductTypeNode(tys.map(_.substitute(subst)))
 
   // Other operations
-  final override val numberOfComponents: Int = 1 + l.numberOfComponents
+  final override val numberOfComponents: Int = tys.size
 }
 
 /** Product type `l + r` */
@@ -309,7 +311,7 @@ object TypeImpl {
     ty
   }
 
-  final def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
+  final def mkProdType(tys: Seq[Type]): Type = ProductTypeNode(tys)
   final def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
 
   final def clear(): Unit = {
