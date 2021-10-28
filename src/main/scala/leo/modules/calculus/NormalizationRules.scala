@@ -722,7 +722,7 @@ object Simp extends CalculusRule {
       val normRight = normalize(l.right)
       (normLeft, normRight) match {
         case (a,b) if a == b => Literal(LitTrue(), l.polarity)
-        case _ => Literal.mkOrdered(normLeft, normRight, l.polarity)
+        case _ => Literal.mkLit(normLeft, normRight, l.polarity, l.oriented)
       }
     }
   }
