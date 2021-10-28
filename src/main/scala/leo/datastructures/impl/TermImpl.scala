@@ -141,7 +141,6 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
   @tailrec private[this] def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
-      case (t -> out) if t.isProdType => ty0(out, s.drop(t.numberOfComponents))
       case (_ -> out) => ty0(out, tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
