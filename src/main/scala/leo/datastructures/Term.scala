@@ -1,6 +1,5 @@
 package leo.datastructures
 
-import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 /**
@@ -318,50 +317,4 @@ object Term extends TermBank {
    * }}}
    */
   final object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
-
-  /** A lexicographical ordering of terms. Its definition is arbitrary, but should form
-   * a total order on terms.
-   * */
-  final object LexicographicalOrdering extends Ordering[Term] {
-
-      @tailrec  def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
-        case (Left(h1) +: t1, Left(h2) +: t2) =>
-          val c = this.compare(h1, h2)
-          if (c != 0) c else compareApp(t1, t2)
-        case (Right(h1) +: t1, Right(h2) +: t2) =>
-          val c = Type.LexicographicalOrdering.compare(h1, h2)
-          if (c != 0) c else compareApp(t1, t2)
-        case (Left(_) +: _, Right(_) +: _) => 1
-        case (Right(_) +: _, Left(_) +: _) => -1
-        case (_ +: _, Nil) => 1
-        case (Nil, _ +: _) => -1
-        case (Nil, Nil) => 0
-      }
-
-      // The order of the match is important because Bound and Symbol is a special case of Application.
-      def compare(a: Term, b: Term): Int = (a, b) match {
-        case (Bound(t1, s1), Bound(t2, s2)) =>
-          val c = s1 compare s2
-          if (c == 0) Type.LexicographicalOrdering.compare(t1, t2) else c
-        case (Bound(_, _), _) => 1
-        case (_, Bound(_, _)) => -1
-        case (Symbol(t1), Symbol(t2)) => t1 compare t2
-        case (Symbol(_), _) => 1
-        case (_, Symbol(_)) => -1
-        case (h1 ∙ a1, h2 ∙ a2) =>
-          val c = this.compare(h1, h2)
-          if (c == 0) compareApp(a1, a2) else c
-        case (t1 :::> s1, t2 :::> s2) =>
-          val c = Type.LexicographicalOrdering.compare(t1, t2)
-          if (c == 0) this.compare(s1, s2) else c
-        case (TypeLambda(s1), TypeLambda(s2)) =>
-          this.compare(s1, s2)
-        case (_ ∙ _, _) => 1
-        case (_, _ ∙ _) => -1
-        case (_ :::> _, _) => 1
-        case (_, _ :::> _) => -1
-        case (TypeLambda(_), _) => 1
-        case (_, TypeLambda(_)) => -1
-      }
-    }
 }

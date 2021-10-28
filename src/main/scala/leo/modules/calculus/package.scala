@@ -225,7 +225,7 @@ package object calculus {
     (s,t) match {
       case (BaseType(id1), BaseType(id2)) => id1 == id2
       case (a -> b, c -> d) => mayUnify(a,c) && mayUnify(b,d)
-      case (*(tys1), *(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayUnify(pair._1, pair._2))
+      case (ProductType(tys1), ProductType(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayUnify(pair._1, pair._2))
       case (∀(a), ∀(b)) => mayUnify(a,b)
       case (BoundType(_), ∀(_)) => false
       case (BoundType(_), _) => true
@@ -279,7 +279,7 @@ package object calculus {
     (s,t) match {
       case (BaseType(id1), BaseType(id2)) => id1 == id2
       case (a -> b, c -> d) => mayMatch(a,c) && mayMatch(b,d)
-      case (*(tys1), *(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayMatch(pair._1, pair._2))
+      case (ProductType(tys1), ProductType(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayMatch(pair._1, pair._2))
       case (∀(a), ∀(b)) => mayMatch(a,b)
       case (BoundType(_), _) => true
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayMatch(ts._1, ts._2))

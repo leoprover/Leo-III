@@ -194,7 +194,7 @@ object ToTFF {
         sb.append(">")
         sb.append(typeToTFF0(outType)(sig))
         sb.toString
-      case *(tys) => tys.map(typeToTFF0(_)(sig)).mkString("[", ",", "]")
+      case ProductType(tys) => tys.map(typeToTFF0(_)(sig)).mkString("[", ",", "]")
       case ∀(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")
     }
   }

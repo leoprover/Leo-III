@@ -26,15 +26,15 @@ import scala.language.implicitConversions
  * @note Updated 14.06.2016 Introduced sort symbols to support TH1
  * @note Updated October 2021. Removed union types (will never be supported), simplified product types.
  */
-abstract class Type extends Pretty with Prettier {
+trait Type extends Pretty with Prettier {
 
   // Predicates on types
-  val isBaseType: Boolean = false
-  val isComposedType: Boolean = false
-  val isFunType: Boolean = false
-  val isProdType: Boolean = false
-  val isPolyType: Boolean = false
-  val isBoundTypeVar: Boolean = false
+  def isBaseType: Boolean
+  def isComposedType: Boolean
+  def isFunType: Boolean
+  def isProdType: Boolean
+  def isPolyType: Boolean
+  def isBoundTypeVar: Boolean
   def isApplicableWith(arg: Type): Boolean
 
   // Queries on types
@@ -84,7 +84,6 @@ abstract class Type extends Pretty with Prettier {
     * the, it creates the type application t @ ty. Otherwise, it fails. */
   def app(ty: Type): Type
 
-  val numberOfComponents: Int = 1
   def order: Int
   /**
    * The number of "prefix" type abstractions, i.e. the length
@@ -186,7 +185,7 @@ object Type {
     }
   }
 
-  object * {
+  object ProductType {
     def unapply(ty: Type): Option[Seq[Type]] = ty match {
       case ProductTypeNode(tys) => Some(tys)
       case _ => None
@@ -199,48 +198,6 @@ object Type {
       case _ => None
     }
   }
-
-  /** A lexicographical ordering of types. Its definition is arbitrary, but should form
-   * a total order on types.
-   * */
-  object LexicographicalOrdering extends Ordering[Type] {
-    private def compareSeq(a : Seq[Type], b: Seq[Type]) : Int = (a,b) match {
-      case (h1 +: t1, h2 +: t2) =>
-        val c = this.compare(h1,h2)
-        if(c!=0) c else compareSeq(t1, t2)
-      case (h +: t, Nil) => 1
-      case (Nil, h +: t) => -1
-      case (Nil, Nil) => 0
-    }
-
-    private def compareTwo(x1: Type, y1: Type, x2: Type, y2: Type) : Int = {
-      val c = this.compare(x1, x2)
-      if(c != 0) c else this.compare(y1, y2)}
-
-    def compare(a : Type, b:Type) : Int = (a ,b) match {
-      case (BaseType(x), BaseType(y)) => x compare y
-      case (ComposedType(k1, t1), ComposedType(k2, t2)) =>
-        val c = k1 compare k2
-        if(c != 0) c else compareSeq(t1, t2)
-      case (BoundType(t1), BoundType(t2)) => t1 compare t2
-      case (->(h1,t1), ->(h2,t2)) => compareTwo(h1,t1, h2, t2)
-      case (*(tys1), *(tys2)) => compareSeq(tys1,tys2)
-      case (∀(x), ∀(y)) => this.compare(x, y)
-      case (BaseType(x), _) => 1
-      case (_, BaseType(x)) => -1
-      case (ComposedType(k,t), _) => 1
-      case (_, ComposedType(k,t)) => -1
-      case (BoundType(x), _) => 1
-      case (_, BoundType(x)) => -1
-      case (->(k,t), _) => 1
-      case (_, ->(k,t)) => -1
-      case (*(_), _) => 1
-      case (_, *(_)) => -1
-      case (∀(x), _) => 1
-      case (_, ∀(x)) => -1
-    }
-  }
-
 }
 
 
