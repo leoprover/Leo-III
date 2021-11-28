@@ -443,6 +443,10 @@ object ToTPTP {
         }
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
         s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount,bVars)(sig)})"
+      case f@Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
+        val translatedF = tptpEscapeExpression(sig(id).name)
+        val translatedArgs: Seq[String] = args.tail.map(argToTPTP(_, tyVarCount, bVars)(sig))
+        s"$translatedF @ ${translatedArgs.mkString(" @ ")}"
       case f ∙ args =>
         val translatedF = toTPTP0(f,tyVarCount, bVars)(sig)
         val translatedArgs: Seq[String] = args.map(argToTPTP(_, tyVarCount, bVars)(sig))

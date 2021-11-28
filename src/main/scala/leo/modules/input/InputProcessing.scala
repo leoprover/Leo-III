@@ -21,12 +21,28 @@ import scala.annotation.tailrec
   * @see [[Signature]]
   */
 object InputProcessing {
-  import leo.modules.HOLSignature.{i, o, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
+  import leo.modules.HOLSignature
+  import HOLSignature.{i, o, LitTrue, HOLUnaryConnective, HOLBinaryConnective}
 
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
   type TermOrType = Either[Term, Type]
   type TypeOrKind = Either[Type, Kind]
+
+  // Ad-hoc polymorphic arithmetic constants of TPTP.
+  // This is a bit hacky, as they are defined on multiple different types; so we make a case distinction below
+  // and list all of the relevant operators here.
+  private[modules] final val adHocPolymorphicArithmeticConstants: Seq[Signature.Key] = Seq(
+    HOLSignature.HOLLess.key,
+    HOLSignature.HOLLessEq.key,
+    HOLSignature.HOLGreater.key,
+    HOLSignature.HOLGreaterEq.key,
+    HOLSignature.HOLUnaryMinus.key,
+    HOLSignature.HOLSum.key,
+    HOLSignature.HOLDifference.key,
+    HOLSignature.HOLProduct.key,
+    HOLSignature.HOLQuotient.key
+  )
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
@@ -206,11 +222,18 @@ object InputProcessing {
             val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
             mkTermApp(intermediate, convertedRight)
           } else {
-            // Standard polymorphic case: Expect type argument
-            val convertedRight = convertTHFType0(sig)(right, typeVars)
-            convertedRight match {
-              case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
-              case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+            convertedLeft match {
+              case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
+                // AdHoc polymorphic case for arithmetic constants, applied with @
+                val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+                val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+                mkTermApp(intermediate, convertedRight)
+              case _ => // Standard polymorphic case: Expect type argument
+                val convertedRight = convertTHFType0(sig)(right, typeVars)
+                convertedRight match {
+                  case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
+                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                }
             }
           }
         } else {
@@ -234,19 +257,32 @@ object InputProcessing {
           } else {
             val func = mkAtom(meta.key)(sig)
             if (func.ty.isPolyType) {
-             val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
-             val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTHFType0(sig)(_, typeVars))
-             val (typeArgs, kindArgs) = expectedTypeArgs.partitionMap(identity)
-             if (kindArgs.isEmpty) {
-               val intermediate = mkTypeApp(func, typeArgs)
-               val remainingTermArgs = args.drop(expectedTypeArgumentCount)
-               if (remainingTermArgs.nonEmpty) {
-                 val expectedTermArgs = remainingTermArgs.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
-                 mkTermApp(intermediate, expectedTermArgs)
-               } else intermediate
-             } else {
-               throw new SZSException(SZS_InputError, s"Unexpected kind-like type arguments in function expression.")
-             }
+              if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
+                numberWarning
+                // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
+                // just get the type from the argument and apply it explicitly.
+                // The ad-hoc constant have at least one argument, so we can do that.
+                val convertedArgs = args.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
+                if (convertedArgs.nonEmpty) {
+                  val argType = convertedArgs.head.ty
+                  val intermediate = mkTypeApp(func, argType)
+                  mkTermApp(intermediate, convertedArgs)
+                } else throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is not applied to any argument.")
+              } else {
+                val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+                val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTHFType0(sig)(_, typeVars))
+                val (typeArgs, kindArgs) = expectedTypeArgs.partitionMap(identity)
+                if (kindArgs.isEmpty) {
+                  val intermediate = mkTypeApp(func, typeArgs)
+                  val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                  if (remainingTermArgs.nonEmpty) {
+                    val expectedTermArgs = remainingTermArgs.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
+                    mkTermApp(intermediate, expectedTermArgs)
+                  } else intermediate
+                } else {
+                  throw new SZSException(SZS_InputError, s"Unexpected kind-like type arguments in function expression.")
+                }
+              }
             } else {
               val convertedArgs = args.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars))
               mkTermApp(func, convertedArgs)
@@ -750,24 +786,42 @@ object InputProcessing {
         }
 
       case ft@AtomicFormula(f, args) =>
-        val func = mkAtom(getOrCreateSymbolWithWarning(sig)(f, mkSimplePredicateType(args.size)))(sig)
+        val key = getOrCreateSymbolWithWarning(sig)(f, mkSimplePredicateType(args.size))
+        val func = mkAtom(key)(sig)
         if (ft.isConstant) func
         else {
           if (func.ty.isPolyType) {
-            val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
-            val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-            val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
-            if (termArgs.isEmpty) {
-              val intermediate = mkTypeApp(func, typeArgs)
-              val remainingTermArgs = args.drop(expectedTypeArgumentCount)
-              if (remainingTermArgs.nonEmpty) {
-                val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-                val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
-                if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
-                else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
-              } else intermediate
+            if (adHocPolymorphicArithmeticConstants.contains(key)) {
+              numberWarning
+              // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
+              // just get the type from the argument and apply it explicitly.
+              // The ad-hoc constant have at least one argument, so we can do that.
+              val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              if (convertedArgs.nonEmpty) {
+                convertedArgs.head match {
+                  case Left(arg) =>
+                    val argType = arg.ty
+                    val intermediate = mkTypeApp(func, argType)
+                    Term.local.mkApp(intermediate, convertedArgs)
+                  case Right(_) => throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is applied to a type argument.")
+                }
+              } else throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is not applied to any argument.")
             } else {
-              throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+              val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+              val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
+              if (termArgs.isEmpty) {
+                val intermediate = mkTypeApp(func, typeArgs)
+                val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                if (remainingTermArgs.nonEmpty) {
+                  val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                  val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
+                  if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
+                  else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                } else intermediate
+              } else {
+                throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+              }
             }
           } else {
             val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
@@ -887,20 +941,37 @@ object InputProcessing {
           else {
             val func = mkAtom(meta.key)(sig)
             if (func.ty.isPolyType) {
-              val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
-              val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-              val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
-              if (termArgs.isEmpty) {
-                val intermediate = mkTypeApp(func, typeArgs)
-                val remainingTermArgs = args.drop(expectedTypeArgumentCount)
-                if (remainingTermArgs.nonEmpty) {
-                  val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-                  val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
-                  if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
-                  else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
-                } else intermediate
+              if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
+                numberWarning
+                // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
+                // just get the type from the argument and apply it explicitly.
+                // The ad-hoc constant have at least one argument, so we can do that.
+                val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                if (convertedArgs.nonEmpty) {
+                  convertedArgs.head match {
+                    case Left(arg) =>
+                      val argType = arg.ty
+                      val intermediate = mkTypeApp(func, argType)
+                      Term.local.mkApp(intermediate, convertedArgs)
+                    case Right(_) => throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is applied to a type argument.")
+                  }
+                } else throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is not applied to any argument.")
               } else {
-                throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+                val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
+                if (termArgs.isEmpty) {
+                  val intermediate = mkTypeApp(func, typeArgs)
+                  val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                  if (remainingTermArgs.nonEmpty) {
+                    val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                    val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
+                    if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
+                    else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                  } else intermediate
+                } else {
+                  throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                }
               }
             } else {
               val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))

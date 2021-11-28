@@ -147,16 +147,6 @@ object SeqLoop {
         if (toPreprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END")
-      // Debug output
-      if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
-        Out.finest(s"Clauses and maximal literals of them:")
-        for (c <- state.unprocessed) {
-          Out.finest(s"Clause ${c.pretty(sig)}")
-          Out.finest(s"Maximal literal(s):")
-          Out.finest(s"\t${c.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
-        }
-        Out.finest(s"################")
-      }
       /////////////////////////////////////////
       // Main loop start
       /////////////////////////////////////////

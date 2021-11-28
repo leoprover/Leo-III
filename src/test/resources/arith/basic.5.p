@@ -1,0 +1,1 @@
+thf(c, conjecture, 0.5 = 5.0E-1).

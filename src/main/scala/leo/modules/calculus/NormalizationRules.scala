@@ -970,7 +970,16 @@ object Simp extends CalculusRule {
   //// New Simplification implementation (May 2019)
   //// Hopefully a bit faster as it has a little fewer unapply checks and recursive calls.
   //////////////////////////////////
-  final def normalize(t: Term): Term = termSimp(t)
+  final def normalize(t: Term): Term = {
+    // termSimp(t)
+    import leo.modules.procedures.{Simplification, GroundArithmeticEval}
+    val arith = GroundArithmeticEval.apply(t)
+    val simp = Simplification.apply(arith)
+
+    val result = simp
+    if (t.sharing) Term.insert(result)
+    else result
+  }
 
   /**
     * Exhaustively applies the simplification rules of `simp` to `t`.

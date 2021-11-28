@@ -652,7 +652,7 @@ object HOPatternMatching extends Matching {
         val newueqs = newUEqs(newVars, args10, rigidArgs.map(_.left.get), depth)
         ((subst, Subst.id), newueqs)
       } else {
-        assert(rigidHd.isConstant || (rigidHd.isVariable && Bound.unapply(rigidHd).get._2 > depth.size))
+        assert(rigidHd.isConstant || rigidHd.isNumber || (rigidHd.isVariable && Bound.unapply(rigidHd).get._2 > depth.size))
         // Constants may be polymorphic: Apply types before calculating imitation binding.
         val rigidArgs0 = partitionArgs(rigidArgs)
         assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)

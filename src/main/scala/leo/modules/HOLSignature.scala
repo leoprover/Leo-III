@@ -41,20 +41,19 @@ object HOLSignature {
   private final val eqKey = orKey + 1
   private final val letKey = eqKey + 1
   private final val iteKey = letKey + 1
- /* private final val lessKey = iteKey + 1
+  private final val lessKey = iteKey + 1
   private final val lessEqKey = lessKey + 1
   private final val greaterKey = lessEqKey + 1
-  private final val greaterEqKey = greaterKey + 1*/
-  private final val choiceKey = iteKey + 1
+  private final val greaterEqKey = greaterKey + 1
+  private final val choiceKey = greaterEqKey + 1
   private final val descKey = choiceKey + 1
 
-  // Arithmetic symbols not used for now
-  /*private final val uminusKey = descKey + 1
+  private final val uminusKey = descKey + 1
   private final val sumKey = uminusKey + 1
   private final val diffKey = sumKey + 1
   private final val prodKey = diffKey + 1
   private final val quotKey = prodKey + 1
-  private final val quotEKey = quotKey + 1
+  /*private final val quotEKey = quotKey + 1
   private final val quotTKey = quotEKey + 1
   private final val quotFKey = quotTKey + 1
   private final val remainderEKey = quotFKey + 1
@@ -68,10 +67,9 @@ object HOLSignature {
   private final val toRatKey = toIntKey + 1
   private final val toRealKey = toRatKey + 1
   private final val isRatKey = toRealKey + 1
-  private final val isIntKey = isRatKey + 1
-  */
+  private final val isIntKey = isRatKey + 1*/
   // Th1 constants
-  private final val tyForallKey = descKey + 1
+  private final val tyForallKey = quotKey + 1
 
   private final val existsKey = tyForallKey + 1
   private final val andKey = existsKey + 1
@@ -98,8 +96,8 @@ object HOLSignature {
   import Type.{mkPolyType => forall}
   private final val aao = forall(1 ->: 1 ->: o)
   private final val aoo = forall((1 ->: o) ->: o)
-//  private final val aa = forall(1 ->: 1)
-//  private final val aaa = forall(1 ->: 1 ->: 1)
+  private final val aa = forall(1 ->: 1)
+  private final val aaa = forall(1 ->: 1 ->: 1)
   private final val faoo = forall(o) ->: o
 
   // Shorthands for later definitions
@@ -354,25 +352,36 @@ object HOLSignature {
   // other HOL defined constants
   ///////////////////
 
-  /*/** $less */
-  object HOLLess extends PolyBinaryConnective { val key = lessKey; val ty = aao }
+  /** $less */
+  object HOLLess extends PolyBinaryConnective { final val key = lessKey; final val ty = aao }
   /** $lesseq */
-  object HOLLessEq extends PolyBinaryConnective { val key = lessEqKey; val ty = aao }
+  object HOLLessEq extends PolyBinaryConnective { final val key = lessEqKey; final val ty = aao }
   /** $greater */
-  object HOLGreater extends PolyBinaryConnective { val key = greaterKey; val ty = aao }
+  object HOLGreater extends PolyBinaryConnective { final val key = greaterKey; final val ty = aao }
   /** $greatereq */
-  object HOLGreaterEq extends PolyBinaryConnective { val key = greaterEqKey; val ty = aao }
-*/
-  // Further TF with arithmetic constants
-  // TODO: Arithmetic symbols not used for now
+  object HOLGreaterEq extends PolyBinaryConnective { final val key = greaterEqKey; final val ty = aao }
+
+  // Further arithmetic constants
+  // TODO: many arithmetic symbols not used for now
   /** $uminus | $sum | $difference | $product |
      $quotient | $quotient_e | $quotient_t | $quotient_f |
      $remainder_e | $remainder_t | $remainder_f |
      $floor | $ceiling | $truncate | $round |
      $to_int | $to_rat | $to_real
     */
+
+  object HOLUnaryMinus extends PolyUnaryConnective { final val key = uminusKey; final val ty = aa}
+  object HOLSum extends PolyBinaryConnective { final val key = sumKey; final val ty = aaa}
+  object HOLDifference extends PolyBinaryConnective { final val key = diffKey; final val ty = aaa}
+  object HOLProduct extends PolyBinaryConnective { final val key = prodKey; final val ty = aaa}
+  object HOLQuotient extends PolyBinaryConnective { final val key = quotKey; final val ty = aaa}
   /*
-  object HOLUnaryMinus extends PolyUnaryConnective { val key = uminusKey; val ty = aa}
+  object HOLQuotientE extends PolyBinaryConnective { val key = quotEKey; val ty = aaa}
+  object HOLQuotientT extends PolyBinaryConnective { val key = quotTKey; val ty = aaa}
+  object HOLQuotientF extends PolyBinaryConnective { val key = quotFKey; val ty = aaa}
+  object HOLRemainderE extends PolyBinaryConnective { val key = remainderEKey; val ty = aaa}
+  object HOLRemainderT extends PolyBinaryConnective { val key = remainderTKey; val ty = aaa}
+  object HOLRemainderF extends PolyBinaryConnective { val key = remainderFKey; val ty = aaa}
   object HOLFloor extends PolyUnaryConnective { val key = floorKey; val ty = aa}
   object HOLCeiling extends PolyUnaryConnective { val key = ceilKey; val ty = aa}
   object HOLTruncate extends PolyUnaryConnective { val key = truncateKey; val ty = aa}
@@ -382,16 +391,6 @@ object HOLSignature {
   object HOLToReal extends PolyUnaryConnective { val key = toRealKey; val ty = forall(1 ->: real)}
   object HOLIsRat extends PolyUnaryConnective { val key = isRatKey; val ty = forall(1 ->: o)}
   object HOLIsInt extends PolyUnaryConnective { val key = isIntKey; val ty = forall(1 ->: o)}
-  object HOLSum extends PolyBinaryConnective { val key = sumKey; val ty = aaa}
-  object HOLDifference extends PolyBinaryConnective { val key = diffKey; val ty = aaa}
-  object HOLProduct extends PolyBinaryConnective { val key = prodKey; val ty = aaa}
-  object HOLQuotient extends PolyBinaryConnective { val key = quotKey; val ty = aaa}
-  object HOLQuotientE extends PolyBinaryConnective { val key = quotEKey; val ty = aaa}
-  object HOLQuotientT extends PolyBinaryConnective { val key = quotTKey; val ty = aaa}
-  object HOLQuotientF extends PolyBinaryConnective { val key = quotFKey; val ty = aaa}
-  object HOLRemainderE extends PolyBinaryConnective { val key = remainderEKey; val ty = aaa}
-  object HOLRemainderT extends PolyBinaryConnective { val key = remainderTKey; val ty = aaa}
-  object HOLRemainderF extends PolyBinaryConnective { val key = remainderFKey; val ty = aaa}
 */
   /** If-Then-Else combinator */
   object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
@@ -450,18 +449,17 @@ object HOLSignature {
     ("=", ===.ty, multProp | c),
     ("$let", forall(forall(2 ->: 1 ->: 1)), multProp),
     ("$ite", IF_THEN_ELSE.ty, multProp),
-    /*("$less", HOLLess.ty, lexProp),
+    ("$less", HOLLess.ty, lexProp),
     ("$lesseq", HOLLessEq.ty, lexProp),
     ("$greater", HOLGreater.ty, lexProp),
-    ("$greatereq", HOLGreaterEq.ty, lexProp),*/
+    ("$greatereq", HOLGreaterEq.ty, lexProp),
     ("@+", forall((1 ->: o) ->: 1), multProp),
     ("@-", forall((1 ->: o) ->: 1), multProp),
-    // TODO: Arithmetic symbols not used for now
-    /*("$uminus", HOLUnaryMinus.ty, multProp),
+    ("$uminus", HOLUnaryMinus.ty, multProp),
     ("$sum", HOLSum.ty, multProp | ac),
     ("$difference", HOLDifference.ty, lexProp),
     ("$product", HOLProduct.ty, multProp | ac),
-    ("$quotient", HOLQuotient.ty, lexProp),
+    ("$quotient", HOLQuotient.ty, lexProp),/*
     ("$quotient_e", HOLQuotientE.ty, lexProp),
     ("$quotient_t", HOLQuotientT.ty, lexProp),
     ("$quotient_f", HOLQuotientF.ty, lexProp),
@@ -490,8 +488,7 @@ object HOLSignature {
     ("~&", nandDef, ~&.ty, multProp),
     ("~|", norDef, ~|||.ty, multProp),
     ("<~>", niffDef, <~>.ty, multProp),
-    ("!=", neqDef, !===.ty, multProp) //,
-//    ("$$ite", iteDef, IF_THEN_ELSE.ty, multProp)
+    ("!=", neqDef, !===.ty, multProp)
   )
 
 
