@@ -7,7 +7,7 @@ import scala.language.implicitConversions
  * Abstract type for modeling types.
  * At the moment, types are constructed by:
  *
- * t1, t2 ::= s (ti) | t1 -> t2 | t1 * t2 | t1 + t2 | forall a. t1
+ * t1, t2, ... ::= s (ti) | t1 -> t2 | ty1 x ty2 x ... x tyN | forall a. t1
  * with s is a sort from a set S of sort symbols. If s is of kind * -> ... -> * (n times)
  * then the ti is a sequence of (n-1) type arguments. If s is of kind *, then s is
  * called base type.
@@ -24,17 +24,17 @@ import scala.language.implicitConversions
  * @note Updated 30.06.2014 Inserted type constructors for product types (*) and union types (+). These
  *       will be removed from the type language as soon as it is expressive enough for general type constructors. Probably. Or not. We'll see.
  * @note Updated 14.06.2016 Introduced sort symbols to support TH1
+ * @note Updated October 2021. Removed union types (will never be supported), simplified product types.
  */
-abstract class Type extends Pretty with Prettier {
+trait Type extends Pretty with Prettier {
 
   // Predicates on types
-  val isBaseType: Boolean = false
-  val isComposedType: Boolean = false
-  val isFunType: Boolean = false
-  val isProdType: Boolean = false
-  val isUnionType: Boolean = false
-  val isPolyType: Boolean = false
-  val isBoundTypeVar: Boolean = false
+  def isBaseType: Boolean
+  def isComposedType: Boolean
+  def isFunType: Boolean
+  def isProdType: Boolean
+  def isPolyType: Boolean
+  def isBoundTypeVar: Boolean
   def isApplicableWith(arg: Type): Boolean
 
   // Queries on types
@@ -80,15 +80,10 @@ abstract class Type extends Pretty with Prettier {
   /** Create abstraction type from `hd` to `this` */
   def ->:(hd: Type): Type = Type.mkFunType(hd, this)
 
-  /** Create product type `this * ty` */
-  def *(ty: Type): Type = Type.mkProdType(this, ty)
-  /** Create union type `this + ty`*/
-  def +(ty: Type): Type = Type.mkUnionType(this, ty)
   /** Create type application: If `this` is a sort symbol t = `s` of non-zero arity (or not fully applied type t = `s a1 a2 ...`)
     * the, it creates the type application t @ ty. Otherwise, it fails. */
   def app(ty: Type): Type
 
-  val numberOfComponents: Int = 1
   def order: Int
   /**
    * The number of "prefix" type abstractions, i.e. the length
@@ -130,29 +125,8 @@ object Type {
     case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
 
-  /** Create product type (t1,t2). */
-  final def mkProdType(t1: Type, t2: Type): Type = TypeImpl.mkProdType(t1,t2)
-  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  final def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(mkProdType(t1, t2))((arg,f) => mkProdType(arg,f))
-  }
-  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  final def mkProdType(ti: Seq[Type]): Type = ti match {
-    case Seq(ty)        => ty
-    case Seq(ty1, ty2, tys @ _*) => mkProdType(ty1, ty2, tys)
-  }
-
-  /** Create union type (t1+t2). */
-  final def mkUnionType(t1: Type, t2: Type): Type = TypeImpl.mkUnionType(t1,t2)
-  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  final def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(mkUnionType(t1, t2))((arg,f) => mkUnionType(arg,f))
-  }
-  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  final def mkUnionType(ti: Seq[Type]): Type = ti match {
-    case Seq(ty)        => ty
-    case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
-  }
+  /** Create product type `t1 x t2 x ... x tn` (type of an n-ary tuple with respective element types). */
+  final def mkProdType(tys: Seq[Type]): Type = TypeImpl.mkProdType(tys)
 
   final def clear(): Unit = TypeImpl.clear()
 
@@ -181,7 +155,7 @@ object Type {
   // Pattern matchers for types
   ///////////////////////////////
   import leo.datastructures.impl.{GroundTypeNode, BoundTypeNode, ProductTypeNode,
-  AbstractionTypeNode, UnionTypeNode, ForallTypeNode}
+  AbstractionTypeNode, ForallTypeNode}
 
   object BaseType {
     def unapply(ty: Type): Option[Signature.Key] = ty match {
@@ -211,16 +185,9 @@ object Type {
     }
   }
 
-  object * {
-    def unapply(ty: Type): Option[(Type, Type)] = ty match {
-      case ProductTypeNode(l, r) => Some((l,r))
-      case _ => None
-    }
-  }
-
-  object + {
-    def unapply(ty: Type): Option[(Type, Type)] = ty match {
-      case UnionTypeNode(l, r) => Some((l,r))
+  object ProductType {
+    def unapply(ty: Type): Option[Seq[Type]] = ty match {
+      case ProductTypeNode(tys) => Some(tys)
       case _ => None
     }
   }
@@ -231,51 +198,6 @@ object Type {
       case _ => None
     }
   }
-
-  /** A lexicographical ordering of types. Its definition is arbitrary, but should form
-   * a total order on types.
-   * */
-  object LexicographicalOrdering extends Ordering[Type] {
-    private def compareSeq(a : Seq[Type], b: Seq[Type]) : Int = (a,b) match {
-      case (h1 +: t1, h2 +: t2) =>
-        val c = this.compare(h1,h2)
-        if(c!=0) c else compareSeq(t1, t2)
-      case (h +: t, Nil) => 1
-      case (Nil, h +: t) => -1
-      case (Nil, Nil) => 0
-    }
-
-    private def compareTwo(x1: Type, y1: Type, x2: Type, y2: Type) : Int = {
-      val c = this.compare(x1, x2)
-      if(c != 0) c else this.compare(y1, y2)}
-
-    def compare(a : Type, b:Type) : Int = (a ,b) match {
-      case (BaseType(x), BaseType(y)) => x compare y
-      case (ComposedType(k1, t1), ComposedType(k2, t2)) =>
-        val c = k1 compare k2
-        if(c != 0) c else compareSeq(t1, t2)
-      case (BoundType(t1), BoundType(t2)) => t1 compare t2
-      case (->(h1,t1), ->(h2,t2)) => compareTwo(h1,t1, h2, t2)
-      case (*(h1,t1), *(h2,t2)) => compareTwo(h1,t1, h2, t2)
-      case (+(h1,t1), +(h2,t2)) => compareTwo(h1,t1, h2, t2)
-      case (∀(x), ∀(y)) => this.compare(x, y)
-      case (BaseType(x), _) => 1
-      case (_, BaseType(x)) => -1
-      case (ComposedType(k,t), _) => 1
-      case (_, ComposedType(k,t)) => -1
-      case (BoundType(x), _) => 1
-      case (_, BoundType(x)) => -1
-      case (->(k,t), _) => 1
-      case (_, ->(k,t)) => -1
-      case (*(k,t), _) => 1
-      case (_, *(k,t)) => -1
-      case (+(k,t), _) => 1
-      case (_, +(k,t)) => -1
-      case (∀(x), _) => 1
-      case (_, ∀(x)) => -1
-    }
-  }
-
 }
 
 

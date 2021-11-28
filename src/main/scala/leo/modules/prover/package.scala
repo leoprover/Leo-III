@@ -154,8 +154,8 @@ package object prover {
         leo.Out.severe(s"Input problem did not pass type check: formula '${annotation.formulaName}' is ill-typed.")
         throw new SZSException(SZS_TypeError, s"Type error in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else if (term.ty != o) {
-        leo.Out.severe(s"Input problem did not pass type check: '${annotation.formulaName}' is not Boolean typed.")
-        throw new SZSException(SZS_TypeError, s"Term of non-Boolean type at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
+        leo.Out.severe(s"Input problem did not pass type check: '${annotation.formulaName}' is not Boolean typed (type: '${term.ty.pretty}').")
+        throw new SZSException(SZS_TypeError, s"Term of non-Boolean type (type '${term.ty.pretty}') at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else {
         typeCheck0(input.tail)
       }
