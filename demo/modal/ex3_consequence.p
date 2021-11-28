@@ -4,11 +4,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %--- logic specification
-thf(spec, logic, ($modal := [
-   $constants := $rigid,
-   $quantification := $constant,
-   $consequence := $local,
-   $modalities := $modal_system_K ] ) ).
+thf(spec, logic, ($modal == [
+   $constants == $rigid,
+   $quantification == $constant,
+   $consequence == $local,
+   $modalities == $modal_system_K ] ) ).
 
 %--- a is some formula
 thf(a_type, type, a:$o).
@@ -16,4 +16,4 @@ thf(a_type, type, a:$o).
 thf(ax1, axiom, a).
 
 %--- Does □a hold?
-thf(c, conjecture, ($box @ a)).
+thf(c, conjecture, ([.] @ a)).

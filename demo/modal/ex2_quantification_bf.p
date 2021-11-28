@@ -5,11 +5,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %--- logic specification
-thf(spec, logic, ($modal := [
-   $constants := $rigid,
-   $quantification := $decreasing,
-   $consequence := $global,
-   $modalities := $modal_system_K ] ) ).
+thf(spec, logic, ($modal == [
+   $constants == $rigid,
+   $quantification == $decreasing,
+   $consequence == $global,
+   $modalities == $modal_system_K ] ) ).
 
 %--- Specify an uninterpreted predicate symbol f
 thf(f_type, type, f: ($i > $o)).
