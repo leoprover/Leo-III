@@ -7,7 +7,7 @@ It is based on a paramodulation calculus with ordering constraints and, in tradi
 
 In addition for its HOL reasoning capabilities, Leo-III supports reasoning in many higher-order quantified modal logics [GS18,GSB17].
 
-Leo-III is developed at Freie Universität Berlin and the University of Luxembourg. From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). The main contributors are (sorted alphabetically): Christoph Benzmüller, Tomer Libal, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
+Leo-III is developed at Freie Universität Berlin and the University of Luxembourg. From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). Since 2018, Leo-III is maintained and developed at the University of Luxembourg. The main contributors are (sorted alphabetically): Christoph Benzmüller, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
 Leo-III may be cited as [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4435994.svg)](https://doi.org/10.5281/zenodo.4435994)
 
@@ -32,7 +32,8 @@ Further information including related projects, current publications etc, can be
 
 ## References
 
-[SB19] Alexander Steen, Christoph Benzmüller, *Extensional Higher-Order Paramodulation in Leo-III*. Submitted article, preprint available at [arXiv:1907.11501](https://arxiv.org/abs/1907.11501), 2019.
+[SB21] Alexander Steen, Christoph Benzmüller, *Extensional Higher-Order Paramodulation in Leo-III*. Journal of Automated Reasoning 65, pp. 775-807, 2021. Preprint available at [arXiv:1907.11501](https://arxiv.org/abs/1907.11501).
+
 
 [S18] Alexander Steen, [*Extensional Paramodulation for Higher-Order Logic and its Effective Implementation Leo-III*](http://www.aka-verlag.de/index.php?option=com_virtuemart&view=productdetails&virtuemart_product_id=701&virtuemart_category_id=4&Itemid=482&lang=en). Dissertation, Freie Universität Berlin. Published in Dissertations in Artificial Intelligence (DISKI), volume 345, EAN/ISBN 978-3-89838-739-2, AKA-Verlag, 2018. Preprint available [here](https://www.alexandersteen.de/phd/thesis-steen.pdf).
 
