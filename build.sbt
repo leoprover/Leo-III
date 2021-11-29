@@ -2,7 +2,7 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.6.5",
+    version := "1.6.6",
     organization := "org.leo",
     scalaVersion := "2.13.7",
 
