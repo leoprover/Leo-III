@@ -439,7 +439,9 @@ object InputProcessing {
           case Some(value) =>
             if (args.isEmpty) value
             else throw new SZSException(SZS_Inappropriate, "Leo-III cannot expand let expression when using FOF-style applications in THF formulas.")
-          case None => formula
+          case None =>
+            val replacedArgs = args.map(thfLetreplaceAll0(replacements, _))
+            THF.FunctionTerm(f, replacedArgs)
         }
       case THF.QuantifiedFormula(quantifier, variableList, body) =>
         val replacedBody = thfLetreplaceAll0(replacements, body)
@@ -846,7 +848,7 @@ object InputProcessing {
             case None => throw new SZSException(SZS_InputError, s"No binding found for atom '$atom' in let binding '${formula.pretty}'")
           }
         }
-        // (1) transform implicit variables to lambda form:
+        // (1) transform implicit variables to "lambda form":
         // transformedBindingMap is a map: atom -> (function that maps given arguments to the RHS in which the formal parameters are replaced by them.)
         val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
           tffLetstripVariablesFromSimpleTerm(lhs) match {
@@ -1090,7 +1092,9 @@ object InputProcessing {
     term match {
       case TFF.AtomicTerm(f, args) => replacements.get(f) match {
         case Some(instantiateFunction) => instantiateFunction(args)
-        case None => term
+        case None =>
+          val replacedArgs = args.map(tffLetReplaceTermAll(replacements, _))
+          TFF.AtomicTerm(f, replacedArgs)
       }
       case TFF.FormulaTerm(formula) => TFF.FormulaTerm(tffLetReplaceFormulaAll(replacements, formula))
       case _ => term

@@ -38,7 +38,6 @@ object TypedFOLEncoding {
           // so we need to add the associated proxySymbol with the given minimal arity
           // to the signature
           val foType = foTransformType(fMeta._ty, info)(sig, foSig)
-          println(fMeta.name)
           val id = foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(fMeta.name), foType)
           proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
         }
