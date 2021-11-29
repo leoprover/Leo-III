@@ -1110,7 +1110,9 @@ object InputProcessing {
           case TFF.FormulaTerm(formula) => formula
           case _ => throw new SZSException(SZS_InputError, "Unexpected term binding when a formula was expected.")
         }
-        case None => formula
+        case None =>
+          val replacedArgs = args.map(tffLetReplaceTermAll(replacements, _))
+          TFF.AtomicFormula(f, replacedArgs)
       }
       case TFF.QuantifiedFormula(quantifier, variableList, body) =>
         TFF.QuantifiedFormula(quantifier, variableList, tffLetReplaceFormulaAll(replacements, body))
