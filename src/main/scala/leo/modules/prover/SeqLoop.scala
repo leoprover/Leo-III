@@ -79,18 +79,7 @@ object SeqLoop {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    val strategy: RunStrategy = if (Configuration.isSet("strategy")) {
-      val strategyParam0 = Configuration.valueOf("strategy")
-      if (strategyParam0.isDefined) {
-        val strategyParam = strategyParam0.get.head
-        RunStrategy.byName(strategyParam)
-      } else Control.defaultStrategy
-    } else {
-      Control.defaultStrategy
-    }
-    state.setRunStrategy(strategy)
     state.setTimeout(timeout)
-    Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}")
 
     try {
       // Check if external provers were defined
@@ -99,7 +88,18 @@ object SeqLoop {
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
-      Out.info(s"Type checking passed. Searching for refutation ...")
+      Out.info(s"Type checking passed.")
+      val strategy: RunStrategy = if (Configuration.isSet("strategy")) {
+        val strategyParam0 = Configuration.valueOf("strategy")
+        if (strategyParam0.isDefined) {
+          val strategyParam = strategyParam0.get.head
+          RunStrategy.byName(strategyParam)
+        } else Control.defaultStrategy
+      } else {
+        Control.defaultStrategy
+      }
+      state.setRunStrategy(strategy)
+      Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}.  Searching for refutation ...")
       run(remainingInput, startTime)(state)
       printResult(state, startTime, startTimeWOParsing)
     } catch {

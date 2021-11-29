@@ -25,7 +25,7 @@ package object prover {
   /** Converts the input into clauses and filters the axioms if applicable. */
   final def effectiveInput(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
     import leo.datastructures.Clause
-    Out.info(s"Parsing finished. Scanning for conjecture ...")
+    Out.info(s"Scanning for conjecture ...")
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
     if (state.negConjecture.nonEmpty) {
