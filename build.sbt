@@ -2,9 +2,9 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.6.6",
+    version := "1.6.7",
     organization := "org.leo",
-    scalaVersion := "2.13.7",
+    scalaVersion := "2.13.8",
 
     test in assembly := {},
     logLevel := Level.Warn,
