@@ -1,5 +1,6 @@
-## Usage
-#### Basics
+# Leo-III Usage
+
+## Basics
 
 Leo-III is called from command line:
 ```Shell
@@ -39,7 +40,7 @@ Prominent result values for `XXX` are:
 | `TypeError` | The problem file contains typing errors and hence cannot be assessed |
 
 
-##### Important parameters
+### Important parameters
 
 Parameters are passed *after* the problem file path without an equality sign "=", if used with parameter value: `./leo3 problem -param1 -param2 10`
 
@@ -52,19 +53,19 @@ The most important parameters are
 | --atp `system` | Use `system` for external cooperation. See further below. <br><br> Default: none set <br> Valid values: See "External cooperation" below.|
 | --primsubst `level` | Use the "itensity" `level` for instantiating flexible heads according to the primitive substitution rule <br><br> Default: 1<br>Valid values: 1-6 |
 | --unifiers `n` | During unification, use at most `n` distinct unifiers<br> <br> Default: 1<br> Valud values: non-negative numbers |
-| --unidepth `n` | During unification, use `n` as maximal unification search depth <br><br>Default: 8<br>Valid values: Non-negative numbers
+| --unidepth `n` | During unification, use `n` as maximal unification search depth <br><br>Default: 8<br>Valid values: Non-negative numbers |
 
 There are many more parameters, we will add them here some time in the future.
 
-#### Proving TPTP problems
+### Proving TPTP problems
 
-A popular and de-facto standard library for proof problems is the TPTP library. Some problems of this library use `include` statements. In order to resolve them correctly, you might need to set the `TPTP` environment variable correctly, e.g.
+A standard library for reasoning problems is the TPTP library (http://tptp.org/). Some problems of this library use `include` statements. In order to resolve them correctly, you might need to set the `TPTP` environment variable correctly, e.g.
 ```
 export TPTP=/path/to/TPTP
 ```
 If this environment variable is set, Leo-III will automatically resolve TPTP axioms.
 
-#### Example
+### Example
 
 Let's solve the TPTP problem `SET014^4.p` (see [here](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Problems&Domain=SET&File=SET014^4.p)) with a timeout of 60 seconds and proof output:
 
@@ -106,7 +107,7 @@ The lines between `% SZS output begin CNFRefutation` and `% SZS output end CNFRe
 
 You can always try to verify the proof using [IDV](http://www.cs.miami.edu/~tptp/Seminars/IDV/Summary.html) which should succeed at least for simple problems.
 
-#### Enabling external cooperation
+### Enabling external cooperation
 
 Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, iProver (>= 2.6), E (>= 2.0), Alt-Ergo and Vampire.
 
@@ -125,12 +126,18 @@ As of version 1.2, Leo-III supports reasoning in higher-order quantified (multi)
 Leo-III makes use of a semantical embedding approach [GSB17] and automatically embeds modal input problems
 into corresponding HOL problems. No further tool or pre-processor is required.
 
+**Note**: Since Leo-III 1.6.7 the modal logic format (in general: non-classical logic) changed and was aligned
+to the proposed non-classical TPTP standard (http://tptp.org/NonClassicalLogic/).
+The embedding tool included in Leo-III now supports more logics next to modal logics, see
+[github.com/leoprover/logic-embedding](https://github.com/leoprover/logic-embedding) for details.
+
 ### Modal Problem Syntax
 
-Leo-III supports TPTP THF problem syntax augmented with non-classical logic syntax as sketched in the corresponding
+Leo-III supports TPTP THF and TFF problem syntax augmented with non-classical logic syntax as sketched in the corresponding
 [TPTP proposal](http://tptp.org/NonClassicalLogic/).
 Problems containing `[.]` (modal logic box) or `<.>` (modal logic diamond) are interpreted as modal logic problems.
-Multi-modal logics are also supported.
+The long forms `{$box}` and `{$dia}` may also be used instead of `[.]` and `<.>`, respectively.
+Multi-modal logics are also supported (see, e.g.,  `demo/modal/ex5_multimodal_wisemen.p`).
 
 An appropriate modal logic semantics is specified using the proposed logic specification syntax.
 An input problem may contain a `logic` statement, for example
@@ -138,24 +145,42 @@ An input problem may contain a `logic` statement, for example
 thf(modal_s5_standard,logic,(
     $modal ==
         [ $constants == $rigid,
-          $quantification == $constant,
           $consequence == $global,
           $modalities == $modal_system_S5 ] )).
-... (axioms or conjecture) ...
+... (global and local assumptions, conjecture) ...
 ```
 
 ### Modal semantics parameters
-Todo
+
+| Parameter         | Description                                                                                                                                                                                                                                                                                                                                                     |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `$quantification` | Selects whether quantification semantics is varying domains, constant domains, cumulative domains or decreasing domains.<br><br>Accepted values: `$varying`, `$constant`, `$cumulative`, `$decreasing`                                                                                                                                                          |
+| `$constants`      | Selects whether constant and functions symbols are interpreted as rigidor flexible.<br><br> Accepted values: `$rigid`, `$flexible` *(Leo-III currently only supports rigid constants)*                                                                                                                                                                          |
+| `$modalities`     | Selects the properties for the modal operators.<br><br> Accepted values, for each modality: `$modal_system_X` where `X` ∈ {`K`, `KB`, `K4`, `K5`, `K45`, `KB5`, `D`, `DB`, `D4`, `D5`, `D45`, `T`, `B`, `S4`, `S5`, `S5U`} <br>_or a list of axiom schemes_<br> [`$modal axiom X1` , ..., `$modal axiom Xn` ] `Xi` ∈ {`K`, `T`, `B`, `D`, `4`, `5`, `CD`, `C4`} |
 
 
-### Example
+### Modal semantics parameters
+
+Formula roles are used to indicate whether assumptions are global (i.e., assumed to be valid in every world)
+or local (i.e., assumed true in the current world).
+
+  - Formulas with role `hypothesis` are local assumptions
+  - Formulas with role `axiom` are global assumptions
+  - A conjecture is always assumed to be local (default modal logic consequence relation).
+  - These default role interpretations may be overriden by the subroles `local` and `global`, e.g., ...
+    - A formula with role `axiom-local` is a local assumption 
+    - A formula with role `hypothesis-global` is a global assumption
+    - A conjecture with role `conjecture-global` asks whether the formula is true in every world
+    
+
+### Examples
+#### Example 1
 The following simple problem can easily solved by Leo-III:
 
 ```
 thf(simple_b, logic, ( $modal == [
     $constants == $rigid ,
     $quantification == $constant ,
-    $consequence == $global ,
     $modalities == $modal_system_S5 ] ) ).
 
 
@@ -165,7 +190,29 @@ thf(axiom_B, conjecture, ( ![A:$o]: ( A => ( [.] @ ( <.> @ A ) ) ) )).
 The output generated by Leo-III is:
 
 ```
-% [INFO] Input problem is modal. Running modal-to-HOL transformation from semantics specification contained in the problem file ... 
+% [INFO] 	 Input problem is non-classical. Running HOL transformation from semantics specification contained in the problem file ...
 [...]
-% SZS status Theorem for modal_problem.p : 2109 ms resp. 674 ms w/o parsing
+% SZS status Theorem for modal_problem.p : 1073 ms resp. 674 ms w/o parsing
 ```
+
+#### Example 2
+A multi-modal logic example:
+
+```
+tff(multimodal,logic,(
+    $modal ==
+      [ $constants == $rigid,
+        $quantification == $cumulative,
+        $modalities == $modal_system_S5 ] )).
+            
+tff(1, axiom, [#a](p & q)).
+tff(2, hypothesis, <#b>(q)).
+tff(c, conjecture, <#b>(p & q)).
+```
+
+## Non-classical reasoning in general
+
+Since version 1.6.7 Leo-III also supports reasoning in further non-classical logics.
+The input syntax uses the same TPTP extensions as for modal logic; the connectives and 
+logic specification parameters vary from logic to logic. The supported logics are documented
+at https://github.com/leoprover/logic-embedding
