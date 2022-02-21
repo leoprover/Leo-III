@@ -7,7 +7,6 @@
 thf(spec, logic, ($modal == [
    $constants == $rigid,
    $quantification == $constant,
-   $consequence == $global,
    $modalities == $modal_system_K ] ) ).
 
 %--- a is some formula

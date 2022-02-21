@@ -6,7 +6,7 @@
 %--- logic specification
 thf(wise_men_puzzle_semantics, logic , ( $modal == [
     $constants == $rigid,  $quantification == $varying,
-    $consequence == $global, $modalities == $modal_system_S5] )).
+    $modalities == $modal_system_S5] )).
 
 %--- $i type models the agents's hats
 thf(agent_a, type, (a: $i)).

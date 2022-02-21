@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Example 2b: Quantification semantics
+% Example 2b: Quantification semantics (using long-form connectives)
 %
 % see also QMLTP SYM002+1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8,7 +8,6 @@
 thf(spec, logic, ($modal == [
    $constants == $rigid,
    $quantification == $cumulative,
-   $consequence == $global,
    $modalities == $modal_system_K ] ) ).
 
 %--- Specify an uninterpreted predicate symbol f
