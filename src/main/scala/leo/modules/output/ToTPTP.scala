@@ -350,6 +350,10 @@ object ToTPTP {
 
   final private def toTPTP0(t: Term, tyVarCount: Int, bVars: Map[Int,String] = Map())(sig: Signature): String = {
     t match {
+      // Constant symbols that are (unapplied) connectives, they need to be ()'d
+      case Symbol(id) if sig(id).isFixedSymbol =>
+        val name = sig(id).name
+        s"(${tptpEscapeExpression(name)})"
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
         tptpEscapeExpression(name)
@@ -443,9 +447,9 @@ object ToTPTP {
         }
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
         s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount,bVars)(sig)})"
-      case f@Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
+      case _@Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
         val translatedF = tptpEscapeExpression(sig(id).name)
-        val translatedArgs: Seq[String] = args.tail.map(argToTPTP(_, tyVarCount, bVars)(sig))
+        val translatedArgs: Seq[String] = args.tail.map(argToTPTP(_, tyVarCount, bVars)(sig)) // drop type argument as it's implicit in the TPTP representation
         s"$translatedF @ ${translatedArgs.mkString(" @ ")}"
       case f ∙ args =>
         val translatedF = toTPTP0(f,tyVarCount, bVars)(sig)
