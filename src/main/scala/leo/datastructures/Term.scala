@@ -1,6 +1,5 @@
 package leo.datastructures
 
-import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 /**
@@ -98,6 +97,7 @@ trait Term extends Pretty with Prettier {
   def symbols: Multiset[Signature.Key]
   /** Multiset of all free variables contained within the term. */
   def vars: Multiset[Int]
+  def headVars: Set[Int]
 
   // Functions for FV-Indexing
   def fvi_symbolFreqOf(symbol: Signature.Key): Int
@@ -170,9 +170,9 @@ object Term extends TermBank {
   override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
   override final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
   override final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
-  override final def mkInteger(n: Int): Term = TermImpl.mkInteger(n)
-  override final def mkRational(numerator: Int, denominator: Int): Term = TermImpl.mkRational(numerator,denominator)
-  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = TermImpl.mkReal(wholePart, decimalPart, exponent)
+  override final def mkInteger(n: BigInt): Term = TermImpl.mkInteger(n)
+  override final def mkRational(numerator: BigInt, denominator: BigInt): Term = TermImpl.mkRational(numerator,denominator)
+  override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = TermImpl.mkReal(wholePart, decimalPart, exponent)
   override final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
   override final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
   override final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
@@ -236,9 +236,9 @@ object Term extends TermBank {
    */
   final object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
-  final object Integer { def unapply(t: Term): Option[Int] = TermImpl.integerMatcher(t) }
-  final object Rational { def unapply(t: Term): Option[(Int, Int)] = TermImpl.rationalMatcher(t) }
-  final object Real { def unapply(t: Term): Option[(Int, Int, Int)] = TermImpl.realMatcher(t) }
+  final object Integer { def unapply(t: Term): Option[Int0] = TermImpl.integerMatcher(t) }
+  final object Rational { def unapply(t: Term): Option[Rat] = TermImpl.rationalMatcher(t) }
+  final object Real { def unapply(t: Term): Option[Real] = TermImpl.realMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -318,50 +318,4 @@ object Term extends TermBank {
    * }}}
    */
   final object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
-
-  /** A lexicographical ordering of terms. Its definition is arbitrary, but should form
-   * a total order on terms.
-   * */
-  final object LexicographicalOrdering extends Ordering[Term] {
-
-      @tailrec  def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
-        case (Left(h1) +: t1, Left(h2) +: t2) =>
-          val c = this.compare(h1, h2)
-          if (c != 0) c else compareApp(t1, t2)
-        case (Right(h1) +: t1, Right(h2) +: t2) =>
-          val c = Type.LexicographicalOrdering.compare(h1, h2)
-          if (c != 0) c else compareApp(t1, t2)
-        case (Left(_) +: _, Right(_) +: _) => 1
-        case (Right(_) +: _, Left(_) +: _) => -1
-        case (_ +: _, Nil) => 1
-        case (Nil, _ +: _) => -1
-        case (Nil, Nil) => 0
-      }
-
-      // The order of the match is important because Bound and Symbol is a special case of Application.
-      def compare(a: Term, b: Term): Int = (a, b) match {
-        case (Bound(t1, s1), Bound(t2, s2)) =>
-          val c = s1 compare s2
-          if (c == 0) Type.LexicographicalOrdering.compare(t1, t2) else c
-        case (Bound(_, _), _) => 1
-        case (_, Bound(_, _)) => -1
-        case (Symbol(t1), Symbol(t2)) => t1 compare t2
-        case (Symbol(_), _) => 1
-        case (_, Symbol(_)) => -1
-        case (h1 ∙ a1, h2 ∙ a2) =>
-          val c = this.compare(h1, h2)
-          if (c == 0) compareApp(a1, a2) else c
-        case (t1 :::> s1, t2 :::> s2) =>
-          val c = Type.LexicographicalOrdering.compare(t1, t2)
-          if (c == 0) this.compare(s1, s2) else c
-        case (TypeLambda(s1), TypeLambda(s2)) =>
-          this.compare(s1, s2)
-        case (_ ∙ _, _) => 1
-        case (_, _ ∙ _) => -1
-        case (_ :::> _, _) => 1
-        case (_, _ :::> _) => -1
-        case (TypeLambda(_), _) => 1
-        case (_, TypeLambda(_)) => -1
-      }
-    }
 }

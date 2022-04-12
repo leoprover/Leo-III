@@ -46,25 +46,25 @@ object Main {
       /** Parameter stuff END */
 
       /** Call concrete functionality BEGIN */
-      if (false) {
-        // Functionality that does not need to parse the input file
-        // none yet
-      } else {
-        // Functionality that need to parse the input file, do it now
-        import leo.modules.input.{ModalPreprocessor => Modal, DDLPreprocessor => DDL}
-        Out.info(s"Parsing problem ${Configuration.PROBLEMFILE} ...")
-        val parseStartTime = System.currentTimeMillis()
-        // If "ddl" mode is set (dyadic deontic logic), parse with DDL pre-processor.
-        val problem0 = if (Configuration.isSet("ddl")) DDL.apply(Configuration.PROBLEMFILE)
-        else Input.parseProblemFile(Configuration.PROBLEMFILE)
-        val parseEndTime = System.currentTimeMillis()
-        Out.info(s"Parsing done (${(parseEndTime - parseStartTime)}ms).")
-        // If it is a logic embedding, call the embedding tool, else just use the problem itself
-        val problem = if (Modal.canApply(problem0)) Modal.apply(problem0)
-                      else problem0
-        // Invoke concrete mode
-        Modes.apply(beginTime, problem)
+      import leo.modules.embeddings.{Library => LogicEmbeddingLibrary, getLogicSpecFromProblem, getLogicFromSpec}
+      Out.info(s"Parsing problem ${Configuration.PROBLEMFILE} ...")
+      val parseStartTime = System.currentTimeMillis()
+      val problem0 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+      val parseEndTime = System.currentTimeMillis()
+      Out.info(s"Parsing done (${parseEndTime - parseStartTime}ms).")
+      // If it is a logic embedding, call the embedding tool, else just use the problem itself.
+      // To Leo-III it will currently look like a standard HOL problem, regardless of its original object logic.
+      val maybeLogicSpec = getLogicSpecFromProblem(problem0)
+      val problem = maybeLogicSpec match {
+        case Some(logicSpec) =>
+          val logicName = getLogicFromSpec(logicSpec)
+          val embeddingFunction = LogicEmbeddingLibrary.embeddingTable(logicName)
+          Out.info("Input problem is non-classical. Running HOL transformation from semantics specification contained in the problem file ...")
+          embeddingFunction.apply(problem0, Set.empty)
+        case None => problem0
       }
+      // Invoke concrete mode
+      Modes.apply(beginTime, problem)
       /** Call concrete functionality END */
       
     } catch {
@@ -91,7 +91,7 @@ object Main {
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)
-          Out.trace("at: " + e.getCause.getStackTrace.toString)
+          Out.trace("at: " + e.getCause.getStackTrace.mkString("Array(", ", ", ")"))
         }
       /** Handle all top-level errors END */
     } finally {

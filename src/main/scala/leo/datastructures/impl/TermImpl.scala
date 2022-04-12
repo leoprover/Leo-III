@@ -76,8 +76,10 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
 
   // Other
   final lazy val symbols: Multiset[Signature.Key] = Multiset.fromMap(symbolMap.view.mapValues(_._1).toMap)
-  final lazy val vars: Multiset[Int] = vars0(0)
-  protected[impl] def vars0(depth: Int): Multiset[Int]
+  private final lazy val _vars0: (Multiset[Int], Set[Int]) = vars0(0)
+  final def vars: Multiset[Int] = _vars0._1
+  final def headVars: Set[Int] = _vars0._2
+  protected[impl] def vars0(depth: Int): (Multiset[Int], Set[Int])
   // FV Indexing utility
   type Count = Int
   type Depth = Int
@@ -141,7 +143,6 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
   @tailrec private[this] def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
-      case (t -> out) if t.isProdType => ty0(out, s.drop(t.numberOfComponents))
       case (_ -> out) => ty0(out, tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
@@ -156,8 +157,11 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
     case _ => args.fv
   }
   override lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
-  override def vars0(depth: Int): Multiset[Int] = hd match {
-    case BoundIndex(_, idx) if idx > depth => args.vars0(depth) + (idx-depth)
+  override def vars0(depth: Int): (Multiset[Int], Set[Int]) = hd match {
+    case BoundIndex(_, idx) if idx > depth =>
+      val argVars = args.vars0(depth)
+      if (args.length == 0) (argVars._1 + (idx-depth), argVars._2)
+      else (argVars._1 + (idx-depth), argVars._2 + (idx-depth))
     case _ => args.vars0(depth)
   }
 
@@ -340,7 +344,12 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
   lazy val fv: Set[(Int, Type)] = body.fv union args.fv
   lazy val tyFV: Set[Int] = body.tyFV union args.tyFV
-  def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth) sum args.vars0(depth)
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = {
+    val bodyVars0 = body.asInstanceOf[TermImpl].vars0(depth)
+    val argsVars0 = args.vars0(depth)
+    if (args.length == 0) (bodyVars0._1 sum argsVars0._1, argsVars0._2)
+    else  (bodyVars0._1 sum argsVars0._1, bodyVars0._2 union argsVars0._2)
+  }
 
   lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.view.mapValues{case (c,d) => (c,d+1)}.toMap)
   lazy val headSymbol = body.headSymbol
@@ -421,7 +430,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   lazy val ty = typ ->: body.ty
   lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
   lazy val tyFV: Set[Int] = typ.typeVars.map(BoundType.unapply(_).get) union body.tyFV
-  def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth+1)
+  def vars0(depth: Int): (Multiset[Int],Set[Int]) = body.asInstanceOf[TermImpl].vars0(depth+1)
   lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -533,7 +542,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   lazy val ty = ∀(body.ty)
   lazy val fv: Set[(Int, Type)] = body.fv
   lazy val tyFV: Set[Int] = body.tyFV.map(_ - 1).filter(_ > 0)
-  def vars0(depth: Int): Multiset[Int] = body.asInstanceOf[TermImpl].vars0(depth)
+  def vars0(depth: Int): (Multiset[Int],Set[Int]) = body.asInstanceOf[TermImpl].vars0(depth)
   lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -593,7 +602,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   final def ty = term.ty
   final def fv: Set[(Int, Type)] = betaNormalize.fv
   final def tyFV: Set[Int] = betaNormalize.tyFV
-  def vars0(depth: Int): Multiset[Int] = betaNormalize.asInstanceOf[TermImpl].vars0(depth)
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = betaNormalize.asInstanceOf[TermImpl].vars0(depth)
   final def symbolMap: Map[Signature.Key, (Count, Depth)] = betaNormalize.asInstanceOf[TermImpl].symbolMap
   final def headSymbol = betaNormalize.headSymbol
   final def headSymbolDepth = 1 + term.headSymbolDepth
@@ -690,7 +699,7 @@ protected[impl] final case class Atom(id: Signature.Key, ty: Type) extends Head 
   override def pretty(sig: Signature): String = sig(id).name
 }
 
-protected[impl] final case class Integer(value: Int) extends Head {
+protected[impl] final case class Integer(value: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -712,7 +721,7 @@ protected[impl] final case class Integer(value: Int) extends Head {
   override def pretty(sig: Signature): String = pretty
 }
 
-protected[impl] final case class RationalNumber(numerator: Int, denominator: Int) extends Head {
+protected[impl] final case class RationalNumber(numerator: BigInt, denominator: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -734,7 +743,7 @@ protected[impl] final case class RationalNumber(numerator: Int, denominator: Int
   override def pretty(sig: Signature): String = pretty
 }
 
-protected[impl] final case class RealNumber(wholePart: Int, decimalPlaces: Int, exponent: Int) extends Head {
+protected[impl] final case class RealNumber(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt) extends Head {
   import leo.modules.HOLSignature
   // Predicates
   @inline override def isBound = false
@@ -803,7 +812,7 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
   def length: Int
   def fv: Set[(Int, Type)]
   def tyFV: Set[Int]
-  def vars0(depth: Int): Multiset[Int]
+  def vars0(depth: Int): (Multiset[Int], Set[Int])
   def symbolMap: Map[Signature.Key, (Int, Int)]
   def asTerms: Seq[Either[Term, Type]]
   def size: Int
@@ -855,7 +864,7 @@ protected[impl] case object SNil extends Spine {
   // Queries
   final val fv: Set[(Int, Type)] = Set.empty
   final val tyFV: Set[Int] = Set.empty
-  def vars0(depth: Int): Multiset[Int] = Multiset.empty
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = (Multiset.empty, Set.empty)
   final val symbolMap: Map[Signature.Key, (Int, Int)] = Map.empty
   final val length = 0
   final val asTerms = Vector.empty
@@ -919,7 +928,11 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
   lazy val tyFV: Set[Int] = hd.tyFV union tail.tyFV
-  def vars0(depth: Int): Multiset[Int] = hd.asInstanceOf[TermImpl].vars0(depth) sum tail.vars0(depth)
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = {
+    val headVars = hd.asInstanceOf[TermImpl].vars0(depth)
+    val tailVars = tail.vars0(depth)
+    (headVars._1 sum tailVars._1, headVars._2 union tailVars._2)
+  }
   lazy val symbolMap: Map[Signature.Key, (Int, Int)] = hd.asInstanceOf[TermImpl].fuseSymbolMap(hd.asInstanceOf[TermImpl].symbolMap, tail.symbolMap)
   lazy val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
@@ -989,7 +1002,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = tail.fv
   lazy val tyFV: Set[Int] = tail.tyFV union hd.typeVars.map(BoundType.unapply(_).get)
-  def vars0(depth: Int): Multiset[Int] = tail.vars0(depth)
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = tail.vars0(depth)
   lazy val symbolMap: Map[Signature.Key, (Int, Int)] = tail.symbolMap
   lazy val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
@@ -1054,7 +1067,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   // Queries
   lazy val fv: Set[(Int, Type)] = ???
   lazy val tyFV: Set[Int] = ???
-  def vars0(depth: Int): Multiset[Int] = ???
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = ???
   lazy val symbolMap: Map[Signature.Key, (Int, Int)] = normalize(s._1,s._2).symbolMap
   lazy val length = sp.length
   lazy val asTerms = ???
@@ -1311,9 +1324,9 @@ object TermImpl extends TermBank {
     override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
     override final def mkAtom(id: Signature.Key, ty: Type): Term = Root(Atom(id, ty), SNil)
     override final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
-    override final def mkInteger(n: Int): Term = Root(Integer(n), SNil)
-    override final def mkRational(numerator: Int, denominator: Int): Term = Root(RationalNumber(numerator, denominator), SNil)
-    override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
+    override final def mkInteger(n: BigInt): Term = Root(Integer(n), SNil)
+    override final def mkRational(numerator: BigInt, denominator: BigInt): Term = Root(RationalNumber(numerator, denominator), SNil)
+    override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = Root(RealNumber(wholePart, decimalPart, exponent), SNil)
 
     override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
     override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
@@ -1348,9 +1361,9 @@ object TermImpl extends TermBank {
   override final def mkAtom(id: Signature.Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
   override final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  override final def mkInteger(n: Int): Term = mkRoot(Integer(n), SNil)
-  override final def mkRational(numerator: Int, denominator: Int): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
-  override final def mkReal(wholePart: Int, decimalPart: Int, exponent: Int): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
+  override final def mkInteger(n: BigInt): Term = mkRoot(Integer(n), SNil)
+  override final def mkRational(numerator: BigInt, denominator: BigInt): Term = mkRoot(RationalNumber(numerator, denominator), SNil)
+  override final def mkReal(wholePart: BigInt, decimalPart: BigInt, exponent: BigInt): Term = mkRoot(RealNumber(wholePart, decimalPart, exponent), SNil)
 
   override final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
   override final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
@@ -1518,15 +1531,15 @@ object TermImpl extends TermBank {
     case Root(Atom(k,_),SNil) => Some(k)
     case _ => None
   }
-  final protected[datastructures] def integerMatcher(t: Term): Option[Int] = t match {
+  final protected[datastructures] def integerMatcher(t: Term): Option[BigInt] = t match {
     case Root(Integer(n),SNil) => Some(n)
     case _ => None
   }
-  final protected[datastructures] def rationalMatcher(t: Term): Option[(Int, Int)] = t match {
+  final protected[datastructures] def rationalMatcher(t: Term): Option[(BigInt, BigInt)] = t match {
     case Root(RationalNumber(n, d),SNil) => Some((n,d))
     case _ => None
   }
-  final protected[datastructures] def realMatcher(t: Term): Option[(Int, Int, Int)] = t match {
+  final protected[datastructures] def realMatcher(t: Term): Option[(BigInt, BigInt, BigInt)] = t match {
     case Root(RealNumber(w, d, e),SNil) => Some((w,d,e))
     case _ => None
   }

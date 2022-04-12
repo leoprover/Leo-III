@@ -8,12 +8,11 @@ Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any 
 
 ### Using pre-built binaries (Linux)
 
-A current release of Leo-III 1.2 can be downloaded from GitHub:
+A current release of Leo-III (v1.6) can be downloaded from GitHub:
 
-> wget https://github.com/leoprover/Leo-III/releases/download/v1.2/leo3.jar
+> wget https://github.com/leoprover/Leo-III/releases/download/v1.6/leo3-v1.6.jar
 
-Note that this binary was built on a Debian-based system and might not work for all Linux derivatives.
-If the pre-build does not work for you, consider building Leo-III from source. Its simple and 
+If the pre-built version does not work for you, consider building Leo-III from source. Its simple and 
 only takes a minute or two (see below).
 
 ### Building from source
@@ -21,17 +20,9 @@ only takes a minute or two (see below).
 
 The following requirements (dependencies) are not managed by the SBT build tool and hence need to be present at the system:
 
- - Java JDK 1.8
+ - Java JDK >= 1.8
  - make
  - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 1.x
- - gcc (any reasonably current version)
- 
-   > :information_source: __Note:__ *gcc is only required if you want to build Leo-III with support for external cooperation
-   > (the way Leo-III is intended to be used and works best).
-   > If you want to build Leo-III without capabilities for external cooperation (e.g. if gcc is not present
-   > or if you are working on a Windows machine), gcc is not needed (cf. further below).
-   > Leo-III will still be a fully functional
-   > higher-order ATP system, you just cannot increase its reasoning effectivity using external reasoners.*
 
 #### How to build Leo-III from source
 
@@ -43,10 +34,10 @@ Proceed as follows to build Leo-III from source:
 
 1) __Getting the source__
     
-    Download the source distribution of the latest stable version (here: 1.2) from GitHub and unpack the archive, e.g.
+    Download the source distribution of the latest stable version (here: 1.6) from GitHub and unpack the archive, e.g.
     ```Shell
-    > wget https://github.com/leoprover/Leo-III/archive/v1.2.tar.gz
-    > tar -xzf Leo-III-1.2.tar.gz
+    > wget https://github.com/leoprover/Leo-III/archive/refs/tags/v1.6.tar.gz
+    > tar -xzf Leo-III-1.6.tar.gz
     ```
     
     You'll find the latest stable version of Leo-III under https://github.com/leoprover/Leo-III/releases/latest.
@@ -57,18 +48,10 @@ Proceed as follows to build Leo-III from source:
 
    Step into the newly created directory and run `make` (that's all!)
    ```Shell
-   > cd Leo-III-1.2/
-   > make all
+   > cd Leo-III-1.6/
+   > make
    ```
    The building process might take some time, depending on your computer.
-   
-   > :information_source: __Note:__ *You can also build a static version of Leo-III* 
-   > *(if you want to move the executable around to other machines)*
-   > *using* `make static`.
-  
-   > :information_source: __Note:__ *If you do not have gcc installed (and do not require external cooperation) you can run*
-   > `make leo3`. 
-   > *However, you will not be able to make use of external reasoning systems to increase Leo-III's reasoning effectivity.*
    
 3) __Checking if everything is fine__
 
@@ -83,7 +66,7 @@ Proceed as follows to build Leo-III from source:
    
    You can now run Leo-III:
    ```Shell
-   > ./leo3
+   > ./leo3 -h
    Leo III -- A Higher-Order Theorem Prover.
    Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
    

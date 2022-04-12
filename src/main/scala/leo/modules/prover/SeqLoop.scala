@@ -79,18 +79,7 @@ object SeqLoop {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    val strategy: RunStrategy = if (Configuration.isSet("strategy")) {
-      val strategyParam0 = Configuration.valueOf("strategy")
-      if (strategyParam0.isDefined) {
-        val strategyParam = strategyParam0.get.head
-        RunStrategy.byName(strategyParam)
-      } else Control.defaultStrategy
-    } else {
-      Control.defaultStrategy
-    }
-    state.setRunStrategy(strategy)
     state.setTimeout(timeout)
-    Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}")
 
     try {
       // Check if external provers were defined
@@ -100,7 +89,18 @@ object SeqLoop {
         if (Configuration.isSet("sine")) effectiveInputNew(parsedProblem, state) else effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
-      Out.info(s"Type checking passed. Searching for refutation ...")
+      Out.info(s"Type checking passed.")
+      val strategy: RunStrategy = if (Configuration.isSet("strategy")) {
+        val strategyParam0 = Configuration.valueOf("strategy")
+        if (strategyParam0.isDefined) {
+          val strategyParam = strategyParam0.get.head
+          RunStrategy.byName(strategyParam)
+        } else Control.defaultStrategy
+      } else {
+        Control.defaultStrategy
+      }
+      state.setRunStrategy(strategy)
+      Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}.  Searching for refutation ...")
       run(remainingInput, startTime)(state)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
@@ -148,16 +148,6 @@ object SeqLoop {
         if (toPreprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END")
-      // Debug output
-      if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
-        Out.finest(s"Clauses and maximal literals of them:")
-        for (c <- state.unprocessed) {
-          Out.finest(s"Clause ${c.pretty(sig)}")
-          Out.finest(s"Maximal literal(s):")
-          Out.finest(s"\t${c.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
-        }
-        Out.finest(s"################")
-      }
       /////////////////////////////////////////
       // Main loop start
       /////////////////////////////////////////

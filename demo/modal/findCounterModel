@@ -1,3 +1,0 @@
-#!/bin/bash
-embedModal -i $1 -o /tmp/out.p 2>/dev/null
-isabelle tptp_nitpick 60 /tmp/out.p

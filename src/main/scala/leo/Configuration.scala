@@ -1,8 +1,11 @@
 package leo
 
+import leo.datastructures.Signature
+import leo.datastructures.Signature.Key
+import leo.datastructures.impl.orderings.SymbolWeighting
+
 import java.util.logging.Level
 import java.nio.file.{Files, Path}
-
 import leo.modules.SZSException
 import leo.modules.output.{Output, SZS_UsageError}
 import leo.modules.input.CLParameterParser
@@ -100,7 +103,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   def isInit: Boolean = configMap != null
 
-  final val VERSION: String = "1.5"
+  final val VERSION: String = "1.6.7"
   final val LEODIR_NAME: String = "leo3"
   final lazy val LEODIR: Path = {
     val dir = Files.createTempDirectory(LEODIR_NAME)
@@ -196,6 +199,9 @@ object Configuration extends DefaultConfiguration {
 
   lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
 
+  import leo.datastructures.Precedence
+  lazy val PRECEDENCE: Precedence = Precedence().arity
+
   var overrideOrdering: TermOrdering = null // TODO: very hacky ...
   def TERM_ORDERING: TermOrdering = {
     if (overrideOrdering != null) return overrideOrdering
@@ -204,15 +210,15 @@ object Configuration extends DefaultConfiguration {
       ord match {
         case "CPO" => leo.datastructures.impl.orderings.TO_CPO_Naive
         case "none" => leo.datastructures.impl.orderings.NO_ORDERING
+        case "HKBO" => new leo.datastructures.impl.orderings.KBOTermOrdering(new SymbolWeighting {
+          override def apply(symbol: Key)(implicit sig: Signature): Int = sig(symbol).key
+        }, Precedence().arity_UnaryFirst)
         case _ => DEFAULT_TERMORDERING
       }
     } else{
       DEFAULT_TERMORDERING
     }
   }
-
-  import leo.datastructures.Precedence
-  lazy val PRECEDENCE: Precedence = Precedence().arity
 
   lazy val RENAMING_SET : Boolean = {
     if (isSet(RENAMING)) {
@@ -464,7 +470,7 @@ trait DefaultConfiguration {
   val DEFAULT_PRE_PRIMSUBST = 59
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
   val DEFAULT_ATPCALLINTERVAL = 35
-  val DEFAULT_ATP_TIMEOUT = 10
+  val DEFAULT_ATP_TIMEOUT = 15
   val DEFAULT_ATPMAXJOBS = 2
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35

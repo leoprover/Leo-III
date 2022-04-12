@@ -1,0 +1,1 @@
+thf(c, conjecture, ?[X:$int]: (X = 1)).

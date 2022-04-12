@@ -3,24 +3,13 @@ CC=gcc
 CONTRIB=./contrib
 
 default: all
-all: TreeLimitedRun leo3
+all: leo3
 static: TreeLimitedRunStatic leo3
-native: static
 
-TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
-		@echo Compiling auxiliary scripts ...
-		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun
-		mv TreeLimitedRun ./src/main/resources/scripts/.
-		
-TreeLimitedRunStatic: $(CONTRIB)/TreeLimitedRun.c
-		@echo Compiling auxiliary scripts ...
-		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun -static
-		mv TreeLimitedRun ./src/main/resources/scripts/.
 		
 leo3: 
-		@echo Building Leo-III ...
 		sbt assembly
-		mkdir bin -p
+		mkdir -p bin
 		cp target/scala-2.13/leo3.jar bin/leo3.jar
 		cat ./src/main/resources/scripts/exec_dummy bin/leo3.jar > bin/leo3
 		chmod +x bin/leo3

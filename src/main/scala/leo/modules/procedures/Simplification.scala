@@ -1,6 +1,6 @@
 package leo.modules.procedures
 
-import leo.datastructures.{Term, Type}
+import leo.datastructures.{Term, Type, Rat, Real}
 import leo.datastructures.Term.local._
 
 import scala.annotation.{switch, tailrec}
@@ -32,6 +32,10 @@ import scala.annotation.{switch, tailrec}
   *   - `Πx. s -> s` if `x` is not free in `s`
   *   - `n/m -> n'/m'` where `n/m` is a rational number and `n'/m'` is its canonical rational representation
   *   - `(w,d,e) -> (w',d',e')` where `r = (w,d,e)` is a real number and `r' = (w',d',e')` is its canonical representation
+  *   - `$difference(x,y) -> $sum(x,$uminus(y))` where `x` and `y` are arbitrary terms
+  *   - `$greatereq(x,y) -> $less(y,x) \/ x = y`
+  *   - `$greater(x,y) -> $less(y,x)`
+  *   - `$lesseq(x,y) -> $less(x,y) \/ x = y`
   *
   * The four cases marked with (*) are only applied if simplifying extensionally, cf. [[Simplification.apply]].
   *
@@ -66,7 +70,8 @@ object Simplification extends Function1[Term, Term] {
   // Boolean (with equality) identities
   private[this] final def apply0(term: Term, extensional: Boolean): Term = {
     import leo.datastructures.Term.{:::>, TypeLambda, Bound, Symbol, ∙, Rational, Real}
-    import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>}
+    import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>,
+      HOLDifference, HOLUnaryMinus, HOLSum, HOLLess, HOLLessEq, HOLGreaterEq, HOLGreater}
 
     @inline def simpTermOrType(arg: Either[Term, Type]): Either[Term, Type] = arg match {
       case Left(arg0) => Left(apply0(arg0, extensional))
@@ -78,11 +83,8 @@ object Simplification extends Function1[Term, Term] {
       case Symbol(_) => term
       case ty :::> body => mkTermAbs(ty, apply0(body, extensional))
       case TypeLambda(body) => mkTypeAbs(apply0(body, extensional))
-      case Rational(n, d) =>
-        val sign: Int = d.sign
-        val greatestCommonDivisor: Int = gcd(n ,d).abs * sign
-        mkRational(n / greatestCommonDivisor, d / greatestCommonDivisor)
-      case Real(w,d,e) => normalizeReal(w,d,e)
+      case Rational(n, d) => (mkRational _).tupled(normalizeRat(n, d))
+      case Real(w,d,e) => (mkReal _).tupled(normalizeReal(w,d,e))
       case f ∙ args if f.isConstant && args.length <= 3 =>
         (f: @unchecked) match {
           case Symbol(id) =>
@@ -245,6 +247,26 @@ object Simplification extends Function1[Term, Term] {
                   case TypeLambda(absBody) if !absBody.tyFV.contains(1) => absBody.lift(0, -1)
                   case _ => mkTermApp(f, simpBody)
                 }
+              case HOLDifference.key =>
+                val (left, right) = HOLDifference.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkTypeApp(HOLSum, simpLeft.ty), Seq(simpLeft, mkTermApp(mkTypeApp(HOLUnaryMinus, simpRight.ty), simpRight)))
+              case HOLLessEq.key =>
+                val (left, right) = HOLLessEq.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkAtom(|||.key, |||.ty), Seq(mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpLeft, simpRight)), ===(simpLeft, simpRight)))
+              case HOLGreater.key =>
+                val (left, right) = HOLGreater.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpRight, simpLeft))
+              case HOLGreaterEq.key =>
+                val (left, right) = HOLGreaterEq.unapply(term).get
+                val simpLeft = apply0(left, extensional)
+                val simpRight = apply0(right, extensional)
+                mkTermApp(mkAtom(|||.key, |||.ty), Seq(mkTermApp(mkTypeApp(HOLLess, simpLeft.ty), Seq(simpRight, simpLeft)), ===(simpLeft, simpRight)))
               case _ => mkApp(f, args.map(simpTermOrType))
             }
         }
@@ -254,8 +276,13 @@ object Simplification extends Function1[Term, Term] {
     }
   }
 
-  @tailrec private[this] final def gcd(a: Int, b: Int): Int = if (b == 0) a.abs else gcd(b, a % b)
-  private[this] final def normalizeReal(wholePart: Int, decimalPlaces: Int, exponent: Int): Term = { // TODO
+  @tailrec private[this] final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
+  final def normalizeRat(n: BigInt, d: BigInt): Rat = {
+    val sign: BigInt = d.sign
+    val greatestCommonDivisor: BigInt = gcd(n ,d).abs * sign
+    (n / greatestCommonDivisor, d / greatestCommonDivisor)
+  }
+  final def normalizeReal(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt): Real = { // TODO
     //    val decimalPlacesWithoutTrailingZeroes = if (decimalPlaces != 0) decimalPlaces.toString.reverse.dropWhile(_ == '0').reverse.toInt else 0
     //    val decimalPlacesWithoutTrailingZeroesLength = decimalPlacesWithoutTrailingZeroes.toString.length
     //    val wholePartAsString = wholePart.toString
@@ -263,6 +290,6 @@ object Simplification extends Function1[Term, Term] {
     //      val (newWholePart, newRest) = wholePartAsString.splitAt(3)
     //      val newDecimalPlaces = decimalPlaces.toString.prependedAll(newRest)
     //    }
-    mkReal(wholePart, decimalPlaces, exponent)
+    (wholePart, decimalPlaces, exponent)
   }
 }

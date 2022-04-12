@@ -25,7 +25,7 @@ package object prover {
   /** Converts the input into clauses and filters the axioms if applicable. */
   final def effectiveInput(input: Seq[TPTP.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
     import leo.datastructures.Clause
-    Out.info(s"Parsing finished. Scanning for conjecture ...")
+    Out.info(s"Scanning for conjecture ...")
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
     if (state.negConjecture.nonEmpty) {
@@ -284,8 +284,8 @@ package object prover {
         leo.Out.severe(s"Input problem did not pass type check: formula '${annotation.formulaName}' is ill-typed.")
         throw new SZSException(SZS_TypeError, s"Type error in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else if (term.ty != o) {
-        leo.Out.severe(s"Input problem did not pass type check: '${annotation.formulaName}' is not Boolean typed.")
-        throw new SZSException(SZS_TypeError, s"Term of non-Boolean type at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
+        leo.Out.severe(s"Input problem did not pass type check: '${annotation.formulaName}' is not Boolean typed (type: '${term.ty.pretty}').")
+        throw new SZSException(SZS_TypeError, s"Term of non-Boolean type (type '${term.ty.pretty}') at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else {
         typeCheck0(input.tail)
       }

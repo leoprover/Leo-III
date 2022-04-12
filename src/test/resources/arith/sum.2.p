@@ -1,0 +1,1 @@
+thf(c, conjecture, ($sum($difference(1,2),2) = 1) <=> $lesseq(1/2, 1/2)).

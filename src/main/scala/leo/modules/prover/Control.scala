@@ -1506,7 +1506,7 @@ package inferenceControl {
           )
         ))
       )), true)
-      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("axiom_of_choice"), ClauseAnnotation.PropNoProp)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("axiom_of_choice", Seq.empty), ClauseAnnotation.PropNoProp)
       acMap = acMap + ((ty, res))
       res
     }
@@ -1622,7 +1622,7 @@ package inferenceControl {
       collectedSpecs.foreach {case (hd, specs) =>
         val a = SolveFuncSpec.apply(hd.ty, specs)(sig)
         val hdIdx = Term.Bound.unapply(hd).get._2
-          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance"), cw.properties)
+          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance", Seq.empty), cw.properties)
       }
       Out.trace(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
 
@@ -1840,7 +1840,7 @@ package inferenceControl {
         Out.finest(s"invFunType: ${invFunType.pretty(sig)}")
         val inverseFunction = sig.freshSkolemConst(invFunType)
         val invFunAxiom = generateInvAxiom(fun, paraPos, inverseFunction)
-        val newAxiom = AnnotatedClause(invFunAxiom, ClauseAnnotation.FromSystem(s"tautology,[new_symbols(inverse(${sig(fun).name}),[${sig(inverseFunction).name}])]"))
+        val newAxiom = AnnotatedClause(invFunAxiom, ClauseAnnotation.FromSystem(s"tautology,[new_symbols(inverse(${sig(fun).name}),[${sig(inverseFunction).name}])]", Seq(cl)))
         leo.Out.finest(s"[Injectivity] Generated axiom: ${newAxiom.pretty(sig)}")
         state.addUnprocessed(newAxiom)
       }

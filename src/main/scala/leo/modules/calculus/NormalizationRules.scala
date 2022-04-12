@@ -722,7 +722,7 @@ object Simp extends CalculusRule {
       val normRight = normalize(l.right)
       (normLeft, normRight) match {
         case (a,b) if a == b => Literal(LitTrue(), l.polarity)
-        case _ => Literal.mkOrdered(normLeft, normRight, l.polarity)
+        case _ => Literal.mkLit(normLeft, normRight, l.polarity, l.oriented)
       }
     }
   }
@@ -970,7 +970,16 @@ object Simp extends CalculusRule {
   //// New Simplification implementation (May 2019)
   //// Hopefully a bit faster as it has a little fewer unapply checks and recursive calls.
   //////////////////////////////////
-  final def normalize(t: Term): Term = termSimp(t)
+  final def normalize(t: Term): Term = {
+    // termSimp(t)
+    import leo.modules.procedures.{Simplification, GroundArithmeticEval}
+    val arith = GroundArithmeticEval.apply(t)
+    val simp = Simplification.apply(arith)
+
+    val result = simp
+    if (t.sharing) Term.insert(result)
+    else result
+  }
 
   /**
     * Exhaustively applies the simplification rules of `simp` to `t`.
@@ -985,8 +994,8 @@ object Simp extends CalculusRule {
     if (t.sharing) Term.insert(result)
     else result
   }
-  @tailrec private[this] final def gcd(a: Int, b: Int): Int = if (b == 0) a.abs else gcd(b, a % b)
-  private[this] final def normalizeReal(wholePart: Int, decimalPlaces: Int, exponent: Int): Term = {
+  @tailrec private[this] final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
+  private[this] final def normalizeReal(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt): Term = {
 //    val decimalPlacesWithoutTrailingZeroes = if (decimalPlaces != 0) decimalPlaces.toString.reverse.dropWhile(_ == '0').reverse.toInt else 0
 //    val decimalPlacesWithoutTrailingZeroesLength = decimalPlacesWithoutTrailingZeroes.toString.length
 //    val wholePartAsString = wholePart.toString
@@ -1154,8 +1163,8 @@ object Simp extends CalculusRule {
           }
         case Rational(n, d) =>
           assert(args.isEmpty, "Applied arguments to a rational [termSimp0]")
-          val sign: Int = d.sign
-          val greatestCommonDivisor: Int = gcd(n ,d).abs * sign
+          val sign: Int = d.sign.toInt
+          val greatestCommonDivisor: BigInt = gcd(n ,d).abs * sign
           mkRational(n / greatestCommonDivisor, d / greatestCommonDivisor)
         case Real(w,d,e) =>
           assert(args.isEmpty, "Applied arguments to a real [termSimp0]")

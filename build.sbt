@@ -2,9 +2,9 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.5",
+    version := "1.6.8",
     organization := "org.leo",
-    scalaVersion := "2.13.5",
+    scalaVersion := "2.13.8",
 
     test in assembly := {},
     logLevel := Level.Warn,
@@ -18,7 +18,8 @@ lazy val leo = (project in file("."))
       "-feature",
     ),
 
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.5" % "test"),
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6",
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.10" % "test"),
 
     // set stack size to 4m 
     javaOptions += "-Xss4m",

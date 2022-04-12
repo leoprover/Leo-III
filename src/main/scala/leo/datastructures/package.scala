@@ -8,6 +8,16 @@ import scala.annotation.tailrec
   * @since 01/06/15
   */
 package object datastructures {
+  /** The type that represents object logic ints (NOT scala/meta-level ints) */
+  type Int0 = BigInt
+  /** The type that represents object logic rationals (NOT scala/meta-level doubles/floats) */
+  type Rat = (BigInt, BigInt)
+  /** The type that represents object logic reals (NOT scala/meta-level doubles/floats) */
+  type Real = (BigInt, BigInt, BigInt)
+
+  final def prettyRat(n: Rat): String = s"${n._1}/${n._2}"
+  final def prettyReal(n: Real): String = s"${n._1}.${n._2}E${n._3}"
+
   /////////////////////////////////
   // More or less general traits used throughout the project
   /////////////////////////////////

@@ -1,0 +1,1 @@
+thf(c, conjecture, ?[X:$int]: (X = $sum(1,1))).

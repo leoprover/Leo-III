@@ -13,6 +13,12 @@ import scala.annotation.tailrec
 object TypedFOLEncoding {
   type Result = (EncodedProblem, AuxiliaryFormulae, EncodingSignature)
 
+  private final val fixedArithFunctions: Set[Signature.Key] = { // interpreted arithmetic constants
+    // they do not need proxies. But what happens with partial application? They are ad-hoc polymorphic, so this is not my problem :-)
+    import leo.modules.HOLSignature._
+    Set(HOLUnaryMinus.key, HOLSum.key, HOLDifference.key, HOLQuotient.key, HOLProduct.key)
+  }
+
   final def apply(problem: Problem, les: LambdaElimStrategy)(implicit sig: Signature): Result = {
     import leo.modules.termToClause
     // new signature for encoded problem
@@ -25,12 +31,16 @@ object TypedFOLEncoding {
       val (f, info) = fIt.next()
       val fMeta = sig(f)
       if (fMeta.isFixedSymbol) {
-        // if a fixed symbol occurs in the arity table it means it was used as a subterm
-        // so we need to add the associated proxySymbol with the given minimal arity
-        // to the signature
-        val foType = foTransformType(fMeta._ty, info)(sig, foSig)
-        val id = foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(fMeta.name), foType)
-        proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
+        if (fixedArithFunctions.contains(fMeta.key)) {
+          // Don't do anything; we don't need proxies for them
+        } else {
+          // if a fixed (connective-like) symbol occurs in the arity table it means it was used as a subterm
+          // so we need to add the associated proxySymbol with the given minimal arity
+          // to the signature
+          val foType = foTransformType(fMeta._ty, info)(sig, foSig)
+          val id = foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(fMeta.name), foType)
+          proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
+        }
       } else {
         val foType = foTransformType(fMeta._ty, info)(sig, foSig)
         foSig.addUninterpreted(escape(fMeta.name), foType)
@@ -386,19 +396,18 @@ object EncodingAnalyzer {
     import leo.modules.HOLSignature._
     Set(Not.key, &.key, |||.key, Impl.key, <=.key, <=>.key)
   }
+  private final val fixedArithPredicates: Set[Signature.Key] = { // interpreted arithmetic constants
+    // they start term level
+    import leo.modules.HOLSignature._
+    Set(HOLLess.key, HOLLessEq.key, HOLGreater.key, HOLGreaterEq.key)
+  }
   final def analyzeFormula(t: Term): ArityTable = {
     import leo.datastructures.Term._
     import leo.modules.HOLSignature.{Forall, Exists, TyForall, ===, !===, o}
     t match {
-      case Forall(_ :::> body) =>
-//        merge(Forall.key -> (1, false), analyzeFormula(body))
-        analyzeFormula(body)
-      case Exists(_ :::> body) =>
-//        merge(Exists.key -> (1, false), analyzeFormula(body))
-        analyzeFormula(body)
-      case TyForall(TypeLambda(body)) =>
-//        merge(TyForall.key -> (1, false), analyzeFormula(body))
-        analyzeFormula(body)
+      case Forall(_ :::> body) => analyzeFormula(body)
+      case Exists(_ :::> body) => analyzeFormula(body)
+      case TyForall(TypeLambda(body)) => analyzeFormula(body)
       case l === r =>
         assert(l.ty == r.ty)
         if (l.ty == o) merge(analyzeFormula(l), analyzeFormula(r))
@@ -408,13 +417,9 @@ object EncodingAnalyzer {
         if (l.ty == o) merge(analyzeFormula(l), analyzeFormula(r))
         else merge(analyzeTerm(l), analyzeTerm(r))
       case f ∙ args => f match {
-        case Symbol(id) =>
-          val argArity = arity(args)
-          if (fixedConnectives.contains(id))
-//            merge(id -> (argArity, false), analyzeArgs(args))
-            analyzeArgs(args)
-          else
-            merge(id -> (argArity, false), analyzeTermArgs(args))
+        case Symbol(id) if fixedConnectives.contains(id) => analyzeArgs(args)
+        case Symbol(id) if fixedArithPredicates.contains(id) => analyzeTermArgs(args)
+        case Symbol(id) => merge(id -> (arity(args), false), analyzeTermArgs(args))
         case _ => analyzeTermArgs(args)
       }
       case _ :::> _ => throw new IllegalArgumentException("naked lambda at formula level") //analyzeFormula(body)
@@ -522,41 +527,45 @@ object EncodingAnalyzer {
 }
 
 object TypedFOLEncodingSignature {
-  import leo.datastructures.Type.{mkType, ∀}
+  import leo.datastructures.Type.{mkType, ∀, mkVarType}
   // Hard-wired constants. Only change if you know what you're doing!
   final val o: Type = mkType(1)
   final val i: Type = mkType(2)
 
+  private final val a: Type = mkVarType(1)
   private final val oo: Type = o ->: o
   private final val ooo: Type = o ->: o ->: o
-  private final val aao: Type = ∀(1 ->: 1 ->: o)
-  private final val aoo: Type = ∀((1 ->: o) ->: o)
+  private final val aao: Type = ∀(a ->: a ->: o)
+  private final val aoo: Type = ∀((a ->: o) ->: o)
   private final val faoo: Type = ∀(o) ->: o
+  private final val faao: Type = ∀(a ->: a ->: o)
+  private final val faaa: Type = ∀(a ->: a ->: a)
+  private final val faa: Type = ∀(a ->: a)
 
   import leo.datastructures.Term.local._
-  final val True: Term = mkAtom(3, o)
-  final val False: Term = mkAtom(4, o)
-  final val Not: Term = mkAtom(5, oo)
+  final val True: Term = mkAtom(6, o)
+  final val False: Term = mkAtom(7, o)
+  final val Not: Term = mkAtom(8, oo)
   final def mkNot(t: Term): Term = mkTermApp(Not, t)
-  final val And: Term = mkAtom(6, ooo)
+  final val And: Term = mkAtom(9, ooo)
   final def mkAnd(l: Term, r: Term): Term = mkTermApp(And, Seq(l,r))
-  final val Or: Term = mkAtom(7, ooo)
+  final val Or: Term = mkAtom(10, ooo)
   final def mkOr(l: Term, r: Term): Term = mkTermApp(Or, Seq(l,r))
-  final val Impl: Term = mkAtom(8, ooo)
+  final val Impl: Term = mkAtom(11, ooo)
   final def mkImpl(l: Term, r: Term): Term = mkTermApp(Impl, Seq(l,r))
-  final val If: Term = mkAtom(9, ooo)
+  final val If: Term = mkAtom(12, ooo)
   final def mkIf(l: Term, r: Term): Term = mkTermApp(If, Seq(l,r))
-  final val Equiv: Term = mkAtom(10, ooo)
+  final val Equiv: Term = mkAtom(13, ooo)
   final def mkEquiv(l: Term, r: Term): Term = mkTermApp(Equiv, Seq(l,r))
-  final val Eq: Term = mkAtom(11, aao)
+  final val Eq: Term = mkAtom(14, aao)
   final def mkEq(l: Term, r: Term): Term = mkApp(Eq, Seq(Right(l.ty), Left(l), Left(r)))
-  final val Neq: Term = mkAtom(12, aao)
+  final val Neq: Term = mkAtom(15, aao)
   final def mkNeq(l: Term, r: Term): Term = mkApp(Neq, Seq(Right(l.ty), Left(l), Left(r)))
-  final val Forall: Term = mkAtom(13, aoo)
+  final val Forall: Term = mkAtom(16, aoo)
   final def mkForall(body: Term): Term = mkApp(Forall, Seq(Right(body.ty._funDomainType), Left(body)))
-  final val Exists: Term = mkAtom(14, aoo)
+  final val Exists: Term = mkAtom(17, aoo)
   final def mkExists(body: Term): Term = mkApp(Exists, Seq(Right(body.ty._funDomainType), Left(body)))
-  final val TyForall: Term = mkAtom(15, faoo)
+  final val TyForall: Term = mkAtom(18, faoo)
   final def mkTyForall(body: Term): Term = mkTermApp(TyForall, body)
 
   final def apply(): TypedFOLEncodingSignature = {
@@ -569,12 +578,15 @@ object TypedFOLEncodingSignature {
   private final val fixedTypes: Seq[(String, Kind)] = Seq(
     "$tType"  -> superKind,
     "$o"      -> *, // 1
-    "$i"      -> * // 2
+    "$i"      -> *, // 2
+    "$real"   -> *, // 3
+    "$rat"    -> *, // 4
+    "$int"    -> *, // 5
   )
 
   private final val fixedSymbols: Seq[(String, Type)] = Seq(
-    "$true"   -> o, // 3
-    "$false"  -> o, // 4
+    "$true"   -> o, // 6
+    "$false"  -> o, // 7
     "~"       -> oo,
     "&"       -> ooo,
     "|"       -> ooo,
@@ -585,7 +597,16 @@ object TypedFOLEncodingSignature {
     "!="      -> aao,
     "!"       -> aoo,
     "?"       -> aoo,
-    "!>"      -> faoo
+    "!>"      -> faoo,
+    "$less"   -> faao,
+    "$lesseq" -> faao,
+    "$greater" -> faao,
+    "$greatereq" -> faao,
+    "$sum"    -> faaa,
+    "$difference" -> faaa,
+    "$quotient" -> faaa,
+    "$product" -> faaa,
+    "$uminus" -> faa
   )
 
   // Names
