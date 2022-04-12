@@ -65,12 +65,6 @@ object SeqLoop {
   ////////////////////////////////////
 
   /* Main function containing proof loop */
-  final def apply(startTime: Long, timeout: Int): Unit = {
-    import leo.modules.input.Input
-    apply(startTime, timeout, Input.parseProblemFile(Configuration.PROBLEMFILE))
-  }
-
-  /* Main function containing proof loop */
   final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     val startTimeWOParsing = System.currentTimeMillis()
     /////////////////////////////////////////

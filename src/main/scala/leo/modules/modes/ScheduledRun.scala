@@ -10,10 +10,6 @@ import leo.{Configuration, Out}
 
 object ScheduledRun {
 
-  final def apply(startTime: Long, timeout: Int): Unit = {
-    apply(startTime, timeout, Input.parseProblemFile(Configuration.PROBLEMFILE), Control.generateRunStrategies(timeout))
-  }
-
   final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     apply(startTime, timeout, parsedProblem, Control.generateRunStrategies(timeout))
   }

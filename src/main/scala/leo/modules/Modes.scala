@@ -13,14 +13,6 @@ object Modes {
       seqLoop(beginTime, timeout, parsedProblem)
     } else if (Configuration.isSet("scheduled")) {
       scheduledSeq(beginTime, timeout, parsedProblem)
-    } else if (Configuration.isSet("pure-ext")) {
-      runExternalProver(parsedProblem)
-    /*} else if (Configuration.isSet("rules")) {
-      agentRuleRun(beginTime, parsedProblem)
-    } else if (Configuration.isSet("par")) {
-      runParallel(beginTime, parsedProblem)
-    } else if (Configuration.isSet("scheduled-par")) {
-      runMultiSearch(beginTime, parsedProblem)*/
     } else if (Configuration.isSet("processOnly")) {
       normalizationOnly(parsedProblem)
     } else if (Configuration.isSet("syntaxcheck")) {
@@ -72,11 +64,6 @@ object Modes {
     }
   }
 
-  final def runExternalProver(parsedProblem: Seq[AnnotatedFormula]): Unit = {
-    Out.info("Running in purely external mode.")
-    modes.RunExternalProver(parsedProblem)
-  }
-
   final def normalizationOnly(parsedProblem: Seq[AnnotatedFormula]): Unit = {
     Out.info("Running in processOnly mode.")
     modes.Normalization(parsedProblem)
@@ -91,21 +78,5 @@ object Modes {
     Out.info("Running in scheduled sequential loop mode.")
     modes.ScheduledRun(startTime, timeout, parsedProblem)
   }
-
- /*
-  final def agentRuleRun(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
-    Out.info("Running in rules mode.")
-    modes.Parallel.agentRuleRun(startTime, parsedProblem)
-  }
-
-  final def runParallel(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
-    Out.info("Running in parallel mode.")
-    modes.Parallel.runParallel(startTime, parsedProblem)
-  }
-
-  final def runMultiSearch(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
-    Out.info("Running in scheduled parallel mode.")
-    modes.Parallel.runMultiSearch(startTime, parsedProblem)
-  }*/
 
 }
