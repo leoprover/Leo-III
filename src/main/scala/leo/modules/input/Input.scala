@@ -65,7 +65,7 @@ object Input {
     *                   includes.
     * @return The sequence of annotated TPTP formulae.
     */
-  def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[TPTP.AnnotatedFormula] = {
+  def parseProblemFile(file: String, assumeRead: Set[Path] = Set())(stats: Option[ProblemStatistics] = None): Seq[TPTP.AnnotatedFormula] = {
     // FIXME Assume Read should be a shared between the calls (Dependencies between siblings not detected)
     var result: Seq[TPTP.AnnotatedFormula] = Seq.empty
     val canonicalFile = if (file == "-") canonicalPath(".") else canonicalPath(file) // to allow inputs from CWD if file is stdin
@@ -76,14 +76,16 @@ object Input {
       Out.debug(s"Parsing $file ...")
       val problem: TPTP.Problem = parseProblemFileShallow(file)
       assumeRead0 += canonicalFile
+      stats.foreach(_.registerImmediateFormulas(problem.formulas.size))
       val includes = problem.includes
+      stats.foreach(_.registerIncludes(includes.size))
       val includesIt = includes.iterator
       Out.trace(s"Found ${includes.size} include(s): ${includes.map(ax => s"'${ax._1}'").mkString(",")}")
       while (includesIt.hasNext) {
         val (includeFile, _) = includesIt.next()
         try {
           val next = canonicalFile.getParent.resolve(includeFile)
-          var subResult = parseProblemFile(next.toString, assumeRead0)
+          var subResult = parseProblemFile(next.toString, assumeRead0)(None)
           assumeRead0 += canonicalPath(next.toString)
           result ++= subResult
         } catch {
@@ -96,7 +98,7 @@ object Input {
                   try {
                     Out.info(s"Included file '$includeFile' not found, trying TPTP home directory ...")
                     val altNext = tptpHome.resolve(includeFile)
-                    val altSubResult = parseProblemFile(altNext.toString, assumeRead0)
+                    val altSubResult = parseProblemFile(altNext.toString, assumeRead0)(None)
                     assumeRead0 += canonicalPath(altNext.toString)
                     result ++= altSubResult
                   } catch {
@@ -115,6 +117,7 @@ object Input {
             }
         }
       }
+      stats.foreach(_.registerIncludedFormulas(result.size))
       result ++= problem.formulas
       result
     } else {
@@ -139,7 +142,7 @@ object Input {
     *                   includes.
     * @return The sequence of annotated TPTP formulae.
     */
-  def parseProblem(problem: String, assumeRead: Set[Path] = Set()): Seq[TPTP.AnnotatedFormula] = {
+  def parseProblem(problem: String, assumeRead: Set[Path] = Set())(stats: Option[ProblemStatistics] = None): Seq[TPTP.AnnotatedFormula] = {
     val p: TPTP.Problem = TPTPParser.problem(problem)
     val includes = p.includes
 
@@ -147,13 +150,13 @@ object Input {
     val pIncludes = includes.map{case (inc, _) =>
       try {
         val next = java.nio.file.Paths.get(System.getProperty("user.dir")).resolve(inc)
-        parseProblemFile(next.toString, assumeRead)
+        parseProblemFile(next.toString, assumeRead)(stats)
       } catch {
         case e : Exception =>
           try {
             if (tptpHome != null) {
               val tnext = tptpHome.resolve(inc)
-              parseProblemFile(tnext.toString, assumeRead)
+              parseProblemFile(tnext.toString, assumeRead)(stats)
             } else throw e
           } catch {
             case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
@@ -281,7 +284,7 @@ object Input {
     *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def readProblem(file: String, assumeProcessed: Set[Path] = Set())(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
-    processProblem(parseProblemFile(file,assumeProcessed))(sig)
+    processProblem(parseProblemFile(file,assumeProcessed)())(sig)
   }
 
   /**

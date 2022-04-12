@@ -3,7 +3,7 @@ package leo
 import leo.modules.Modes
 import leo.modules.{SZSException, SZSResult, stackTraceAsString}
 import leo.modules.output.{SZS_Error, SZS_Forced, SZS_MemoryOut, SZS_UsageError}
-import leo.modules.input.{CLParameterParser, Input}
+import leo.modules.input.{CLParameterParser, Input, ProblemStatistics}
 
 /**
   * Entry Point for Leo-III as an executable.
@@ -47,9 +47,10 @@ object Main {
 
       /** Call concrete functionality BEGIN */
       import leo.modules.embeddings.{Library => LogicEmbeddingLibrary, getLogicSpecFromProblem, getLogicFromSpec}
+      val stats = ProblemStatistics.apply()
       Out.info(s"Parsing problem ${Configuration.PROBLEMFILE} ...")
       val parseStartTime = System.currentTimeMillis()
-      val problem0 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+      val problem0 = Input.parseProblemFile(Configuration.PROBLEMFILE)(Some(stats))
       val parseEndTime = System.currentTimeMillis()
       Out.info(s"Parsing done (${parseEndTime - parseStartTime}ms).")
       // If it is a logic embedding, call the embedding tool, else just use the problem itself.
@@ -64,7 +65,7 @@ object Main {
         case None => problem0
       }
       // Invoke concrete mode
-      Modes.apply(beginTime, problem)
+      Modes.apply(beginTime, problem, stats)
       /** Call concrete functionality END */
       
     } catch {

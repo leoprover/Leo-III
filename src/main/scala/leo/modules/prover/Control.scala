@@ -2515,7 +2515,7 @@ package redundancyControl {
 
 package indexingControl {
 
-  import leo.modules.control.Control.LocalFVState
+  import leo.modules.control.Control.{LocalFVState, defaultStrategy}
 
   object IndexingControl {
     /** Initiate all index structures. This is
@@ -2673,12 +2673,13 @@ package indexingControl {
 
     final val passingThreshold = 25
     // Get this from CLI parameter or let Control infer the "best setting"
-    final def getBestFilterConfig(state: LocalState): AxiomFilterConfig = {
+    // Should actually be "getBestSineConfig", rework that at some point.
+    final def getBestFilterConfigOld(state: LocalState): AxiomFilterConfig = {
       if (Configuration.NO_AXIOM_SELECTION) NoAxiomFilter
       else {
         // If number of axioms below magic threshold, just pass them all.
         // Otherwise, decide based on problem statistics (now only axiom count, later more complex)
-        val filterconfig = state.problemStatistics match {
+        val filterconfig = state.problemStatistics.axioms match {
           case n if Configuration.isSet("sine") =>
             try {
               val str = Configuration.valueOf("sine").get.head.split(";")
@@ -2700,6 +2701,238 @@ package indexingControl {
         }
         ThresholdPassFilterConfig(passingThreshold, filterconfig)
       }
+    }
+
+    // Based on Antoine's optimization algorithm
+    final def getBestFilterConfig(state: LocalState): AxiomFilterConfig = {
+      if (Configuration.NO_AXIOM_SELECTION) NoAxiomFilter
+      else {
+        // If number of axioms below magic threshold, just pass them all.
+        // Otherwise, decide based on problem statistics (now only axiom count, later more complex)
+        val filterconfig = if (Configuration.isSet("sine")) {
+          try {
+            val str = Configuration.valueOf("sine").get.head.split(";")
+            val threshold = str(0).toDouble
+            val maxAbsoluteSize = str(1).toInt
+            val maxDepth = str(2).toInt
+            SineConfig(threshold, maxAbsoluteSize, 1, maxDepth)
+          } catch {
+            case _:Exception =>
+              Out.warn("Parsing of --sine parameter failed; use default sine setting.")
+              guessSineFilterConfig(state.problemStatistics.includedAxioms, state.problemStatistics.localAxioms)
+          }
+        } else guessSineFilterConfig(state.problemStatistics.includedAxioms, state.problemStatistics.localAxioms)
+        ThresholdPassFilterConfig(passingThreshold, filterconfig)
+      }
+    }
+
+    /*
+    If-then-else block built from the following data and
+    regex:
+   search for \((\d+),(\d+)\),\((\d+),(\d+)\),\((\d+),(\d+)\),0,(\d+).*
+   replace by   else if (internalAxioms >= \1 && internalAxioms <= \2 && externalAxioms >= \3 && externalAxioms <= \4 && axioms >= \5 && axioms <= \6) \7
+
+     (402,759),(7014,10723),(7450,11210),0,21,26,7
+      (34,511),(45455,54878),(45494,55190),0,36,10,6
+      (3726,4179),(50640,50640),(54366,54819),0,6,8,42
+      (238,415),(24,4083),(342,4438),0,3,7,36
+      (1050,1569),(24107,24107),(25157,25676),0,40,12,4
+      (2247,2766),(50640,50640),(52887,53406),0,8
+      (366,935),(48429,54878),(49029,55331),0,36,6,41
+      (49,421),(31281,37032),(31552,37248),0,11,8,47
+      (614,991),(12853,18212),(13515,18931),0,6,33,36
+      (2,278),(15728,20100),(15793,20164),0,6,1,5
+      (32,652),(36589,42948),(36931,43108),0,26,11,31
+      (115,342),(3438,6241),(3588,6415),0,11,6,2
+      (1689,2066),(24107,24107),(25796,26173),0,5
+      (139,335),(13306,16189),(13468,16501),0,1,33,2
+      (149,402),(5435,9047),(5787,9378),0,11,18,6
+      (1003,1399),(14903,16969),(15907,18362),0,6,13,5
+      (1,141),(2663,5560),(2701,5597),0,13,16,6
+      (440,967),(22237,26862),(22694,27536),0,36,39,6
+      (3310,3671),(50640,50640),(53950,54311),0,6,9
+      (130,386),(9898,12853),(10089,13176),0,11,8,6
+      (4,175),(8723,11999),(8751,12121),0,11,31,12
+      (1397,1835),(14903,16969),(16307,18804),0,1,7,2
+      (303,759),(28944,36069),(29303,36582),0,7,16,40
+      (34,443),(19346,23601),(19591,24011),0,26,8,14
+      (281,608),(15728,19346),(16107,19840),0,46,3,1
+      (2,157),(12280,15838),(12300,15872),0,6,21,9
+      (2794,3274),(50640,50640),(53434,53914),0,37
+      (951,1566),(46764,50640),(47836,52206),0,41,36,9
+      (768,1150),(4083,9047),(4936,9885),0,6,46,12
+      (492,796),(1963,5435),(2633,6189),0,28,31,40
+      (25,309),(26219,31281),(26303,31359),0,26,10,3
+      (3,135),(7,2468),(39,2563),0,1,40,19
+      (331,631),(11795,15242),(12183,15659),0,1,8,2
+      (0,166),(5604,8723),(5631,8738),0,13,11,7
+      (1627,2231),(43121,50640),(45149,52871),0,6,1,4
+      (101,271),(7,3058),(145,3234),0,12,6,15
+      (371,590),(1060,5435),(1488,5915),0,23,35,1
+      (532,997),(39415,48429),(40118,49340),0,7,41,42
+      (1203,1605),(39415,43121),(40618,44532),0,31,26,43
+
+
+     and the table is from
+     (\d+),"(\d.\d);(\d+);(-?\d)"
+     \1 -> SineConfig(\2,\3,1,\4),
+     and the data ...
+     1,"1.0;200;-1"
+      2,"1.5;200;-1"
+      3,"2.0;200;-1"
+      4,"3.0;200;-1"
+      5,"5.0;200;-1"
+      6,"1.0;200;1"
+      7,"1.5;200;1"
+      8,"2.0;200;1"
+      9,"3.0;200;1"
+      10,"5.0;200;1"
+      11,"1.0;200;2"
+      12,"1.5;200;2"
+      13,"2.0;200;2"
+      14,"3.0;200;2"
+      15,"5.0;200;2"
+      16,"1.0;200;3"
+      17,"1.5;200;3"
+      18,"2.0;200;3"
+      19,"3.0;200;3"
+      20,"5.0;200;3"
+      21,"1.0;200;5"
+      22,"1.5;200;5"
+      23,"2.0;200;5"
+      24,"3.0;200;5"
+      25,"5.0;200;5"
+      26,"1.0;999999999;-1"
+      27,"1.5;999999999;-1"
+      28,"2.0;999999999;-1"
+      29,"3.0;999999999;-1"
+      30,"5.0;999999999;-1"
+      31,"1.0;999999999;1"
+      32,"1.5;999999999;1"
+      33,"2.0;999999999;1"
+      34,"3.0;999999999;1"
+      35,"5.0;999999999;1"
+      36,"1.0;999999999;2"
+      37,"1.5;999999999;2"
+      38,"2.0;999999999;2"
+      39,"3.0;999999999;2"
+      40,"5.0;999999999;2"
+      41,"1.0;999999999;3"
+      42,"1.5;999999999;3"
+      43,"2.0;999999999;3"
+      44,"3.0;999999999;3"
+      45,"5.0;999999999;3"
+      46,"1.0;999999999;5"
+      47,"1.5;999999999;5"
+      48,"2.0;999999999;5"
+      49,"3.0;999999999;5"
+      50,"5.0;999999999;5"
+      */
+    private final def guessSineFilterConfig(externalAxioms: Int, internalAxioms: Int): SineConfig = {
+      val axioms = externalAxioms + internalAxioms
+
+      val defaultConfig = if (axioms <= 100) SineConfig(3.5, 1000, 1, -1)
+      else if (axioms <= 500) SineConfig(2.5, 1000, 1, -1)
+      else if (axioms <= 1000) SineConfig(1.5, 1000, 1, -1)
+      else SineConfig(1.25, 1000, 1, 3)
+
+      val table = Map(
+        0 -> defaultConfig, // Manually added as fallback
+        1 -> SineConfig(1.0,200,1,-1),
+        2 -> SineConfig(1.5,200,1,-1),
+        3 -> SineConfig(2.0,200,1,-1),
+        4 -> SineConfig(3.0,200,1,-1),
+        5 -> SineConfig(5.0,200,1,-1),
+        6 -> SineConfig(1.0,200,1,1),
+        7 -> SineConfig(1.5,200,1,1),
+        8 -> SineConfig(2.0,200,1,1),
+        9 -> SineConfig(3.0,200,1,1),
+        10 -> SineConfig(5.0,200,1,1),
+        11 -> SineConfig(1.0,200,1,2),
+        12 -> SineConfig(1.5,200,1,2),
+        13 -> SineConfig(2.0,200,1,2),
+        14 -> SineConfig(3.0,200,1,2),
+        15 -> SineConfig(5.0,200,1,2),
+        16 -> SineConfig(1.0,200,1,3),
+        17 -> SineConfig(1.5,200,1,3),
+        18 -> SineConfig(2.0,200,1,3),
+        19 -> SineConfig(3.0,200,1,3),
+        20 -> SineConfig(5.0,200,1,3),
+        21 -> SineConfig(1.0,200,1,5),
+        22 -> SineConfig(1.5,200,1,5),
+        23 -> SineConfig(2.0,200,1,5),
+        24 -> SineConfig(3.0,200,1,5),
+        25 -> SineConfig(5.0,200,1,5),
+        26 -> SineConfig(1.0,999999999,1,-1),
+        27 -> SineConfig(1.5,999999999,1,-1),
+        28 -> SineConfig(2.0,999999999,1,-1),
+        29 -> SineConfig(3.0,999999999,1,-1),
+        30 -> SineConfig(5.0,999999999,1,-1),
+        31 -> SineConfig(1.0,999999999,1,1),
+        32 -> SineConfig(1.5,999999999,1,1),
+        33 -> SineConfig(2.0,999999999,1,1),
+        34 -> SineConfig(3.0,999999999,1,1),
+        35 -> SineConfig(5.0,999999999,1,1),
+        36 -> SineConfig(1.0,999999999,1,2),
+        37 -> SineConfig(1.5,999999999,1,2),
+        38 -> SineConfig(2.0,999999999,1,2),
+        39 -> SineConfig(3.0,999999999,1,2),
+        40 -> SineConfig(5.0,999999999,1,2),
+        41 -> SineConfig(1.0,999999999,1,3),
+        42 -> SineConfig(1.5,999999999,1,3),
+        43 -> SineConfig(2.0,999999999,1,3),
+        44 -> SineConfig(3.0,999999999,1,3),
+        45 -> SineConfig(5.0,999999999,1,3),
+        46 -> SineConfig(1.0,999999999,1,5),
+        47 -> SineConfig(1.5,999999999,1,5),
+        48 -> SineConfig(2.0,999999999,1,5),
+        49 -> SineConfig(3.0,999999999,1,5),
+        50 -> SineConfig(5.0,999999999,1,5))
+
+      val configId = if (internalAxioms >= 402 && internalAxioms <= 759 && externalAxioms >= 7014 && externalAxioms <= 10723 && axioms >= 7450 && axioms <= 11210) 21
+      else if (internalAxioms >= 34 && internalAxioms <= 511 && externalAxioms >= 45455 && externalAxioms <= 54878 && axioms >= 45494 && axioms <= 55190) 36
+      else if (internalAxioms >= 3726 && internalAxioms <= 4179 && externalAxioms >= 50640 && externalAxioms <= 50640 && axioms >= 54366 && axioms <= 54819) 6
+      else if (internalAxioms >= 238 && internalAxioms <= 415 && externalAxioms >= 24 && externalAxioms <= 4083 && axioms >= 342 && axioms <= 4438) 3
+      else if (internalAxioms >= 1050 && internalAxioms <= 1569 && externalAxioms >= 24107 && externalAxioms <= 24107 && axioms >= 25157 && axioms <= 25676) 40
+      else if (internalAxioms >= 2247 && internalAxioms <= 2766 && externalAxioms >= 50640 && externalAxioms <= 50640 && axioms >= 52887 && axioms <= 53406) 8
+      else if (internalAxioms >= 366 && internalAxioms <= 935 && externalAxioms >= 48429 && externalAxioms <= 54878 && axioms >= 49029 && axioms <= 55331) 36
+      else if (internalAxioms >= 49 && internalAxioms <= 421 && externalAxioms >= 31281 && externalAxioms <= 37032 && axioms >= 31552 && axioms <= 37248) 11
+      else if (internalAxioms >= 614 && internalAxioms <= 991 && externalAxioms >= 12853 && externalAxioms <= 18212 && axioms >= 13515 && axioms <= 18931) 6
+      else if (internalAxioms >= 2 && internalAxioms <= 278 && externalAxioms >= 15728 && externalAxioms <= 20100 && axioms >= 15793 && axioms <= 20164) 6
+      else if (internalAxioms >= 32 && internalAxioms <= 652 && externalAxioms >= 36589 && externalAxioms <= 42948 && axioms >= 36931 && axioms <= 43108) 26
+      else if (internalAxioms >= 115 && internalAxioms <= 342 && externalAxioms >= 3438 && externalAxioms <= 6241 && axioms >= 3588 && axioms <= 6415) 11
+      else if (internalAxioms >= 1689 && internalAxioms <= 2066 && externalAxioms >= 24107 && externalAxioms <= 24107 && axioms >= 25796 && axioms <= 26173) 5
+      else if (internalAxioms >= 139 && internalAxioms <= 335 && externalAxioms >= 13306 && externalAxioms <= 16189 && axioms >= 13468 && axioms <= 16501) 1
+      else if (internalAxioms >= 149 && internalAxioms <= 402 && externalAxioms >= 5435 && externalAxioms <= 9047 && axioms >= 5787 && axioms <= 9378) 11
+      else if (internalAxioms >= 1003 && internalAxioms <= 1399 && externalAxioms >= 14903 && externalAxioms <= 16969 && axioms >= 15907 && axioms <= 18362) 6
+      else if (internalAxioms >= 1 && internalAxioms <= 141 && externalAxioms >= 2663 && externalAxioms <= 5560 && axioms >= 2701 && axioms <= 5597) 13
+      else if (internalAxioms >= 440 && internalAxioms <= 967 && externalAxioms >= 22237 && externalAxioms <= 26862 && axioms >= 22694 && axioms <= 27536) 36
+      else if (internalAxioms >= 3310 && internalAxioms <= 3671 && externalAxioms >= 50640 && externalAxioms <= 50640 && axioms >= 53950 && axioms <= 54311) 6
+      else if (internalAxioms >= 130 && internalAxioms <= 386 && externalAxioms >= 9898 && externalAxioms <= 12853 && axioms >= 10089 && axioms <= 13176) 11
+      else if (internalAxioms >= 4 && internalAxioms <= 175 && externalAxioms >= 8723 && externalAxioms <= 11999 && axioms >= 8751 && axioms <= 12121) 11
+      else if (internalAxioms >= 1397 && internalAxioms <= 1835 && externalAxioms >= 14903 && externalAxioms <= 16969 && axioms >= 16307 && axioms <= 18804) 1
+      else if (internalAxioms >= 303 && internalAxioms <= 759 && externalAxioms >= 28944 && externalAxioms <= 36069 && axioms >= 29303 && axioms <= 36582) 7
+      else if (internalAxioms >= 34 && internalAxioms <= 443 && externalAxioms >= 19346 && externalAxioms <= 23601 && axioms >= 19591 && axioms <= 24011) 26
+      else if (internalAxioms >= 281 && internalAxioms <= 608 && externalAxioms >= 15728 && externalAxioms <= 19346 && axioms >= 16107 && axioms <= 19840) 46
+      else if (internalAxioms >= 2 && internalAxioms <= 157 && externalAxioms >= 12280 && externalAxioms <= 15838 && axioms >= 12300 && axioms <= 15872) 6
+      else if (internalAxioms >= 2794 && internalAxioms <= 3274 && externalAxioms >= 50640 && externalAxioms <= 50640 && axioms >= 53434 && axioms <= 53914) 37
+      else if (internalAxioms >= 951 && internalAxioms <= 1566 && externalAxioms >= 46764 && externalAxioms <= 50640 && axioms >= 47836 && axioms <= 52206) 41
+      else if (internalAxioms >= 768 && internalAxioms <= 1150 && externalAxioms >= 4083 && externalAxioms <= 9047 && axioms >= 4936 && axioms <= 9885) 6
+      else if (internalAxioms >= 492 && internalAxioms <= 796 && externalAxioms >= 1963 && externalAxioms <= 5435 && axioms >= 2633 && axioms <= 6189) 28
+      else if (internalAxioms >= 25 && internalAxioms <= 309 && externalAxioms >= 26219 && externalAxioms <= 31281 && axioms >= 26303 && axioms <= 31359) 26
+      else if (internalAxioms >= 3 && internalAxioms <= 135 && externalAxioms >= 7 && externalAxioms <= 2468 && axioms >= 39 && axioms <= 2563) 1
+      else if (internalAxioms >= 331 && internalAxioms <= 631 && externalAxioms >= 11795 && externalAxioms <= 15242 && axioms >= 12183 && axioms <= 15659) 1
+      else if (internalAxioms >= 0 && internalAxioms <= 166 && externalAxioms >= 5604 && externalAxioms <= 8723 && axioms >= 5631 && axioms <= 8738) 13
+      else if (internalAxioms >= 1627 && internalAxioms <= 2231 && externalAxioms >= 43121 && externalAxioms <= 50640 && axioms >= 45149 && axioms <= 52871) 6
+      else if (internalAxioms >= 101 && internalAxioms <= 271 && externalAxioms >= 7 && externalAxioms <= 3058 && axioms >= 145 && axioms <= 3234) 12
+      else if (internalAxioms >= 371 && internalAxioms <= 590 && externalAxioms >= 1060 && externalAxioms <= 5435 && axioms >= 1488 && axioms <= 5915) 23
+      else if (internalAxioms >= 532 && internalAxioms <= 997 && externalAxioms >= 39415 && externalAxioms <= 48429 && axioms >= 40118 && axioms <= 49340) 7
+      else if (internalAxioms >= 1203 && internalAxioms <= 1605 && externalAxioms >= 39415 && externalAxioms <= 43121 && axioms >= 40618 && axioms <= 44532) 31
+      else 0
+//      println(s"Sine config guessed (internalAxioms = $internalAxioms, externalAxioms = $externalAxioms, axioms = $axioms) = $configId")
+
+      if (Configuration.isSet("standard-sine")) defaultConfig
+      else table(configId)
     }
 
     final def getRelevantAxiomsNew(axioms: Seq[AnnotatedFormula],

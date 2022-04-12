@@ -4,13 +4,13 @@ import leo.datastructures.TPTP.AnnotatedFormula
 import leo.datastructures.{Role_Definition, Role_Type, Signature}
 import leo.{Configuration, Out}
 import leo.modules.output._
-import leo.modules.input.Input
+import leo.modules.input.{Input, ProblemStatistics}
 
 object Modes {
-  final def apply(beginTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
+  final def apply(beginTime: Long, parsedProblem: Seq[AnnotatedFormula], stats: ProblemStatistics): Unit = {
     val timeout = Configuration.TIMEOUT
     if (Configuration.isSet("seq")) {
-      seqLoop(beginTime, timeout, parsedProblem)
+      seqLoop(beginTime, timeout, parsedProblem, stats)
     } else if (Configuration.isSet("scheduled")) {
       scheduledSeq(beginTime, timeout, parsedProblem)
     } else if (Configuration.isSet("processOnly")) {
@@ -22,7 +22,7 @@ object Modes {
     } else if (Configuration.isSet("toTHF")) {
       toTHF(parsedProblem)
     } else {
-      seqLoop(beginTime, timeout, parsedProblem)
+      seqLoop(beginTime, timeout, parsedProblem, stats)
     }
   }
 
@@ -69,9 +69,9 @@ object Modes {
     modes.Normalization(parsedProblem)
   }
 
-  final def seqLoop(startTime: Long, timeout: Int, parsedProblem: Seq[AnnotatedFormula]): Unit = {
+  final def seqLoop(startTime: Long, timeout: Int, parsedProblem: Seq[AnnotatedFormula], stats: ProblemStatistics): Unit = {
     Out.info("Running in sequential loop mode.")
-    prover.SeqLoop(startTime, timeout, parsedProblem)
+    prover.SeqLoop(startTime, timeout, parsedProblem, stats)
   }
 
   final def scheduledSeq(startTime: Long, timeout: Int, parsedProblem: Seq[AnnotatedFormula]): Unit = {

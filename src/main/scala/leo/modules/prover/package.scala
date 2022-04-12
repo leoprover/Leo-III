@@ -164,10 +164,12 @@ package object prover {
     val axioms: mutable.ListBuffer[Axiom] = mutable.ListBuffer.empty
     val defs: mutable.ListBuffer[Definition] = mutable.ListBuffer.empty
     val conjs: mutable.ListBuffer[Conjecture] = mutable.ListBuffer.empty
+    var processedFormulas: Int = 0
 
     val dist = state.symbolDistribution
 
     input.foreach { annotatedFormula =>
+      processedFormulas += 1
       val langLevelFromFormula = LanguageLevel.fromFormulaType(annotatedFormula.formulaType)
       if (state.languageLevel == Lang_Unknown) state.setLanguageLevel(langLevelFromFormula)
       else {
@@ -197,6 +199,9 @@ package object prover {
         case "axiom" | "hypothesis" =>
           dist.add(annotatedFormula)
           axioms.append(annotatedFormula)
+          // Make use of the fact that included formulas are prepended to the file's content during parsing
+          if (processedFormulas > state.problemStatistics.includedFormulas) state.problemStatistics.registerLocalAxioms(1)
+          else state.problemStatistics.registerIncludedAxioms(1)
         case "conjecture" =>
           if (state.conjecture == null && state.negConjecture.isEmpty) {
             if (Configuration.CONSISTENCY_CHECK) {
@@ -245,7 +250,7 @@ package object prover {
         case role => throw new SZSException(SZS_InputError, s"Formula '${annotatedFormula.name}' has unexpected role '$role' and it's not clear how to proceed from here.")
       }
     }
-    state.setAxiomCount(axioms.size)
+//    state.setAxiomCount(axioms.size)
     (axioms.toVector, defs.toVector, conjs.toVector)
   }
 

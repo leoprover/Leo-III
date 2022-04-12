@@ -5,6 +5,7 @@ import leo.datastructures._
 import leo.datastructures.TPTP.AnnotatedFormula
 import leo.modules.{SZSOutput, SZSResult, myAssert}
 import leo.modules.control.Control
+import leo.modules.input.ProblemStatistics
 import leo.modules.output._
 
 /**
@@ -65,7 +66,7 @@ object SeqLoop {
   ////////////////////////////////////
 
   /* Main function containing proof loop */
-  final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
+  final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula], stats: ProblemStatistics): Unit = {
     val startTimeWOParsing = System.currentTimeMillis()
     /////////////////////////////////////////
     // Main loop preparations:
@@ -73,6 +74,7 @@ object SeqLoop {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
+    state.setProblemStatistics(stats)
     state.setTimeout(timeout)
 
     try {

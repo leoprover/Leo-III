@@ -3,8 +3,9 @@ package leo.modules
 import leo.datastructures._
 import TPTP.AnnotatedFormula
 import leo.modules.external.TptpProver
+import leo.modules.input.ProblemStatistics
 import leo.modules.output.{SZS_Unknown, StatusSZS}
-import leo.modules.relevance.{SymbolDistribution, AxiomFilterConfig}
+import leo.modules.relevance.{AxiomFilterConfig, SymbolDistribution}
 import leo.modules.prover.{FVIndex, RunStrategy}
 
 import scala.collection.mutable
@@ -71,8 +72,8 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def runStrategy: RunStrategy
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
-  def setAxiomCount(count: Int): Unit
-  def problemStatistics: Int // TODO: FOr now, just an int for number of axioms. Later: Aggregate object
+  def setProblemStatistics(stats: ProblemStatistics): Unit
+  def problemStatistics: ProblemStatistics
   def symbolDistribution: SymbolDistribution
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: Set[T]): Unit
@@ -153,9 +154,9 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
-  private var axiomCount0 = 0
-  def setAxiomCount(count: Int): Unit = {axiomCount0 = count}
-  final def problemStatistics: Int = axiomCount0
+  private var stats0: ProblemStatistics = _
+  final def setProblemStatistics(stats: ProblemStatistics): Unit = {stats0 = stats}
+  final def problemStatistics: ProblemStatistics = stats0
   final def symbolDistribution: SymbolDistribution = dist0
   final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0.toSet
   final def defConjSymbols(negConj: Set[T]): Unit = {
