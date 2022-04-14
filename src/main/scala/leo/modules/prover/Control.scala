@@ -2833,8 +2833,8 @@ package indexingControl {
 
       val defaultConfig = if (axioms <= 100) SineConfig(3.5, 1000, 1, -1)
       else if (axioms <= 500) SineConfig(2.5, 1000, 1, -1)
-      else if (axioms <= 1000) SineConfig(1.5, 1000, 1, -1)
-      else SineConfig(1.25, 1000, 1, 3)
+      else if (axioms <= 1000) SineConfig(2, 1000, 1, -1)
+      else SineConfig(1.5, 1000, 1, -1)
 
       val table = Map(
         0 -> defaultConfig, // Manually added as fallback
