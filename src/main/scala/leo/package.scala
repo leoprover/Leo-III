@@ -23,7 +23,7 @@ package object leo {
 
   type TermOrdering = leo.datastructures.TermOrdering
 
-  final val version: String = "1.6.11" // TODO: Read that somehow from build.sbt
+  final val version: String = "1.7.0" // TODO: Read that somehow from build.sbt
   final val brand: String =
     raw"""
        | __                             ______  ______  ______
