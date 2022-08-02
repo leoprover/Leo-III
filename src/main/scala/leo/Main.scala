@@ -55,14 +55,16 @@ object Main {
       Out.info(s"Parsing done (${parseEndTime - parseStartTime}ms).")
       // If it is a logic embedding, call the embedding tool, else just use the problem itself.
       // To Leo-III it will currently look like a standard HOL problem, regardless of its original object logic.
-      val maybeLogicSpec = getLogicSpecFromProblem(problem0)
-      val problem = maybeLogicSpec match {
-        case Some(logicSpec) =>
-          val logicName = getLogicFromSpec(logicSpec)
-          val embeddingFunction = LogicEmbeddingLibrary.embeddingTable(logicName)
-          Out.info("Input problem is non-classical. Running HOL transformation from semantics specification contained in the problem file ...")
-          embeddingFunction.apply(problem0, Set.empty)
-        case None => problem0
+      // For this purpose, we need to loop the embedding tool as its output might need to be embedded again.
+      // Loop until not logic spec is contained anymore (= classical HOL).
+      var problem = problem0
+      var maybeLogicSpec = getLogicSpecFromProblem(problem)
+      while (maybeLogicSpec.isDefined) {
+        val logicName = getLogicFromSpec(maybeLogicSpec.get)
+        val embeddingFunction = LogicEmbeddingLibrary.embeddingTable(logicName)
+        Out.info(s"Input problem is non-classical (logic $logicName). Running HOL transformation from semantics specification contained in the problem file ...")
+        problem = embeddingFunction.apply(problem, Set.empty)
+        maybeLogicSpec = getLogicSpecFromProblem(problem)
       }
       // Invoke concrete mode
       Modes.apply(beginTime, problem, stats)
