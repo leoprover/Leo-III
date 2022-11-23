@@ -7,7 +7,7 @@ It is based on a paramodulation calculus with ordering constraints and, in tradi
 
 In addition for its HOL reasoning capabilities, Leo-III supports reasoning in many higher-order quantified modal logics [GS18,GSB17].
 
-Leo-III was initially developed at Freie Universität Berlin, and then at University of Luxembourg (until 2021). From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). Since 222, Leo-III is maintained and developed at the University of Greifswald, Germany. The main contributors are (sorted alphabetically): Christoph Benzmüller, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
+Leo-III was initially developed at Freie Universität Berlin, and then at University of Luxembourg (until 2021). From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). Since 2022, Leo-III is maintained and developed at the University of Greifswald, Germany. The main contributors are (sorted alphabetically): Christoph Benzmüller, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
 Leo-III may be cited as [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4435994.svg)](https://doi.org/10.5281/zenodo.4435994)
 
