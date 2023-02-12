@@ -49,7 +49,7 @@ The most important parameters are
 | Parameter flag  | Effect |
 | ------------- | ------------- |
 | -p  | Output a refutation proof, if one was found <br><br> Default: false (not set) |
-| -t `s`  | Set the timeout to `s` seconds, meaning that Leo-III will try to proof the problem and return `SZS_Timeout` if not successful after approximately `s`  seconds <br><br> Default value: 60<br>Valid values: non-negative numbers|
+| -t `s`  | Set the timeout to `s` seconds, meaning that Leo-III will try to proof the problem and return `SZS_Timeout` if not successful after approximately `s`  seconds <br><br> Default value: 60<br>Valid values: non-negative numbers <br><br> :warning: **The timeout -t is a best-effort parameter. It __does not guarantee__ that Leo-III will actually terminate after at most `s` seconds, but it will try. If a strict timeout is important to you (or if you want to make sure that Leo-III terminates), please use system-specific tools like `ulimit` or `timeout`.** |
 | --atp `system` | Use `system` for external cooperation. See further below. <br><br> Default: none set <br> Valid values: See "External cooperation" below.|
 | --primsubst `level` | Use the "itensity" `level` for instantiating flexible heads according to the primitive substitution rule <br><br> Default: 1<br>Valid values: 1-6 |
 | --unifiers `n` | During unification, use at most `n` distinct unifiers<br> <br> Default: 1<br> Valud values: non-negative numbers |
