@@ -2,35 +2,37 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.7.2",
+    version := "1.7.3",
     organization := "org.leo",
-    scalaVersion := "2.13.8",
+    scalaVersion := "2.13.10",
 
-    test in assembly := {},
     logLevel := Level.Warn,
-    logLevel in assembly := Level.Error,
-    mainClass in (Compile, run) := Some("leo.Main"),
-    mainClass in assembly := Some("leo.Main"),
-    mainClass in (Compile, packageBin) := Some("leo.Main"),
+
+    Compile/mainClass := Some("leo.Main"),
+    assembly/mainClass := Some("leo.Main"),
+    assembly/assemblyJarName := "leo3.jar",
+    assembly/logLevel := Level.Error,
+    assembly/test := {},
 
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
     ),
+    // set stack size to 4m
+    javaOptions ++= Seq(
+      "-Xss4m",
+      "-Xms512m",
+      "-Xmx2g"
+    ),
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.5",
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.15" % "test"),
 
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.4",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.10" % "test"),
-
-    // set stack size to 4m 
-    javaOptions += "-Xss4m",
-    parallelExecution in Test := false,
-    assemblyJarName in assembly := "leo3.jar",
-    exportJars := true
+    Test/parallelExecution := false,
   )
 
 // The following are new commands to allow build with debug output
 lazy val elideLevel = settingKey[Int]("elide code below this level.")
-elideLevel in Global := 501
+Global/elideLevel := 501
 scalacOptions ++= Seq("-Xelide-below", elideLevel.value.toString)
 def compileCommand(name: String, level: Int) =
   Command.command(s"${name}Compile") { s =>
