@@ -5,6 +5,7 @@ lazy val leo = (project in file("."))
     version := "1.7.3",
     organization := "org.leo",
     scalaVersion := "2.13.10",
+    licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
 
     logLevel := Level.Warn,
 
@@ -24,7 +25,8 @@ lazy val leo = (project in file("."))
       "-Xms512m",
       "-Xmx2g"
     ),
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.5",
+    resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.5+7-f3855f3f-SNAPSHOT",
     libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.15" % "test"),
 
     Test/parallelExecution := false,
