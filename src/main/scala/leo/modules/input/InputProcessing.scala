@@ -249,6 +249,19 @@ object InputProcessing {
         val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
         convertedConnective.apply(convertedLeft, convertedRight)
 
+      case FunctionTerm("$distinct", args) =>
+        import leo.modules.HOLSignature.{!===, &}
+        if (args.size >= 2) {
+          val pairwiseCombinationsOfArgs = args.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars)).combinations(2)
+          val firstCombination = pairwiseCombinationsOfArgs.next()
+          val firstInequality = !===(firstCombination.head, firstCombination.tail.head)
+          pairwiseCombinationsOfArgs.foldLeft(firstInequality) { case (term, combination) =>
+            val left = combination.head
+            val right = combination.tail.head
+            val intermediateResult: Term = !===(left, right)
+            &(term, intermediateResult)
+          }
+        } else LitTrue
       case ft@FunctionTerm(f, args) =>
         if (sig.exists(f)) {
           val meta = sig(f)
@@ -785,6 +798,25 @@ object InputProcessing {
             s"At least one of '${left.pretty}' and '${right.pretty}' were recognized as a type.")
         }
 
+      case AtomicFormula("$distinct", args) =>
+        import leo.modules.HOLSignature.{!===, &}
+        if (args.size >= 2) {
+          val pairwiseCombinationsOfArgs = args.map{ arg =>
+            val res = convertTFFTerm(sig)(arg, termVars, typeVars, vars)
+            res match {
+              case Left(termValue) => termValue
+              case Right(typeValue) => throw new SZSException(SZS_InputError, s"Type argument '${typeValue.pretty(sig)}' not allowed in $$distinct predicate.")
+            }
+          }.combinations(2)
+          val firstCombination = pairwiseCombinationsOfArgs.next()
+          val firstInequality = !===(firstCombination.head, firstCombination.tail.head)
+          pairwiseCombinationsOfArgs.foldLeft(firstInequality) { case (term, combination) =>
+            val left = combination.head
+            val right = combination.tail.head
+            val intermediateResult: Term = !===(left, right)
+            &(term, intermediateResult)
+          }
+        } else LitTrue
       case ft@AtomicFormula(f, args) =>
         val key = getOrCreateSymbolWithWarning(sig)(f, mkSimplePredicateType(args.size))
         val func = mkAtom(key)(sig)
