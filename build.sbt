@@ -2,7 +2,7 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.7.4",
+    version := "1.7.5",
     organization := "org.leo",
     scalaVersion := "2.13.10",
     licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
@@ -25,12 +25,16 @@ lazy val leo = (project in file("."))
       "-Xms512m",
       "-Xmx2g"
     ),
-    resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.5+7-f3855f3f-SNAPSHOT",
+    //resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.1",
     libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.15" % "test"),
+    
+    nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
+    nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs" }",
+    nativeImageOptions +="-H:+JNI",
 
     Test/parallelExecution := false,
-  )
+  ).enablePlugins(NativeImagePlugin)
 
 // The following are new commands to allow build with debug output
 lazy val elideLevel = settingKey[Int]("elide code below this level.")
