@@ -51,11 +51,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PAR_SCHED = "parSched"
   private val PARAM_CONCURRENT_TRANSLATE = "encode-threaded"
   private val PARAM_GUIDED = "guided"
-  final val PARAM_MODAL_SYSTEM = "assume-modal-system"
-  final val PARAM_MODAL_AXIOMS = "assume-modal-axioms"
-  final val PARAM_MODAL_DOMAIN = "assume-modal-domains"
-  final val PARAM_MODAL_RIGIDITY = "assume-modal-rigidity"
-  final val PARAM_MODAL_CONSEQUENCE = "assume-modal-consequence"
+  private val PARAM_PASSTOEMBEDDING = "embedding-param"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -103,7 +99,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   def isInit: Boolean = configMap != null
 
-  final val VERSION: String = "1.7.5"
+  final val VERSION: String = "1.7.7"
   final val LEODIR_NAME: String = "leo3"
   final lazy val LEODIR: Path = {
     val dir = Files.createTempDirectory(LEODIR_NAME)
@@ -307,12 +303,12 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val CONCURRENT_TRANSLATE : Boolean = isSet(PARAM_CONCURRENT_TRANSLATE)
-
-  lazy val MODAL_SYSTEM: String = if (isSet(PARAM_MODAL_SYSTEM)) valueOf(PARAM_MODAL_SYSTEM).get.head else DEFAULT_MODALSYSTEM
-  lazy val MODAL_AXIOMS: String = if (isSet(PARAM_MODAL_AXIOMS)) valueOf(PARAM_MODAL_AXIOMS).get.head else "" // Will use DEFAULT_MODALSYSTEM as default
-  lazy val MODAL_DOMAIN: String = if (isSet(PARAM_MODAL_DOMAIN)) valueOf(PARAM_MODAL_DOMAIN).get.head else DEFAULT_MODALDOMAIN
-  lazy val MODAL_RIGIDITY: String = if (isSet(PARAM_MODAL_RIGIDITY)) valueOf(PARAM_MODAL_RIGIDITY).get.head else DEFAULT_MODALRIGIDITY
-  lazy val MODAL_CONSEQUENCE: String = if (isSet(PARAM_MODAL_CONSEQUENCE)) valueOf(PARAM_MODAL_CONSEQUENCE).get.head else DEFAULT_MODALCONSEQUENCE
+  lazy val EMBEDDING_PARAMS: Seq[String] = {
+    valueOf(PARAM_PASSTOEMBEDDING) match {
+      case None => Seq.empty
+      case Some(params) => params
+    }
+  }
 
   final val CAPS: String =
     """
