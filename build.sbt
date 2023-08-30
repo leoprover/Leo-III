@@ -2,9 +2,9 @@ lazy val leo = (project in file("."))
   .settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.7.7",
+    version := "1.7.9",
     organization := "org.leo",
-    scalaVersion := "2.13.10",
+    scalaVersion := "2.13.11",
     licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
 
     logLevel := Level.Warn,
@@ -32,6 +32,10 @@ lazy val leo = (project in file("."))
     nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
     nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs" }",
     nativeImageOptions +="-H:+JNI",
+    //nativeImageOptions +="--static",
+    //nativeImageOptions +="--libc=musl",
+    //nativeImageOptions +="-H:CCompilerPath=/home/lex/dev/casc/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc",
+    //nativeImageOptions +="-H:UseMuslC=/home/lex/dev/casc/x86_64-linux-musl-native",
 
     Test/parallelExecution := false,
   ).enablePlugins(NativeImagePlugin)
