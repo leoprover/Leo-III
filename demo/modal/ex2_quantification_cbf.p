@@ -6,8 +6,8 @@
 
 %--- logic specification
 thf(spec, logic, ($modal == [
-   $constants == $rigid,
-   $quantification == $cumulative,
+   $designation == $rigid,
+   $domains == $cumulative,
    $modalities == $modal_system_K ] ) ).
 
 %--- Specify an uninterpreted predicate symbol f
