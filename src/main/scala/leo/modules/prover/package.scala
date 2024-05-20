@@ -29,7 +29,7 @@ package object prover {
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
     if (state.negConjecture.nonEmpty) {
-      Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
+      Out.info(s"Found a conjecture (or negated_conjecture) and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
       val relevantAxioms = if (state.negConjecture.exists(cl => Clause.asTerm(cl.cl).symbols.distinct.intersect(state.signature.allUserConstants).isEmpty)) {
         leo.Out.finest(s"trivial conjecture, lets take all axioms.")
@@ -316,11 +316,11 @@ package object prover {
     false
   }
   final def appropriateSatStatus(state: LocalState): StatusSZS = {
-    if (state.negConjecture.isEmpty) SZS_Satisfiable
+    if (state.conjecture == null) SZS_Satisfiable /* also if negated conjecture exists */
     else SZS_CounterSatisfiable
   }
   final def appropriateThmStatus(state: LocalState, proof: Proof): StatusSZS = {
-    if (state.negConjecture.isEmpty) SZS_Unsatisfiable
+    if (state.conjecture == null) SZS_Unsatisfiable /* also if negated conjecture exists */
     else {
       if (conjInProof(proof)) SZS_Theorem
       else SZS_ContradictoryAxioms
