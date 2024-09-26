@@ -28,7 +28,7 @@ We are always greateful to hear feedback from our users:
 - If you are interested to contribute to the project, simply fork the GitHub repository and open pull requests!
 
 ## Further information
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](http://www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17] and Steen's dissertation [S18].
+Further information including related projects can be found on the [Leo-III project GitHub page](https://github.com/leoprover/), and for details on the Leo-III system (implementation), we refer to the system description [BSW17] and Steen's dissertation [S18].
 
 ## References
 
