@@ -78,7 +78,7 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: Signature.Key)(implicit sig: Signature): String = {
+  final def apply(k: Signature.Key, typeOnly: Boolean = false)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     if (constant.hasType) {
@@ -87,7 +87,7 @@ object ToTPTP {
       // Print out type declaration (needed in all cases)
       val tyDecl = s"thf($cname_ty_name, type, $cname: ${typeToTHF(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
-      if (constant.hasDefn) {
+      if (constant.hasDefn && !typeOnly) {
         val cname_def_name = tptpEscapeName(constant.name + "_def")
         tyDecl + s"\nthf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
       } else
