@@ -53,28 +53,6 @@ object ToTPTP {
   }
 
   ///////////////////////
-  // Methods on other term inputs
-  ///////////////////////
-
-  /**
-    * Translate the whole package: Take all constants from signature (types, uninterpreted symbols, definitions)
-    * and the formulas in `formulas`. The output sequence contains first the constants from signature, then the formulas.
-    */
-  final def apply[A <: ClauseProxy](formulas : Set[A])(implicit sig: Signature): Seq[Output] = {
-    var out: Seq[Output] = Seq()
-    var defs : Seq[Output] = Seq()
-    val sortsig = sig.allUserConstants.toSeq.sortBy(x => x)
-    sortsig foreach { k => // Sorted by id
-      out = typeToTPTPOutput(k) +: out
-      definitionToTPTPOutput(k) foreach {o => println(o()); defs = o +: defs}
-    }
-    out = defs ++ out
-    formulas foreach {formula =>
-      out = ToTPTP.output(formula) +: out}
-    out.reverse
-  }
-
-  ///////////////////////
   // Methods on symbols/definitions
   ///////////////////////
 
@@ -87,11 +65,8 @@ object ToTPTP {
       // Print out type declaration (needed in all cases)
       val tyDecl = s"thf($cname_ty_name, type, $cname: ${typeToTHF(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
-      if (constant.hasDefn && !typeOnly) {
-        val cname_def_name = tptpEscapeName(constant.name + "_def")
-        tyDecl + s"\nthf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
-      } else
-        tyDecl
+      if (constant.hasDefn && !typeOnly) s"${tyDecl}\n${definitionToTPTP(k)(sig)}"
+      else tyDecl
     } else {
       // Its a type constant
       assert(constant.hasKind)
@@ -121,21 +96,16 @@ object ToTPTP {
     final def apply(): String = typeToTPTP(k)(sig)
   }
 
-  private def definitionToTPTP(k: Signature.Key)(implicit sig : Signature) : Option[String] = {
+  final def definitionToTPTP(k: Signature.Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
-    val cname_ty_name = tptpEscapeName(constant.name + "_def")
+    val cname_def_name = tptpEscapeName(constant.name + "_def")
     if (constant.hasDefn) {
-      Some(s"\nthf($cname_ty_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)}))).")
+      s"thf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
     } else {
-      None
+      ""
     }
   }
-
-  private def definitionToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Option[Output] =
-    definitionToTPTP(k)(sig) map (x => new Output {
-      final def apply(): String = x
-    })
 
   final def printDefinitions(sig : Signature) : String = {
     val sb : StringBuilder = new StringBuilder
