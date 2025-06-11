@@ -1,6 +1,7 @@
 package leo.modules.calculus
 
 import leo._
+import leo.datastructures.Clause.asTerm
 import leo.datastructures.Term.{:::>, TypeLambda, mkReal}
 import leo.datastructures.{Clause, Subst, Type, _}
 import leo.modules.HOLSignature.{!===, &, ===, Exists, Forall, Impl, LitFalse, LitTrue, Not, TyForall, |||}
@@ -75,6 +76,18 @@ object PolaritySwitch extends CalculusRule {
 /**
   * Created by mwisnie on 11.04.16.
   */
+object CnfConj extends CalculusRule{
+  final val name: String = "cnfConj"
+  final val inferenceStatus = SZS_Theorem
+
+  final def apply(cls0 : Seq[Clause]): (Clause, Set[Clause]) = {
+    val conjCl =  Clause(Literal(mkConjunction(cls0.map(asTerm(_))),true))
+    val cls = cls0.toSet
+
+    (conjCl,cls)
+  }
+}
+
 object  StepCNF extends CalculusRule {
   final val name: String = "cnf"
   final val inferenceStatus = SZS_Theorem
