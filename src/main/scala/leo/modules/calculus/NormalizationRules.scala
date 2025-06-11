@@ -192,8 +192,8 @@ object RenameCNF extends CalculusRule {
     while(it.hasNext){
       val nl = it.next()
       apply(vargen, cashExtracts, nl, THRESHHOLD) match {
-        case Seq(Seq(lit)) => acc = acc.map{normLits => lit +: normLits}
-        case norms =>  acc = multiply(norms, acc)
+        case Seq(Seq(lit)) => acc = acc.map{normLits => normLits :+ lit}
+        case norms =>  acc = multiply(acc, norms)
       }
     }
     acc
@@ -332,7 +332,7 @@ object FullCNF extends CalculusRule {
       val itr = r.iterator
       while(itr.hasNext){
         val rlist = itr.next()
-        acc = (llist ++ rlist) +: acc
+        acc = acc :+ (llist ++ rlist)
       }
     }
     acc
