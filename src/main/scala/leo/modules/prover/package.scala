@@ -1,8 +1,8 @@
 package leo.modules
 
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, LanguageLevel, Subst, TPTP, Term}
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, LanguageLevel, TPTP, Term}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
 import leo.modules.external.TptpResult
@@ -328,10 +328,25 @@ package object prover {
   }
 
   final def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    import leo.modules.calculus.FlexFlexUni
     if (emptyClause == null) state.setSZSStatus(appropriateSatStatus(state))
     else {
-      state.setDerivationClause(emptyClause)
-      val proof = proofOf(emptyClause)
+      // emptyClause is not necessarily empty (as in "no literals" in sequence).
+      // it can also be "effectively empty" (only consisting of flex-flex unification literals).
+      // If so (second case), we want to add an explicit $false clause by doing the unification.
+      val derivationClause: AnnotatedClause = if (Clause.empty(emptyClause.cl)) {
+        emptyClause
+      } else {
+        val effectiveEmptyClause = emptyClause.cl
+        assert(FlexFlexUni.canApply(effectiveEmptyClause))
+        val (solvedFlexFlexClause0, subst) = FlexFlexUni.apply(effectiveEmptyClause)
+        val substAsOutput: Output = ToTPTP(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
+        val solvedFlexFlexClause = AnnotatedClause(solvedFlexFlexClause0, InferredFrom(FlexFlexUni, Seq((emptyClause, substAsOutput))), ClauseAnnotation.PropNoProp)
+        val simplifiedClause = Control.simp(solvedFlexFlexClause)(state)
+        simplifiedClause
+      }
+      state.setDerivationClause(derivationClause)
+      val proof = proofOf(derivationClause)
       state.setProof(proof)
       state.setSZSStatus(appropriateThmStatus(state, proof))
     }
