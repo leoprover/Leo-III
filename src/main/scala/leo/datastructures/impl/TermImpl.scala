@@ -1337,6 +1337,7 @@ object TermImpl extends TermBank {
       case other       => Redex(other, mkSpine(args.toVector))
     }
     override final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    override final def mkTermAbs(ts: Seq[Type], body: Term): Term = ts.foldRight(body){case (ty, acc) => mkTermAbs(ty, acc)}
 
     override final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
     override final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
@@ -1374,6 +1375,7 @@ object TermImpl extends TermBank {
       case other       => mkRedex(other, mkSpine(args.toVector))
     }
   override final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
+  override final def mkTermAbs(typs: Seq[Type], body: Term): TermImpl = typs.foldRight(body.asInstanceOf[TermImpl]) {case (ty,acc) => mkTermAbstr(ty, acc) }
 
   override final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
   override final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
