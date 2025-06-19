@@ -2,8 +2,10 @@ package leo.modules.calculus
 
 import leo.Out
 import leo.datastructures.Literal.Side
+import leo.datastructures.Term.{Bound, TermApp}
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
+import leo.modules.{HOLSignature, calculus}
 import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
 
 import scala.annotation.tailrec
@@ -163,6 +165,46 @@ object BoolExt extends CalculusRule {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////
+////////// Unification of flex-flex literals
+////////////////////////////////////////////////////////////////
+object FlexFlexUni extends CalculusRule {
+  final val name = "flex_uni"
+  final val inferenceStatus = SZS_Theorem
+
+  final def canApply(cl: Clause): Boolean = Clause.effectivelyEmpty(cl)
+
+  final def apply(cl: Clause): (Clause, Subst) = {
+    val variableGenerator = calculus.freshVarGen(cl)
+    val freshVar = variableGenerator.apply(HOLSignature.i) // the result to project everything on.
+    var substMap: Map[Int, Term] = Map.empty
+    val lits = cl.lits.iterator
+    while (lits.hasNext) {
+      val lit = lits.next()
+      val (left,right) = (lit.left, lit.right)
+      (left,right) match {
+        case (TermApp(Bound(tyLeft,idxLeft), argsLeft), TermApp(Bound(tyRight,idxRight), argsRight)) =>
+          // this is idxLeft_tyleft(argsleft) =? idxRight_tyright(argsRight)
+          // we want substitutions: idxLeft -> lambda (argsleft.size). freshVar,
+          //                        idxRight -> lambda (argsRight.size). freshVar
+          if (!substMap.contains(idxLeft)) {
+            val leftBindingTarget: Term = Term.mkTermAbs(argsLeft.map(_.ty), freshVar.lift(argsLeft.size))
+            substMap = substMap + (idxLeft -> leftBindingTarget)
+          }
+          if (!substMap.contains(idxRight)) {
+            val rightBindingTarget: Term = Term.mkTermAbs(argsRight.map(_.ty), freshVar.lift(argsRight.size))
+            substMap = substMap + (idxLeft -> rightBindingTarget)
+          }
+        case _ =>  // Nothing to do, cannot be applied
+      }
+    }
+    val subst = Subst.fromMap(substMap)
+    val resultClause = cl.substitute(subst)
+    (resultClause, subst)
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////
 ////////// pre-Unification
