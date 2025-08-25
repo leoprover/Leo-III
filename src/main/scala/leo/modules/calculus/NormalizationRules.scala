@@ -80,6 +80,8 @@ object CnfConj extends CalculusRule{
   final val name: String = "cnfConj"
   final val inferenceStatus = SZS_Theorem
 
+  @inline final def canApply(cls: Seq[Clause]): Boolean = cls.size > 1
+
   final def apply(cls0 : Seq[Clause]): (Clause, Set[Clause]) = {
     val conjCl =  Clause(Literal(mkConjunction(cls0.map(asTerm(_))),true))
     val cls = cls0.toSet
