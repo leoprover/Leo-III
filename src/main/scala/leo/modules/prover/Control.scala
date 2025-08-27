@@ -159,13 +159,14 @@ package inferenceControl {
         result
       } else if (cnfresult0.isEmpty) Set.empty
       else {
-        Out.trace(s"CNF result:\n\t${cnfresult0.head.pretty(sig)}")
         if (cnfresult0.head == cl.cl) {
           // no CNF step at all
+          Out.trace(s"CNF result:\n\t${cl.pretty(sig)}")
           Set(cl)
         } else {
           // CNF resulted in only one clause
           val result = AnnotatedClause(cnfresult0.head, InferredFrom(FullCNF, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties))
+          Out.trace(s"CNF result:\n\t${result.pretty(sig)}")
           Set(result)
         }
       }
@@ -184,13 +185,14 @@ package inferenceControl {
         result
       } else if (cnfresult0.isEmpty) Set.empty
       else {
-        Out.trace(s"CNF result:\n\t${cnfresult0.head.pretty(s.signature)}")
         if (cnfresult0.head == cl.cl) {
           // no CNF step at all
+          Out.trace(s"CNF result:\n\t${cl.pretty(s.signature)}")
           Set(cl)
         } else {
           // CNF resulted in only one clause
           val result = AnnotatedClause(cnfresult0.head, InferredFrom(RenameCNF, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties))
+          Out.trace(s"CNF result:\n\t${result.pretty(s.signature)}")
           Set(result)
         }
       }

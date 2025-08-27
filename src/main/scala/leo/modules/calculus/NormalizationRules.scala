@@ -83,7 +83,8 @@ object CnfConj extends CalculusRule{
   @inline final def canApply(cls: Seq[Clause]): Boolean = cls.size > 1
 
   final def apply(cls0 : Seq[Clause]): (Clause, Set[Clause]) = {
-    val conjCl =  Clause(Literal(mkConjunction(cls0.map(asTerm(_))),true))
+    val unquantifiedClauses = cls0.map(c => mkDisjunction(c.lits.map(Literal.asTerm(_))))
+    val conjCl = Clause(Literal(mkConjunction(unquantifiedClauses), true))
     val cls = cls0.toSet
 
     (conjCl,cls)
@@ -281,8 +282,8 @@ object FullCNF extends CalculusRule {
     while(it.hasNext){
       val nl = it.next()
       apply(vargen, nl) match {
-        case Seq(Seq(lit)) => acc = acc.map{normLits => lit +: normLits}
-        case norms =>  acc = multiply(norms, acc)
+        case Seq(Seq(lit)) => acc = acc.map{normLits => normLits :+ lit}
+        case norms =>  acc = multiply(acc, norms)
       }
     }
     acc
