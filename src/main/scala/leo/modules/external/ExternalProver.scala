@@ -281,8 +281,8 @@ class EProver(val path : String) extends TptpProver[AnnotatedClause] {
     ExternalProver.limitedRun(timeout+2, Seq(path,
       "--delete-bad-limit=2000000000",
       "--definitional-cnf=24",
-      "-s",
-      "--proof-object=0",
+      "--output-level=0",
+      "--proof-object=1",
       "--auto-schedule",
       "--split-clauses=4",
       "--split-reuse-defs",
@@ -300,6 +300,13 @@ class EProver(val path : String) extends TptpProver[AnnotatedClause] {
       "-F1",
       s"--cpu-limit=${timeout.toString}", problemFileName))
   }
+
+  // E uses "#" instead of the TPTP standard "%"
+  override def transformOutput(output: Seq[String]): Seq[String] =
+    output.map { line =>
+      if (line.startsWith("#")) '%' +: line.tail
+      else line
+    }
 }
 
 class IProver(val path : String) extends TptpProver[AnnotatedClause] {

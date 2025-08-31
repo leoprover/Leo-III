@@ -73,7 +73,7 @@ class ExternalProverTest extends LeoTestSuite {
     }
     fres.value match {
       case Some(res) =>
-        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitValue}")
+        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitCode}")
         assert(res.szsStatus == SZS_Theorem, s"Expected ${SZS_Theorem.apply} but got ${res.szsStatus()}")
       case None => fail("Got no result from the prover")
     }
@@ -95,7 +95,7 @@ class ExternalProverTest extends LeoTestSuite {
     }
     fres.value match {
       case Some(res) =>
-        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitValue}")
+        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitCode}")
         assert(res.szsStatus == SZS_CounterSatisfiable, s"Expected ${SZS_CounterSatisfiable.apply} but got ${res.szsStatus()}")
       case None => fail("Got no result from the prover")
     }

@@ -8,6 +8,35 @@ import leo.datastructures.{Kind, Type, Signature}
   */
 package object output {
   ///////////////////////////////
+  // TPTP reading stuff (find good location at some point)
+  ///////////////////////////////
+  final def readSZSResults(lines: Seq[String]): (Option[StatusSZS], Option[(DataformSZS, Seq[String])]) = {
+    var szsStatus: Option[StatusSZS] = None
+    var szsOutputForm: Option[DataformSZS] = None
+    var szsOutput: Seq[String] = Seq.empty
+    var listening: Boolean = false
+
+    val linesIt = lines.iterator
+    while (linesIt.hasNext) {
+      val line = linesIt.next()
+      if (line.startsWith("% SZS status") && szsStatus.isEmpty) {
+        szsStatus = StatusSZS.answerLine(line)
+      } else if (line.startsWith("% SZS output start")) {
+        szsOutputForm = DataformSZS.outputFormatLine(line)
+        listening = true
+      } else if (line.startsWith("% SZS output end")) {
+        listening = false
+      } else if (listening) {
+        szsOutput = szsOutput :+ line
+      }
+    }
+    szsOutputForm match {
+      case Some(value) => (szsStatus, Some(value -> szsOutput))
+      case None => (szsStatus, None)
+    }
+  }
+
+  ///////////////////////////////
   // Naming of variables
   ///////////////////////////////
 

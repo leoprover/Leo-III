@@ -21,6 +21,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
   /** The path for the prover. */
   def path : String
 
+  def transformOutput(output: Seq[String]): Seq[String] = output
+
   /**
     * Calls the external prover on a set of formulas assumed to be correct.
     *
@@ -108,54 +110,25 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
     new TPTPResultFuture(extProcess, originalProblem, timeout)
   }
 
-  protected[TptpProver] class TptpResultImpl(originalProblem : Set[C], passedSzsStatus : StatusSZS, passedExitValue : Int, passedOutput : Iterable[String], passedError : Iterable[String]) extends TptpResult[C] {
-    /**
-      * The name of the original prover called..
-      * @return prover name
-      */
-    val proverName : String = name
+  protected[TptpProver] final case class TptpResultImpl(problem: Set[C],
+                                                        exitCode: Int,
+                                                        output: Iterable[String],
+                                                        error: Iterable[String]) extends TptpResult[C] {
+    val output0: Seq[String] = transformOutput(output.toSeq)
+    val (szsStatus0, szsOutput0) = readSZSResults(output0)
 
-    val prover: TptpProver[C] = self
+    override def prover: TptpProver[C] = self
+    override def proverPath: String = path
 
-    /**
-      * The path of the original prover.
-      * @return prover path
-      */
-    val proverPath : String = path
+    override def szsStatus: StatusSZS = exitCode match {
+      case -1 => SZS_Error
+      case _ => szsStatus0 match {
+        case Some(value) => value
+        case None => SZS_Unknown
+      }
+    }
 
-    /**
-      * Returns the original problem, passed to the external prover
-      * @return
-      */
-    val problem : Set[C] = originalProblem
-
-    /**
-      * The SZS status of the external prover if one was set
-      * or [[leo.modules.output.SZS_Forced]] if the process was killed.
-      *
-      * @return SZSStatus of the problem
-      */
-    val szsStatus : StatusSZS = passedSzsStatus
-
-    /**
-      * The exit value of the prover
-      * @return Passed through exitValue
-      */
-    val exitValue : Int = passedExitValue
-
-    /**
-      * The complete system output of the prover.
-      *
-      * @return system out
-      */
-    val output : Iterable[String] = passedOutput
-
-    /**
-      * The complete system error of the prover
-      *
-      * @return system err
-      */
-    val error : Iterable[String] = passedError
+    override def szsOutput: Option[(DataformSZS, Iterable[String])] = szsOutput0
   }
 
   protected final class TPTPResultFuture(process: ProcessBuilder,
@@ -221,9 +194,9 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
       if (Configuration.isSet("atpdebug")) {
         val answer = stdin.mkString("\n")
         leo.Out.output("#############################")
-        leo.Out.output("name:" + name)
+        leo.Out.output(s"name: $name")
         leo.Out.output("--------------------")
-        leo.Out.output("output:" + answer)
+        leo.Out.output(s"output: $answer")
         leo.Out.output("--------------------")
         if (answer.contains("error")) {
            leo.Out.output("+-+-+-+-+-+-+-+-+-+-+-+-+ Melon Melon!")
@@ -235,39 +208,17 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
       val errorMsg = stderr.mkString("\n")
       if (errorMsg != "") leo.Out.warn(s"Error message from $name:\n$errorMsg")
 
-      val szsAnswer = atpAnswerToSZS(stdin.iterator)
-      result = new TptpResultImpl(originalProblem, szsAnswer, exitCode,
-        stdin, stderr)
+      result = TptpResultImpl(originalProblem, exitCode, stdin, stderr)
     } catch {
       case e : Exception =>
         val error = if(Configuration.isSet("atpdebug")) Seq(e.toString) else Seq()
-        result =  new TptpResultImpl(originalProblem, SZS_Error, -1,
-        Seq(), error)
-    }
-
-    private def atpAnswerToSZS(stdin: Iterator[String]): StatusSZS = {
-      var szsStatus: StatusSZS = null
-      while (stdin.hasNext && szsStatus == null) {
-        val line = stdin.next()
-        StatusSZS.answerLine(line) match {
-          case Some(status) => szsStatus = status
-          case _ => ()
-        }
-      }
-      if (szsStatus == null) SZS_GaveUp else szsStatus
+        result = TptpResultImpl(originalProblem, exitCode = -1, Seq.empty, error)
     }
   }
 }
 
 
 trait TptpResult[C <: ClauseProxy] {
-  /**
-    * The name of the original prover called..
-    * @return prover name
-    */
-  @deprecated("Use prover.name instead.", "2.13")
-  def proverName : String
-
   /**
     * The TPTP prover that produces that result.
     */
@@ -277,13 +228,13 @@ trait TptpResult[C <: ClauseProxy] {
     * The path of the original prover.
     * @return prover path
     */
-  def proverPath : String
+  def proverPath: String
 
   /**
     * Returns the original problem, passed to the external prover
     * @return
     */
-  def problem : Set[C]
+  def problem: Set[C]
 
   /**
     * The SZS status of the external prover if one was set
@@ -291,27 +242,36 @@ trait TptpResult[C <: ClauseProxy] {
     *
     * @return SZSStatus of the problem
     */
-  def szsStatus : StatusSZS
+  def szsStatus: StatusSZS
+
+  /** The fragment of the system output that captures the SZS output
+    * (i.e., everything between SZS output begin and SZS output end),
+    * if any.
+    *
+    * @return If exists, a tuple (`data form`, `output`) where
+    *           - `data form` encodes the type of SZS output (usually a [[SZS_Refutation]]), and
+    *           - `output` are the lines of the output.
+    */
+  def szsOutput: Option[(DataformSZS, Iterable[String])]
 
   /**
-    * The exit value of the prover
-    * @return Passed through exitValue
+    * The exit code of the prover.
     */
-  def exitValue : Int
+  def exitCode: Int
 
   /**
     * The complete system output of the prover.
     *
     * @return system out
     */
-  def output : Iterable[String]
+  def output: Iterable[String]
 
   /**
     * The complete system error of the prover
     *
     * @return system err
     */
-  def error : Iterable[String]
+  def error: Iterable[String]
 }
 
 /**

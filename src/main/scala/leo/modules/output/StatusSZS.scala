@@ -248,13 +248,12 @@ case object SZS_Unknown extends NoSuccessSZS {
 /** SZS Output factory methods. */
 object StatusSZS  {
 
-  def answerLine(name : String) : Option[StatusSZS] = {
-    if(name.startsWith("% SZS status") || name.startsWith("# SZS status")){
-      apply(name.substring(13).takeWhile( _ != ' ').toString)
-    } else None
+  final def answerLine(name : String) : Option[StatusSZS] = {
+    if (name.startsWith("% SZS status")) apply(name.substring(13).takeWhile(!_.isWhitespace))
+    else None
   }
 
-  def apply(name : String) : Option[StatusSZS] = name match {
+  final def apply(name : String) : Option[StatusSZS] = name match {
     case SZS_Theorem.`apply` => Some(SZS_Theorem)
     case SZS_Satisfiable.`apply` => Some(SZS_Satisfiable)
     case SZS_CounterSatisfiable.`apply` => Some(SZS_CounterSatisfiable)
