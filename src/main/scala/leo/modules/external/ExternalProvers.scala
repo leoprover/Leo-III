@@ -12,17 +12,12 @@ import leo.datastructures._
   * Object to construct provers from their paths.
   * Checks for the commands, for their executability.
   */
-object ExternalProver {
+object ExternalProvers {
+  private final val SCRIPTDIR_NAME: String = "ext_scripts"
+  private final lazy val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
+  private final lazy val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
 
-  /**
-    * Additional time added to the timeout to wait for termination
-    */
-  final val WAITFORTERMINATION = 1
-  final val SCRIPTDIR_NAME: String = "ext_scripts"
-  final lazy val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
-  final lazy val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
-
-  def cleanup(): Unit = {
+  final def cleanup(): Unit = {
     if (Configuration.isSet("atpdebug")) return
 
     try {
@@ -46,19 +41,19 @@ object ExternalProver {
     * @return an abstracted prover `name`
     */
   @throws[NoSuchMethodException]
-  def createProver(name : String, path : String) : TPTPProver[AnnotatedClause] = {
+  final def createProver(name: String, path : String) : TPTPProver[AnnotatedClause] = {
     createTreeLimitedRunScript()
     name match {
       case "leo2" => createLeo2(path)
       case "nitpick" => createNitpickProver(path)
       case "cvc4" => createCVC4(path)
-      case "alt-ergo" => createAltErgo(path)
       case "vampire" => createVampire(path)
       case "iprover" => createIProver(path)
       case "e" | "eprover" => createEProver(path)
       case "satallax" => createSatallax(path)
       case "zipperposition" => createZipperposition(path)
-      case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
+      case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2, nitpick, cvc4," +
+                                                  "vampire, iprover, eprover, satallax, zipperposition.")
     }
   }
   private final def createTreeLimitedRunScript(): Unit = {
@@ -83,8 +78,8 @@ object ExternalProver {
         Process(Seq("which", cmd)).!(ProcessLogger(line => println(line), line => println(line)))
       }
 
-      val redirectStdErrLogger = ProcessLogger(line => ())
-      val which0 = Seq("which", cmd) lineStream_! redirectStdErrLogger
+      val redirectStdErrLogger = ProcessLogger(_ => ())
+      val which0 = Seq("which", cmd) lazyLines_! redirectStdErrLogger
       val which = which0.headOption
       if (which.isDefined) {
         val p2 = Paths.get(which.get)
@@ -107,13 +102,13 @@ object ExternalProver {
     * @return an abstracted instance of LEO-II
     */
   @throws[NoSuchMethodException]
-  def createLeo2(path : String) : Leo2Prover = {
+  private def createLeo2(path : String) : Leo2Prover = {
     val p = if(path == "") serviceToPath("leo") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created Leo2 prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      val answer = Process.apply(Seq(convert, "--version")).lazyLines_!
       leo.Out.comment(s"Leo 2 debug info:")
       leo.Out.comment(answer.mkString)
     }
@@ -121,13 +116,13 @@ object ExternalProver {
   }
 
   @throws[NoSuchMethodException]
-  def createSatallax(path : String) : SatallaxProver = {
+  private def createSatallax(path : String) : SatallaxProver = {
     val p = if(path == "") serviceToPath("satallax") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created Satallax prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "-V")).lineStream_!
+      val answer = Process.apply(Seq(convert, "-V")).lazyLines_!
       leo.Out.comment(s"Satllax debug info:")
       leo.Out.comment(answer.mkString)
     }
@@ -135,13 +130,13 @@ object ExternalProver {
   }
 
   @throws[NoSuchMethodException]
-  def createEProver(path : String) : EProver = {
+  private def createEProver(path : String) : EProver = {
     val p = if(path == "") serviceToPath("eprover") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created EProver prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      val answer = Process.apply(Seq(convert, "--version")).lazyLines_!
       leo.Out.comment(s"EProver debug info:")
       leo.Out.comment(answer.mkString)
     }
@@ -149,13 +144,13 @@ object ExternalProver {
   }
 
   @throws[NoSuchMethodException]
-  def createIProver(path : String) : IProver = {
+  private def createIProver(path : String) : IProver = {
     val p = if(path == "") serviceToPath("iprover") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created IProver prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "--help")).lineStream_!
+      val answer = Process.apply(Seq(convert, "--help")).lazyLines_!
       leo.Out.comment(s"IProver debug info:")
       leo.Out.comment(answer.mkString)
     }
@@ -172,21 +167,21 @@ object ExternalProver {
     * @return an abstracted instance of Nitpick
     */
   @throws[NoSuchMethodException]
-  def createNitpickProver(path : String) : NitpickProver = {
+  private def createNitpickProver(path : String) : NitpickProver = {
     val p = if(path == "") serviceToPath("isabelle") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created Nitpick prover with path '$convert' (Isabelle)")
     new NitpickProver(convert)
   }
 
-  final def createCVC4(path : String) : CVC4 = {
+  private final def createCVC4(path : String) : CVC4 = {
     createCVC4RunScript()
     val p = if(path == "") serviceToPath("cvc4") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created CVC4 prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      val answer = Process.apply(Seq(convert, "--version")).lazyLines_!
       leo.Out.comment(s"Cvc4 debug info:")
       leo.Out.comment(answer.mkString)
     }
@@ -210,36 +205,17 @@ object ExternalProver {
   }
 
   @throws[NoSuchMethodException]
-  def createZipperposition(path : String) : Zipperposition = {
+  private def createZipperposition(path : String) : Zipperposition = {
     val p = if(path == "") serviceToPath("zipperposition") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created Zipperposition prover with path '$convert'")
     if (Configuration.isSet("atpdebug")) {
       import scala.sys.process._
-      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      val answer = Process.apply(Seq(convert, "--version")).lazyLines_!
       leo.Out.comment(s"Zipperposition debug info:")
       leo.Out.comment(answer.mkString)
     }
     new Zipperposition(convert)
-  }
-
-  final def createAltErgo(path: String): AltErgo = {
-    val p = if(path == "") serviceToPath("alt-ergo") else serviceToPath(path)
-    val convert = p.toAbsolutePath.toString
-    val proc = Command("which why3").exec()
-    proc.waitFor()
-    if (proc.exitValue != 0) throw new NoSuchMethodException("Why3 executable not found in path. why3 is necessary to run AltErgo. Please add why3 to PATH and retry.")
-    else {
-      val proc = Command("why3 --list-provers | grep Alt-Ergo").exec()
-      proc.waitFor()
-      if (proc.exitValue != 0) {
-        val proc = Command(s"why3 config --add-prover alt-ergo $convert").exec()
-        proc.waitFor()
-        if (proc.exitValue != 0) throw new NoSuchMethodException("Registration of AltErgo in why3 not successful. Check debug logs.")
-      }
-      leo.Out.debug(s"Create AltErgo prover with path '$convert'")
-      AltErgo(convert)
-    }
   }
 
   final def limitedRun(timeout: Int, args: Seq[String]): Seq[String] = {
@@ -247,13 +223,17 @@ object ExternalProver {
   }
 }
 
+//////////////////////////////////////////////////////////////////////
+// Individual TPTP provers
+//////////////////////////////////////////////////////////////////////
+
 class Vampire(val path : String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "vampire"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(path, "--mode", "casc", "-t", timeout.toString, problemFileName))
+    ExternalProvers.limitedRun(timeout+2, Seq(path, "--mode", "casc", "-t", timeout.toString, problemFileName))
   }
 }
 
@@ -263,13 +243,13 @@ class CVC4(execScript: String, val path: String) extends TPTPProver[AnnotatedCla
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
+    ExternalProvers.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
   }
 }
 object CVC4 {
   @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
   final val executeScriptName: String = "run-script-cascj8-tfa"
-  final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/" + executeScriptName))
+  final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream(s"/scripts/$executeScriptName"))
 }
 
 class EProver(val path : String) extends TPTPProver[AnnotatedClause] {
@@ -278,7 +258,7 @@ class EProver(val path : String) extends TPTPProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(path,
+    ExternalProvers.limitedRun(timeout+2, Seq(path,
       "--delete-bad-limit=2000000000",
       "--definitional-cnf=24",
       "--output-level=0",
@@ -317,21 +297,8 @@ class IProver(val path : String) extends TPTPProver[AnnotatedClause] {
                                         problemFileName: String): Seq[String] = {
 
 
-    ExternalProver.limitedRun(timeout, Seq(path, "--time_out_real", timeout.toString, problemFileName) ++ args)
+    ExternalProvers.limitedRun(timeout, Seq(path, "--time_out_real", timeout.toString, problemFileName) ++ args)
   }
-}
-
-class AltErgo(val path: String) extends TPTPProver[AnnotatedClause] {
-  final val name: String = "AltErgo"
-  final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(Capabilities.Polymorphism))
-
-  protected[external] def constructCall(args: Seq[String], timeout: Int,
-                                        problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName))
-  }
-}
-object AltErgo {
-  @inline final def apply(path: String): AltErgo = new AltErgo(path)
 }
 
 class Zipperposition(val path: String) extends TPTPProver[AnnotatedClause] {
@@ -340,7 +307,7 @@ class Zipperposition(val path: String) extends TPTPProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(path, problemFileName, "--timeout", String.valueOf(timeout)))
+    ExternalProvers.limitedRun(timeout+2, Seq(path, problemFileName, "--timeout", String.valueOf(timeout)))
   }
 }
 object Zipperposition {
@@ -357,7 +324,7 @@ class Leo2Prover(val path : String) extends TPTPProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
     val call0 = Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName)
-    ExternalProver.limitedRun(timeout, call0)
+    ExternalProvers.limitedRun(timeout, call0)
   }
 }
 
@@ -369,7 +336,7 @@ class SatallaxProver(val path : String) extends TPTPProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
     val call0 = Seq(path, "-p", "tstp" ,"-t" , timeout0.toString) ++ args ++ Seq(problemFileName)
-    ExternalProver.limitedRun(timeout, call0)
+    ExternalProvers.limitedRun(timeout, call0)
   }
 }
 
@@ -381,6 +348,6 @@ class NitpickProver(val path : String) extends TPTPProver[AnnotatedClause] {
 
   // nitpick needs a lot of time for start-up. give it 15seconds more
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+15, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
+    ExternalProvers.limitedRun(timeout+15, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
   }
 }

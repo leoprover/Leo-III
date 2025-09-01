@@ -3047,10 +3047,10 @@ package  externalProverControl {
     }
 
     final def registerExtProver(provers: Seq[(String, String)])(implicit state: S): Unit = {
-      import leo.modules.external.ExternalProver
+      import leo.modules.external.ExternalProvers
       Configuration.ATPS.foreach { case (name, path) =>
         try {
-          val p = ExternalProver.createProver(name, path)
+          val p = ExternalProvers.createProver(name, path)
           state.addExternalProver(p)
           leo.Out.info(s"$name registered as external prover.")
         } catch {
