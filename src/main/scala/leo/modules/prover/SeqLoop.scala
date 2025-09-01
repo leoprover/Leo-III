@@ -204,7 +204,7 @@ object SeqLoop {
             loop = false
             val extResAnswer = extRes0.head
             if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
-//              println(extResAnswer.szsOutput)
+              println(extResAnswer.szsOutput.get._2.mkString("\n"))
               val emptyClause = AnnotatedClause(Clause.empty,
                 extCallInference(extResAnswer.prover.name,
                   extResAnswer.problem))

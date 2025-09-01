@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures._
 import TPTP.AnnotatedFormula
-import leo.modules.external.TptpProver
+import leo.modules.external.TPTPProver
 import leo.modules.input.ProblemStatistics
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.relevance.{AxiomFilterConfig, SymbolDistribution}
@@ -89,8 +89,8 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def addInitial(cls: Set[T]): Unit
   def initialProblem: Set[T]
-  def externalProvers: Set[TptpProver[T]]
-  def addExternalProver(prover: TptpProver[T]): Unit
+  def externalProvers: Set[TPTPProver[T]]
+  def addExternalProver(prover: TPTPProver[T]): Unit
 
   def isPolymorphic: Boolean
   def setPolymorphic(): Unit
@@ -118,7 +118,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected val negConjecture0: mutable.Set[T] = mutable.Set.empty
   protected var runStrategy0: RunStrategy = _
   protected var symbolsInConjecture0: mutable.Set[Signature.Key] = mutable.Set.empty
-  protected var current_externalProvers: Set[TptpProver[T]] = Set()
+  protected var current_externalProvers: Set[TPTPProver[T]] = Set()
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
   protected var derivationCl: Option[T] = None
@@ -210,8 +210,8 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def choiceFunctions: Map[Type,Set[Term]] = choiceFunctions0
   final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
 
-  final def externalProvers: Set[TptpProver[T]] = current_externalProvers
-  final def addExternalProver(prover: TptpProver[T]): Unit =  {
+  final def externalProvers: Set[TPTPProver[T]] = current_externalProvers
+  final def addExternalProver(prover: TPTPProver[T]): Unit =  {
     current_externalProvers = current_externalProvers + prover
   }
 

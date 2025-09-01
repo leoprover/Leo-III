@@ -5,7 +5,7 @@ import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
-import leo.modules.external.TptpResult
+import leo.modules.external.TPTPProver.Result
 import leo.modules.output._
 import leo.modules.input.Input
 
@@ -352,7 +352,7 @@ package object prover {
     }
   }
 
-  final def endgameResult(result: TptpResult[_]): Boolean = {
+  final def endgameResult(result: Result[_]): Boolean = {
     import leo.modules.external.Capabilities
     if (result.szsStatus == SZS_Unsatisfiable)
       true

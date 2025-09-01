@@ -88,7 +88,7 @@ object Control {
 
   // External prover call
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
-  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TPTPProver.Result[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def despairSubmit(startTime: Long, timeout: Float)(implicit state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.despairSubmit(startTime, timeout)(state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
@@ -3030,6 +3030,7 @@ package  externalProverControl {
   import leo.modules.external.Capabilities.Language
   import leo.modules.output.SuccessSZS
   import leo.modules.prover.State.LastCallStat
+  import leo.modules.external.TPTPProver.Result
 
   object ExtProverControl {
     import leo.modules.external._
@@ -3109,16 +3110,16 @@ package  externalProverControl {
       }
     }
 
-    final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
+    final def checkExternalResults(state: State[AnnotatedClause]): Seq[Result[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) Seq.empty
       else {
         leo.Out.debug(s"[ExtProver]: Checking for finished jobs ...")
-        var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
+        var results: Seq[Result[AnnotatedClause]] = Vector.empty
 
         val proversIt = synchronized(state.openExtCalls.iterator)
         while (proversIt.hasNext) {
           val (prover, openCalls0) = proversIt.next()
-          var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
+          var finished: Set[Future[Result[AnnotatedClause]]] = Set.empty
           val openCallsIt = openCalls0.iterator
           while (openCallsIt.hasNext) {
             val openCall = openCallsIt.next()
@@ -3152,7 +3153,7 @@ package  externalProverControl {
     }
 
 
-    final def checkExternalResults(): Map[S, Seq[TptpResult[AnnotatedClause]]] =
+    final def checkExternalResults(): Map[S, Seq[Result[AnnotatedClause]]] =
       openCalls.map(state => (state, checkExternalResults(state))).toMap
 
 
@@ -3197,7 +3198,7 @@ package  externalProverControl {
     }
 
 
-    final def submitSingleProver(prover : TptpProver[AnnotatedClause],
+    final def submitSingleProver(prover : TPTPProver[AnnotatedClause],
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
@@ -3205,7 +3206,7 @@ package  externalProverControl {
       submit0(prover, clauses, state)
     }
 
-    private def submit0(prover: TptpProver[AnnotatedClause],
+    private def submit0(prover: TPTPProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
       val openCallState = state.openExtCalls
       if (openCallState.isDefinedAt(prover)) {
@@ -3234,7 +3235,7 @@ package  externalProverControl {
       )
     }
 
-    private def submit1(prover: TptpProver[AnnotatedClause],
+    private def submit1(prover: TPTPProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
       val problem = realProblem(clauses)(state)
       val futureResult = callProver(prover,problem, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
@@ -3249,9 +3250,9 @@ package  externalProverControl {
       state.initialProblem union problem
     }
 
-    final def callProver(prover: TptpProver[AnnotatedClause],
-                                 problem: Set[AnnotatedClause], timeout : Int,
-                                 state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
+    final def callProver(prover: TPTPProver[AnnotatedClause],
+                         problem: Set[AnnotatedClause], timeout : Int,
+                         state: State[AnnotatedClause], sig: Signature): Future[Result[AnnotatedClause]] = {
       import leo.modules.encoding._
       import leo.modules.external.Capabilities._
       // Check what the provers speaks, translate only to first-order if necessary
@@ -3287,10 +3288,10 @@ package  externalProverControl {
       }
     }
 
-    private def callProver0(prover: TptpProver[AnnotatedClause],
+    private def callProver0(prover: TPTPProver[AnnotatedClause],
                             referenceProblem: Set[AnnotatedClause], problem: Set[Clause],
                             sig: Signature, language: Capabilities.Language, timeout: Int,
-                            extraArgs: Seq[String]): Future[TptpResult[AnnotatedClause]] = {
+                            extraArgs: Seq[String]): Future[Result[AnnotatedClause]] = {
       try {
         prover.call(referenceProblem, problem, sig, language, timeout, extraArgs)
       } catch {
@@ -3353,7 +3354,7 @@ package  externalProverControl {
       override def fresh: LastCallStat[AnnotatedClause] = new MixedInfoLastCallStat
     }
 
-    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+    final private def helpfulAnswer(result: Result[AnnotatedClause]): Boolean = {
       result.szsStatus match {
         case _:SuccessSZS => true
         case _ => false

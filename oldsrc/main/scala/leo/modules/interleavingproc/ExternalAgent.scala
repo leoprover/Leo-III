@@ -5,7 +5,7 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard._
 import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.external.{Future, TptpProver, TptpResult}
+import leo.modules.external.{Future, TPTPProver, TptpResult}
 import leo.modules.output.SZS_Unsatisfiable
 import leo.modules.prover.extCallInference
 
@@ -52,7 +52,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
     super.kill()
   }
 
-  class ExtCallTask(ext : TptpProver[AnnotatedClause], problem : Set[AnnotatedClause]) extends Task {
+  class ExtCallTask(ext : TPTPProver[AnnotatedClause], problem : Set[AnnotatedClause]) extends Task {
     override val name: String = "extCall"
     override def run: Delta = {
       ExtProverControl.submitSingleProver(ext, problem, state.state)

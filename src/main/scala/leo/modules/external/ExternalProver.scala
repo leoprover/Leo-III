@@ -46,7 +46,7 @@ object ExternalProver {
     * @return an abstracted prover `name`
     */
   @throws[NoSuchMethodException]
-  def createProver(name : String, path : String) : TptpProver[AnnotatedClause] = {
+  def createProver(name : String, path : String) : TPTPProver[AnnotatedClause] = {
     createTreeLimitedRunScript()
     name match {
       case "leo2" => createLeo2(path)
@@ -247,7 +247,7 @@ object ExternalProver {
   }
 }
 
-class Vampire(val path : String) extends TptpProver[AnnotatedClause] {
+class Vampire(val path : String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "vampire"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
 
@@ -257,7 +257,7 @@ class Vampire(val path : String) extends TptpProver[AnnotatedClause] {
   }
 }
 
-class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedClause] {
+class CVC4(execScript: String, val path: String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "cvc4"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
 
@@ -272,7 +272,7 @@ object CVC4 {
   final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/" + executeScriptName))
 }
 
-class EProver(val path : String) extends TptpProver[AnnotatedClause] {
+class EProver(val path : String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "e"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
 
@@ -309,7 +309,7 @@ class EProver(val path : String) extends TptpProver[AnnotatedClause] {
     }
 }
 
-class IProver(val path : String) extends TptpProver[AnnotatedClause] {
+class IProver(val path : String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "iprover"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(), Capabilities.CNF -> Seq())
 
@@ -321,7 +321,7 @@ class IProver(val path : String) extends TptpProver[AnnotatedClause] {
   }
 }
 
-class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
+class AltErgo(val path: String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "AltErgo"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(Capabilities.Polymorphism))
 
@@ -334,7 +334,7 @@ object AltErgo {
   @inline final def apply(path: String): AltErgo = new AltErgo(path)
 }
 
-class Zipperposition(val path: String) extends TptpProver[AnnotatedClause] {
+class Zipperposition(val path: String) extends TPTPProver[AnnotatedClause] {
   final val name: String = "Zipperposition"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(Capabilities.Polymorphism))
 
@@ -349,7 +349,7 @@ object Zipperposition {
 
 
 
-class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
+class Leo2Prover(val path : String) extends TPTPProver[AnnotatedClause] {
   override val name: String = "leo2"
 
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
@@ -361,7 +361,7 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   }
 }
 
-class SatallaxProver(val path : String) extends TptpProver[AnnotatedClause] {
+class SatallaxProver(val path : String) extends TPTPProver[AnnotatedClause] {
   override val name: String = "satallax"
 
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
@@ -374,7 +374,7 @@ class SatallaxProver(val path : String) extends TptpProver[AnnotatedClause] {
 }
 
 
-class NitpickProver(val path : String) extends TptpProver[AnnotatedClause] {
+class NitpickProver(val path : String) extends TPTPProver[AnnotatedClause] {
   override def name: String = "nitpick"
 
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
