@@ -1,10 +1,10 @@
 package leo.modules.external
 
 import leo.datastructures.Clause.effectivelyEmpty
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Pretty, Signature, Clause, TPTP}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Pretty, Signature, TPTP}
 import leo.modules.termToClause
 import leo.modules.input.Input
-import leo.modules.output.{SZS_Success, SuccessSZS, ToTHF}
+import leo.modules.output.{SZS_Success, SuccessSZS, ToTHF, unescapeTPTPName}
 
 
 final case class ExternalProof(derivation: Seq[AnnotatedClause], sig: Signature) extends Pretty {
@@ -33,7 +33,7 @@ object ExternalProof {
     val linesAsTPTP = Input.parseProblem(lines.mkString(""))(stats = None)
     val annotatedClauses = linesAsTPTP.map { annotated =>
       val (name, term, role) = Input.processFormula(annotated)(sig)
-            println(s"name=$name,term=${term.pretty(sig)},role=$role")
+//            println(s"name=$name,term=${term.pretty(sig)},role=$role,annotation=${annotated.annotations}")
       val tptpAnnotation: ClauseAnnotation = convertTPTPAnnotation(annotated.annotations, nameToClause)
       val r = AnnotatedClause.apply(termToClause(term), role, tptpAnnotation, ClauseAnnotation.PropNoProp)
       nameToClause = nameToClause + (name -> r)
@@ -51,7 +51,7 @@ object ExternalProof {
             TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(filename, Seq())), _),
             TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(axName, Seq())), _))
           )) =>
-          ClauseAnnotation.FromFile(filename, axName)
+          ClauseAnnotation.FromFile(unescapeTPTPName(filename), axName)
         case Seq(TPTP.MetaFunctionData("inference",
               Seq(
               TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(inferenceRule, Seq())), None),
