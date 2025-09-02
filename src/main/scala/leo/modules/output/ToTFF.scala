@@ -90,7 +90,7 @@ object ToTFF {
       case `neg_equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
         s"${termToTFF(fvMap, tyFvCount, left)(sig)} != ${termToTFF(fvMap, tyFvCount, right)(sig)}"
       case Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
-        val translatedF = tptpEscapeExpression(sig(id).name)
+        val translatedF = sig(id).name
         s"$translatedF(${args.tail.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
       case Symbol(id) ∙ args =>
         if (interpretedSymbols.contains(id)) {
@@ -137,7 +137,7 @@ object ToTFF {
       case Rational(n,d) => s"$n/$d"
       case Real(w,d,e) => if (e == 0) s"$w.$d" else s"$w.${d}E$e"
       case Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
-        val translatedF = tptpEscapeExpression(sig(id).name)
+        val translatedF = sig(id).name
         s"$translatedF(${args.tail.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
       case Symbol(id) ∙ args =>
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException("termToTFF(.) #1")
@@ -183,7 +183,7 @@ object ToTFF {
     ty match {
       case BoundType(scope) => s"T${intToName(scope - 1)}"
       case BaseType(id) => sig(id).name
-      case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_)(sig)).mkString(",")})"
+      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF0(_)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
         val inTypes = paramTypes.init

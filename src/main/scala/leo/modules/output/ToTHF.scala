@@ -384,7 +384,7 @@ object ToTHF {
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
         s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount,bVars)(sig)})"
       case _@Symbol(id) ∙ args if leo.modules.input.InputProcessing.adHocPolymorphicArithmeticConstants.contains(id) =>
-        val translatedF = tptpEscapeExpression(sig(id).name)
+        val translatedF = sig(id).name
         val translatedArgs: Seq[String] = args.tail.map(argToTPTP(_, tyVarCount, bVars)(sig)) // drop type argument as it's implicit in the TPTP representation
         s"$translatedF @ ${translatedArgs.mkString(" @ ")}"
       case f ∙ args =>
@@ -426,8 +426,8 @@ object ToTHF {
     case _ => typeToTHF1(ty)(sig)
   }
   final private def typeToTHF1(ty: Type)(sig: Signature): String = ty match {
-    case BaseType(id) => tptpEscapeExpression(sig(id).name)
-    case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF1(_)(sig)).mkString(" @ ")})"
+    case BaseType(id) => sig(id).name
+    case ComposedType(id, args) => s"(${sig(id).name} @ ${args.map(typeToTHF1(_)(sig)).mkString(" @ ")})"
     case BoundType(scope) => "T" + intToName(scope-1)
     case t1 -> t2 => s"(${typeToTHF1(t1)(sig)} > ${typeToTHF1(t2)(sig)})"
     case ProductType(tys) => tys.map(typeToTHF1(_)(sig)).mkString("[", ",", "]")

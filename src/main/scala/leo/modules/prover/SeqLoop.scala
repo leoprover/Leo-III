@@ -205,13 +205,12 @@ object SeqLoop {
             loop = false
             val extResAnswer = extRes0.head
             if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
-              println(extResAnswer.szsOutput.get._2.mkString("\n"))
               val parents = extResAnswer.szsOutput match {
                 case Some(value) =>
                   value._1 match {
                     case SZS_Refutation | SZS_CNFRefutation =>
-                      val proof = ExternalProof.fromTSTPLines(value._2.toSeq)
-                      println(proof.bottom.get.pretty(proof.sig))
+//                      val proof = ExternalProof.fromTSTPLines(value._2.toSeq)
+//                      println(proof.bottom.get.pretty(proof.sig))
                       extResAnswer.problem // TODO
                     case  _ => extResAnswer.problem
                   }
