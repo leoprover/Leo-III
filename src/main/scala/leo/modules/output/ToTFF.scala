@@ -115,7 +115,7 @@ object ToTFF {
           // Term level/predicate level
           val meta = sig(id)
           assert(meta.isUninterpreted)
-          val name = tptpEscapeExpression(meta.name)
+          val name = meta.name
           if (args.isEmpty) name
           else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
         }
@@ -142,7 +142,7 @@ object ToTFF {
       case Symbol(id) ∙ args =>
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException("termToTFF(.) #1")
           else {
-            val name = tptpEscapeExpression(sig(id).name)
+            val name = sig(id).name
             if (args.isEmpty) name
             else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
           }
@@ -159,6 +159,7 @@ object ToTFF {
     }
   }
   final private def funKindFOStyle(k: Kind): String = funKindFOStyle0(k, Seq.empty)
+  @tailrec
   final private def funKindFOStyle0(k: Kind, acc: Seq[Kind]): String = {
     import leo.datastructures.Kind.{*,->,superKind}
     k match {
@@ -180,8 +181,8 @@ object ToTFF {
     import leo.datastructures.Type._
 
     ty match {
-      case BoundType(scope) => "T"+intToName(scope-1)
-      case BaseType(id) => tptpEscapeExpression(sig(id).name)
+      case BoundType(scope) => s"T${intToName(scope - 1)}"
+      case BaseType(id) => sig(id).name
       case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
@@ -208,26 +209,14 @@ object ToTFF {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name)
-      val name_type = tptpEscapeName(sig(id).name+"_type")
-      sb.append("tff(")
-      sb.append(name_type)
-      sb.append(",type,(")
-      sb.append(name)
-      sb.append(":")
-      sb.append(kindToTFF(sig(id)._kind))
-      sb.append(")).\n")
+      val symbolName = sig(id).name
+      val name = s"${unescapeTPTPName(symbolName)}_type"
+      sb.append(s"tff(${escapeTPTPName(name)}, type, $symbolName: ${kindToTFF(sig(id)._kind)}).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name)
-      val name_type = tptpEscapeName(sig(id).name+"_type")
-      sb.append("tff(")
-      sb.append(name_type)
-      sb.append(",type,(")
-      sb.append(name)
-      sb.append(":")
-      sb.append(typeToTFF(sig(id)._ty)(sig))
-      sb.append(")).\n")
+      val symbolName = sig(id).name
+      val name = s"${unescapeTPTPName(symbolName)}_decl"
+      sb.append(s"tff(${escapeTPTPName(name)}, type, $symbolName: ${typeToTFF(sig(id)._ty)(sig)}).\n")
     }
     sb.toString()
   }

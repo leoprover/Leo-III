@@ -2,10 +2,11 @@ package leo.modules.input
 
 import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
 import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
-import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkType, mkVarType, mkProdType, typeKind}
+import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.Out
+import leo.datastructures.TPTP.TCF
 
 import scala.annotation.tailrec
 
@@ -66,8 +67,8 @@ object InputProcessing {
         case f@TFFAnnotated(_, _, _, _) => processAnnotatedTFF(sig)(f)
         case f@FOFAnnotated(_, _, _, _) => processAnnotatedFOF(sig)(f)
         case f@CNFAnnotated(_, _, _, _) => Some(processAnnotatedCNF(sig)(f))
-        case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported (yet).")
-        case TCFAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TCF format not supported (yet).")
+        case f@TCFAnnotated(_, _, _, _) => processAnnotatedTCF(sig)(f)
+        case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
       }
       maybeFormula match {
         case None => (name, LitTrue, role)
@@ -1441,18 +1442,18 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula): Term = {
+  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula, termVars: Seq[String] = Seq.empty): Term = {
     var convertedLiterals: Seq[Term] = Vector.empty
-    var termVars: Seq[String] = List.empty // We only prepend, this is more efficient in List
+    var termVars0: Seq[String] = termVars // We only prepend, this is more efficient in List
     // The general approach is: We don't pass through all literals before processing them (in order to collect the variables)
     // as this might be inefficient in very large formulas.
-    // Instead, we keep track of all already seen variables in an explicit argument 'termVars'
+    // Instead, we keep track of all already seen variables in an explicit argument 'termVars0'
     // which is also returned by the convertCNFX functions (containing the updated list of variables).
     // As we don't want to change already converted variables, new variables are prepended (i.e., incremented de Bruijn index).
     formula.foreach { lit =>
-      val (convertedLiteral, updatedTermVars) = convertCNFLiteral(sig)(lit, termVars)
+      val (convertedLiteral, updatedTermVars) = convertCNFLiteral(sig)(lit, termVars0)
       convertedLiterals = convertedLiterals :+ convertedLiteral
-      termVars = updatedTermVars
+      termVars0 = updatedTermVars
     }
     leo.datastructures.mkDisjunction(convertedLiterals)
   }
@@ -1517,6 +1518,38 @@ object InputProcessing {
       case DistinctObject(name) =>
         (mkAtom(getOrCreateSymbol(sig)(name, i))(sig), termVars)
     }
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // TCF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  final def processAnnotatedTCF(sig: Signature)(statement: TPTP.TCFAnnotated): Option[Term] = {
+    import TPTP.TCF.{Typing, Logical}
+
+    statement.formula match {
+    case Typing(atom, typ) =>
+      processAnnotatedTFF(sig)(TPTP.TFFAnnotated(statement.name, statement.role, TPTP.TFF.Typing(atom, typ), statement.annotations))
+    case Logical(f) => Some(convertTCFFormula(sig)(f))
+    }
+  }
+
+  @inline private[this] final def convertTCFFormula(sig: Signature)(formula: TPTP.TCF.Formula): Term = {
+    val termVarsFromPrefixQuantification = formula.variables.map(_._1)
+    val typesFromPrefixQuantification = formula.variables.map { case (_, ty0) =>
+      val convertedType = ty0 match {
+        case Some(typeOrKind0) => convertTFFType(sig)(typeOrKind0)
+        case None => Left(mkSimpleFunctionType(0))
+      }
+      convertedType match {
+        case Left(t) => TermVariableMarker(t)
+        case Right(_) => throw new SZSException(SZS_InputError, s"Unrecognized type in TCF formula '${formula}'.")
+      }
+    }
+    val convertedClause = convertCNFFormula(sig)(formula.clause, termVars = termVarsFromPrefixQuantification)
+    mkPolyQuantified(HOLSignature.Forall, typesFromPrefixQuantification, convertedClause)
   }
 
   ////////////////////////////////////////////////////////////////////////

@@ -340,7 +340,7 @@ package object prover {
         val effectiveEmptyClause = emptyClause.cl
         assert(FlexFlexUni.canApply(effectiveEmptyClause))
         val (solvedFlexFlexClause0, subst) = FlexFlexUni.apply(effectiveEmptyClause)
-        val substAsOutput: Output = ToTPTP(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
+        val substAsOutput: Output = ToTHF(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
         val solvedFlexFlexClause = AnnotatedClause(solvedFlexFlexClause0, InferredFrom(FlexFlexUni, Seq((emptyClause, substAsOutput))), ClauseAnnotation.PropNoProp)
         val simplifiedClause = Control.simp(solvedFlexFlexClause)(state)
         simplifiedClause

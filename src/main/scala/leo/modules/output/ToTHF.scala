@@ -3,8 +3,7 @@ package leo.modules.output
 import leo.datastructures._
 import Term._
 import leo.datastructures.Type._
-import leo.datastructures._
-import leo.modules.HOLSignature.{!===, &, <=, <=>, <~>, ===, Choice, Exists, Forall, Impl, LitFalse, Not, TyForall, types, |||, ~&, ~|||}
+import leo.modules.HOLSignature.{!===, &, <=, <=>, <~>, ===, Choice, Exists, Forall, Impl, LitFalse, Not, TyForall, |||, ~&, ~|||}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -21,7 +20,7 @@ import scala.annotation.tailrec
   * @todo Merge lambda and type lambda in backward translation, can we?
   * @todo Check if ordering is important (i.e. all types before definitions), see apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output]
   */
-object ToTPTP {
+object ToTHF {
   ///////////////////////
   // Methods on ClauseProxys
   ///////////////////////
@@ -58,53 +57,34 @@ object ToTPTP {
 
   final def apply(k: Signature.Key, typeOnly: Boolean = false)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
-    val cname = tptpEscapeName(constant.name)
+    val symbolName = constant.name
     if (constant.hasType) {
-      val cname_ty_name = tptpEscapeName(constant.name + "_type")
+      val name = s"${unescapeTPTPName(symbolName)}_decl"
       // Its a term constant or a definition
       // Print out type declaration (needed in all cases)
-      val tyDecl = s"thf($cname_ty_name, type, $cname: ${typeToTHF(constant._ty)(sig)})."
+      val tyDecl = s"thf(${escapeTPTPName(name)}, type, $symbolName: ${typeToTHF(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
       if (constant.hasDefn && !typeOnly) s"${tyDecl}\n${definitionToTPTP(k)(sig)}"
       else tyDecl
     } else {
       // Its a type constant
       assert(constant.hasKind)
-      val cname_ty_name = tptpEscapeName(constant.name + "_type")
-      s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._kind)})."
+      val name = s"${unescapeTPTPName(symbolName)}_type"
+      s"thf(${escapeTPTPName(name)}, type, $symbolName: ${toTPTP(constant._kind)})."
     }
   }
 
   final def output(k: Signature.Key)(implicit sig: Signature): Output = new Output {
-    final def apply(): String = ToTPTP(k)(sig)
-  }
-
-  private def typeToTPTP(k: Signature.Key)(implicit sig : Signature) : String = {
-    val constant = sig.apply(k)
-    val cname = tptpEscapeName(constant.name)
-    val cname_ty_name = tptpEscapeName(constant.name + "_type")
-    if (constant.hasType) {
-      s"thf($cname_ty_name, type, $cname: ${typeToTHF(constant._ty)(sig)})."
-    } else {
-      // Its a type constant
-      assert(constant.hasKind)
-      s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._kind)})."
-    }
-  }
-
-  private def typeToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Output = new Output {
-    final def apply(): String = typeToTPTP(k)(sig)
+    final def apply(): String = ToTHF(k)(sig)
   }
 
   final def definitionToTPTP(k: Signature.Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
-    val cname = tptpEscapeName(constant.name)
-    val cname_def_name = tptpEscapeName(constant.name + "_def")
     if (constant.hasDefn) {
-      s"thf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
-    } else {
-      ""
-    }
+      val symbolName = constant.name
+      val name = s"${unescapeTPTPName(symbolName)}_def"
+      s"thf(${escapeTPTPName(name)}, definition, $symbolName = (${toTPTP0(constant._defn, 0)(sig)}) )."
+    } else ""
   }
 
   final def printDefinitions(sig : Signature) : String = {
@@ -114,17 +94,15 @@ object ToTPTP {
     while(keys1.hasNext){
       val k = keys1.next()
       if(sig(k).hasDefn) {
-        val name = tptpEscapeName(sig(k).name)
-        val name_type = tptpEscapeName(sig(k).name+"_type")
-        sb.append(s"thf($name_type,type,($name : ${typeToTHF(sig(k)._ty)(sig)})).\n")
+        val symbolName = sig(k).name
+        val name = s"${unescapeTPTPName(symbolName)}_decl"
+        sb.append(s"thf(${escapeTPTPName(name)}, type, $name: ${typeToTHF(sig(k)._ty)(sig)}).\n")
       }
     }
     while(keys2.hasNext){
       val k = keys2.next()
       if(sig(k).hasDefn){
-        val name = tptpEscapeName(sig(k).name+"_def")
-        val cl = Clause(Literal(Term.mkAtom(k)(sig), sig(k)._defn, true))
-        sb.append(ToTPTP.toTPTP(name, cl, Role_Definition)(sig))
+        sb.append(definitionToTPTP(k)(sig))
         sb.append("\n")
       }
     }
@@ -134,26 +112,14 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name)
-      val name_type = tptpEscapeName(sig(id).name+"_type")
-      sb.append("thf(")
-      sb.append(name_type)
-      sb.append(",type,(")
-      sb.append(name)
-      sb.append(":")
-      sb.append(toTPTP(sig(id)._kind))
-      sb.append(")).\n")
+      val symbolName = sig(id).name
+      val name = s"${unescapeTPTPName(symbolName)}_type"
+      sb.append(s"thf(${escapeTPTPName(name)}, type, $symbolName: ${toTPTP(sig(id)._kind)}).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name)
-      val name_type = tptpEscapeName(sig(id).name+"_type")
-      sb.append("thf(")
-      sb.append(name_type)
-      sb.append(",type,(")
-      sb.append(name)
-      sb.append(":")
-      sb.append(typeToTHF(sig(id)._ty)(sig))
-      sb.append(")).\n")
+      val symbolName = sig(id).name
+      val name = s"${unescapeTPTPName(symbolName)}_decl"
+      sb.append(s"thf(${escapeTPTPName(name)}, type, $symbolName: ${typeToTHF(sig(id)._ty)(sig)}).\n")
     }
     sb.toString()
   }
@@ -252,7 +218,7 @@ object ToTPTP {
     } else sb.append(clauseToTPTP(cl, 0, Map())(sig)) // only print term
 
     // Output whole tptp thf statement
-    val escapedName = tptpEscapeName(name)
+    val escapedName = escapeTPTPName(name)
     if (clauseAnnotation == null)
       s"thf($escapedName,${role.pretty},(${sb.toString}))."
     else {
@@ -323,10 +289,10 @@ object ToTPTP {
       // Constant symbols that are (unapplied) connectives, they need to be ()'d
       case Symbol(id) if sig(id).isFixedSymbol =>
         val name = sig(id).name
-        s"(${tptpEscapeExpression(name)})"
+        s"($name)"
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
-        tptpEscapeExpression(name)
+        name
       // Numbers
       case Integer(n) => n.toString
       case Rational(n,d) => s"$n/$d"

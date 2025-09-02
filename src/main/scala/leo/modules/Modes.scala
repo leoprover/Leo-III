@@ -30,11 +30,11 @@ object Modes {
     implicit val sig: Signature = Signature.freshWithHOL()
     val sb: StringBuilder = new StringBuilder
     val erg = Input.processProblem(parsedProblem)
-    sb.append(ToTPTP(sig))
-    sb.append(ToTPTP.printDefinitions(sig))
+    sb.append(ToTHF(sig))
+    sb.append(ToTHF.printDefinitions(sig))
     erg.foreach {case (id, t, role) =>
       if (role != Role_Definition && role != Role_Type) {
-        sb.append(ToTPTP.toTPTP(id, termToClause(t), role)(sig))
+        sb.append(ToTHF.toTPTP(id, termToClause(t), role)(sig))
         sb.append("\n")
       }
     }
