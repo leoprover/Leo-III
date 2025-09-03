@@ -117,21 +117,33 @@ package object modules {
     sb.dropRight(1).toString()
   }
 
+  def saturatedUserSignature(symbolsInProof: Set[Signature.Key])(implicit sig: Signature): Set[Signature.Key] = {
+    // Recursively generate a list of all symbols that that occur in definitions
+    val relevantSymbols = sig.allUserConstants intersect (symbolsInProof union sig.typeSymbols)
+    var visited = Set.empty[Signature.Key]
+
+    def saturate(sym: Signature.Key): Unit = {
+      if (!visited.contains(sym)) {
+        visited += sym
+        val info = sig(sym)
+        if (info.hasDefn) {
+          val defnSymbols = info._defn.symbols.toSet intersect sig.allUserConstants
+          defnSymbols.foreach(saturate)
+        }
+      }
+    }
+
+    // Recursively saturate all initially relevant symbols
+    relevantSymbols.foreach(saturate)
+    relevantSymbols ++ visited
+  }
+
   def userSignatureToTPTP(symbolsInProof: Set[Signature.Key])(implicit sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder()
     /* start with user symbols that occur in the proof, plus type symbols */
-    val relevantSymbols: Set[Signature.Key] = sig.allUserConstants intersect (symbolsInProof union sig.typeSymbols)
-    var additionalSymbols: Set[Signature.Key] = Set.empty
-    /* add symbols that occur in definitions only, but only their type */
-    for (symbol <- relevantSymbols) {
-      if (sig(symbol).hasDefn) {
-        val defn = sig(symbol)._defn
-        val symbolsInDefn = defn.symbols.toSet
-        additionalSymbols ++= ((symbolsInDefn diff relevantSymbols) intersect sig.allUserConstants)
-      }
-    }
-    val allRelevantSymbols = relevantSymbols union additionalSymbols
-    val (userTypes, otherSymbols) = allRelevantSymbols.partition(key => sig(key).hasKind)
+    val relevantSymbols: Set[Signature.Key] = saturatedUserSignature(symbolsInProof)
+
+    val (userTypes, otherSymbols) = relevantSymbols.partition(key => sig(key).hasKind)
     // first print all user types (sorts)
     userTypes.foreach { key =>
       sb.append(ToTPTP(key))
@@ -142,9 +154,9 @@ package object modules {
       sb.append(ToTPTP(key, typeOnly = true))
       sb.append("\n")
     }
-    // then print definitions (except for additional symbols)
+    // then print definitions
     otherSymbols.foreach { key =>
-      if (sig(key).hasDefn && !additionalSymbols.contains(key)) {
+      if (sig(key).hasDefn) {
         sb.append(ToTPTP.definitionToTPTP(key))
         sb.append("\n")
       }
