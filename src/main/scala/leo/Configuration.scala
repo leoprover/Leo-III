@@ -89,8 +89,8 @@ object Configuration extends DefaultConfiguration {
 
   final def cleanup(): Unit = {
     leo.Out.debug(s"Cleaning up temporary files ...")
-    import leo.modules.external.ExternalProvers
-    ExternalProvers.cleanup()
+    import leo.modules.external.TPTPProvers
+    TPTPProvers.cleanup()
     leo.Out.debug(s"Clean-up finished!")
   }
 
