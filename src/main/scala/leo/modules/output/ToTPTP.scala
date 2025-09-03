@@ -98,10 +98,39 @@ object ToTPTP {
 
   final def definitionToTPTP(k: Signature.Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
-    val cname = tptpEscapeName(constant.name)
-    val cname_def_name = tptpEscapeName(constant.name + "_def")
     if (constant.hasDefn) {
-      s"thf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
+      val cname = tptpEscapeName(constant.name)
+      val cname_def_name = tptpEscapeName(constant.name + "_def")
+      val dfn = constant._defn
+
+      val fvSeq: Seq[(Int, Type)] = dfn.fv.toSeq.sortBy(_._1)
+      val tyIdxs: Seq[Int] = dfn.tyFV.toSeq.sorted
+
+      val freeVarsExist = fvSeq.nonEmpty || tyIdxs.nonEmpty
+      if (freeVarsExist) {
+        val (namedFVEnumeration, bVars) = clauseVarsToTPTP(fvSeq, typeToTHF1(_)(sig))
+        val tyNames: Seq[String] = tyIdxs.map(i => s"T${intToName(i - 1)}")
+        val termNames: Seq[String] = fvSeq.map { case (i, _) => bVars(i) }
+
+        val quantification = {
+          val sb = new StringBuffer()
+          sb.append("! [")
+          sb.append(tyNames.map(n => s"$n:$$tType").mkString(","))
+          if (tyIdxs.nonEmpty && fvSeq.nonEmpty) sb.append(",")
+          sb.append(namedFVEnumeration)
+          sb.append("] :")
+          sb.toString
+        }
+
+        val appliedCname = {
+          val typeApps = if (tyNames.nonEmpty) " @ " + tyNames.mkString(" @ ") else ""
+          val termApps = if (termNames.nonEmpty) " @ " + termNames.mkString(" @ ") else ""
+          s"$cname$typeApps$termApps"
+        }
+        s"thf($cname_def_name, definition, $quantification ($appliedCname = (${toTPTP0(constant._defn, tyNames.length, bVars)(sig)})))."
+      } else {
+        s"thf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn, 0)(sig)})))."
+      }
     } else {
       ""
     }

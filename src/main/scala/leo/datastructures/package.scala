@@ -633,6 +633,13 @@ package object datastructures {
     bindings.foldRight(term)((ty,t) => Exists(λ(ty)(t)))
   }
 
+  /** Given a sequence `bindings = (ty_i)_i` of types and a term `term`, return the nested lambda abstraction
+    * {{{λty_1.λty_2....λty_n. term}}} */
+  final def mkPolyLambdaAbs(bindings: Seq[Type], term: Term): Term = {
+    import leo.datastructures.Term.λ
+    bindings.foldRight(term)((ty, t) => λ(ty)(t))
+  }
+
   final def mkPolyUnivType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.∀(mkPolyUnivType(count-1, body))
 

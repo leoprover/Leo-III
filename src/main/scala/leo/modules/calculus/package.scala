@@ -1,6 +1,8 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Literal, Kind, Clause, Signature, Subst}
+import leo.Out
+import leo.datastructures.{Clause, Kind, Literal, Signature, Subst, Term, Type, mkPolyLambdaAbs}
+import leo.modules.HOLSignature.Not
 import leo.modules.output.SuccessSZS
 
 /**
@@ -153,6 +155,30 @@ package object calculus {
     }
   }
 
+  def normalizeFVs(fvs0: Seq[Int]): Option[Subst] = {
+    val fvs = fvs0.distinct.sorted(Ordering.Int.reverse)
+    if (fvs.nonEmpty && fvs.size != fvs.head) {
+      Out.finest(s"FV Optimization needed")
+      Out.finest(s"Old: \t${fvs.mkString("-")}")
+      val newFvs = Seq.range(fvs.size, 0, -1)
+      val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
+      Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
+      Some(subst)
+    } else None
+  }
+
+  def normalizeTyFVs(tyFvs0: Seq[Int]): Option[Subst] = {
+    val tyFvs = tyFvs0.distinct.sorted(Ordering.Int.reverse)
+    if (tyFvs.nonEmpty && tyFvs.size != tyFvs.head) {
+      Out.finest(s"Ty FV Optimization needed")
+      Out.finest(s"Old: \t${tyFvs.mkString("-")}")
+      val newTyFvs = Seq.range(tyFvs.size, 0, -1)
+      val tySubst = Subst.fromShiftingSeq(tyFvs.zip(newTyFvs))
+      Out.finest(s"New: \t${newTyFvs.mkString("-")} ... subst: ${tySubst.pretty}")
+      Some(tySubst)
+    } else None
+  }
+
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
     val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy), tyFvs)
     val ty = mkPolyTyAbstractionType(tyFvs.size,funTy)
@@ -170,6 +196,58 @@ package object calculus {
     assert(Term.wellTyped(result), s"skTerm Result not well-typed: ${result.pretty(sig)}\n" +
       s"% skFunc: ${skFunc.pretty}, type: ${skFunc.ty.pretty(sig)}")
     result
+  }
+  /** Create a defined Skolem symbol for the existential/negative-universal case and return
+    * its application to the current context (type and term vars).
+    *
+    * @param a               the λ-abstraction of the quantified formula body: a ≡ (ty :::> body)
+    * @param fvs             current (de-Bruijn) term free vars in scope, in the *same order* as used in CNF (params)
+    * @param tyFVs           current type free vars in scope
+    * @param negatePredicate boolean indicating whether the term originates from a negated universal quantification
+    */
+
+  final def skTermDefined(a: Term, fvs: Seq[(Int, Type)], tyFvs: Seq[Int], negatePredicate: Boolean = false)(implicit sig: Signature): Term = {
+    import leo.datastructures.Term.:::>
+    import leo.datastructures.Term._
+    import leo.modules.HOLSignature.{Choice}
+
+    val (goalTy, body0) = a match {
+      case ty0 :::> body => (ty0, body)
+      case _ => throw new IllegalArgumentException("Expected λ-abstraction for quantified body")
+    }
+
+    // Construct the type of the fresh Skolem function
+    val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy), tyFvs)
+    val skTy = mkPolyTyAbstractionType(tyFvs.size, funTy)
+
+    // Construct the definition of the fresh Skolem function
+    val maybeNegated = if (negatePredicate) Choice(mkTermAbs(goalTy, Not(body0))) else Choice(a)
+
+    // Close potential gaps in the free variables
+    val maybeSubst = normalizeFVs(fvs.map(_._1))
+    val substTerm0 = maybeSubst match {
+      case Some(subst) => maybeNegated.substitute(subst)
+      case _ => maybeNegated
+    }
+
+    // Abstract over the free variables
+    val abstracted = mkPolyLambdaAbs(fvs.map(_._2), substTerm0)
+
+    // Close potential gaps in the free type-variables
+    val maybeTySubst = normalizeTyFVs(tyFvs)
+    val substTerm = maybeTySubst match {
+      case Some(tySubst) => abstracted.substitute(Subst.id, tySubst)
+      case _ => abstracted
+    }
+
+    // return the fresh Skolem symbol with context variables applied
+    val skKey = sig.freshSkolemConst(skTy, Some(substTerm), Signature.PropNoProp)
+    val skFunc = Term.mkAtom(skKey)
+    val typeApps = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
+    val termApps = Term.mkTermApp(typeApps, fvs.map { case (i, ty) => mkBound(ty, i) })
+    assert(Term.wellTyped(termApps), s"skTerm Result not well-typed: ${termApps.pretty(sig)}\n" +
+      s"% skFunc: ${skFunc.pretty}, type: ${skFunc.ty.pretty(sig)}")
+    termApps
   }
   final def skType(tyFvs: Seq[Int])(implicit sig: Signature): Type = {
     val freshTypeOp: Signature.Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))
