@@ -29,7 +29,7 @@ class ExternalProverTest extends LeoTestSuite {
 
   test("Prover Creation") {
     try {
-      val p = ExternalProver.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
+      val p = ExternalProvers.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
       assert(p.name == "leo2")
     } catch {
       case e : NoSuchMethodException => println("Check your export of leo2 : 'export leo = /...'")
@@ -39,7 +39,7 @@ class ExternalProverTest extends LeoTestSuite {
 
   test("Prover Creation by name") {
     try {
-      val p = ExternalProver.createProver("leo2","/home/mwisnie/prover/leo2/bin/leo")
+      val p = ExternalProvers.createProver("leo2","/home/mwisnie/prover/leo2/bin/leo")
       assert(p.name == "leo2")
     } catch {
       case e : NoSuchMethodException => println("Check your export of leo2 : 'export leo = /...'")
@@ -48,7 +48,7 @@ class ExternalProverTest extends LeoTestSuite {
   }
 
   test("Translate problem"){
-    val p = ExternalProver.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
+    val p = ExternalProvers.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
     implicit val s = getFreshSignature
 
     val example = createSmallProblem
@@ -58,7 +58,7 @@ class ExternalProverTest extends LeoTestSuite {
   }
 
   test("Call prover (THM)"){
-    val p = ExternalProver.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
+    val p = ExternalProvers.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
     implicit val s = getFreshSignature
 
     val example = createSmallProblem
@@ -73,14 +73,14 @@ class ExternalProverTest extends LeoTestSuite {
     }
     fres.value match {
       case Some(res) =>
-        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitValue}")
+        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitCode}")
         assert(res.szsStatus == SZS_Theorem, s"Expected ${SZS_Theorem.apply} but got ${res.szsStatus()}")
       case None => fail("Got no result from the prover")
     }
   }
 
   test("Call prover (CSA)") {
-    val p = ExternalProver.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
+    val p = ExternalProvers.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
     implicit val s = getFreshSignature
 
     val example = createSmallCSAProblem
@@ -95,7 +95,7 @@ class ExternalProverTest extends LeoTestSuite {
     }
     fres.value match {
       case Some(res) =>
-        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitValue}")
+        println(s"Got result ${res.szsStatus()} with exitvalue ${res.exitCode}")
         assert(res.szsStatus == SZS_CounterSatisfiable, s"Expected ${SZS_CounterSatisfiable.apply} but got ${res.szsStatus()}")
       case None => fail("Got no result from the prover")
     }

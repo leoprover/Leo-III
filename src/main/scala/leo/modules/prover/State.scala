@@ -2,7 +2,8 @@ package leo.modules.prover
 
 import leo.datastructures._
 import leo.modules._
-import leo.modules.external.{Future, TptpProver, TptpResult}
+import leo.modules.external.{Future, TPTPProver}
+import TPTPProver.Result
 import leo.modules.prover.State.LastCallStat
 
 /**
@@ -81,12 +82,12 @@ trait State[T <: ClauseProxy] extends FVState[T] {
   /////////////////////
   // Handling of external calls
   /////////////////////
-  def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]]
-  def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit
-  def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit
-  def nextQueuedCall(prover: TptpProver[T]): Set[T]
-  def queuedCallExists(prover: TptpProver[T]): Boolean
-  def enqueueCall(prover: TptpProver[T], problem: Set[T]): Unit
+  def openExtCalls: Map[TPTPProver[T], Set[Future[Result[T]]]]
+  def removeOpenExtCalls(prover: TPTPProver[T], calls: Set[Future[Result[T]]]): Unit
+  def addOpenExtCall(prover: TPTPProver[T], call: Future[Result[T]]): Unit
+  def nextQueuedCall(prover: TPTPProver[T]): Set[T]
+  def queuedCallExists(prover: TPTPProver[T]): Boolean
+  def enqueueCall(prover: TPTPProver[T], problem: Set[T]): Unit
 
   def lastCall: LastCallStat[T]
   def setLastCallStat(lcs: LastCallStat[T]): Unit
@@ -149,10 +150,10 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   // Handling of external calls
   /////////////////////
-  private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
+  private var openExtCalls0: Map[TPTPProver[T], Set[Future[Result[T]]]] = Map.empty
   private var queuedTranslations : Int = 0
   private var extCallStat: LastCallStat[T] = _
-  private var queuedExtCalls0: Map[TptpProver[T], Vector[Set[T]]] = Map.empty
+  private var queuedExtCalls0: Map[TPTPProver[T], Vector[Set[T]]] = Map.empty
 
   /////////// Methods ///////////////
   /////////////////////
@@ -282,10 +283,10 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   // Handling of external calls
   /////////////////////
-  def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = openExtCalls0
+  def openExtCalls: Map[TPTPProver[T], Set[Future[Result[T]]]] = openExtCalls0
   def lastCall: LastCallStat[T] = extCallStat
   def setLastCallStat(lcs: LastCallStat[T]): Unit = {extCallStat = lcs}
-  def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit = {
+  def removeOpenExtCalls(prover: TPTPProver[T], calls: Set[Future[Result[T]]]): Unit = {
     if (openExtCalls0.isDefinedAt(prover)) {
       val openCalls = openExtCalls0(prover)
       val newCalls = openCalls diff calls
@@ -293,7 +294,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
       else openExtCalls0 = openExtCalls0 + (prover -> newCalls)
     }
   }
-  def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit = {
+  def addOpenExtCall(prover: TPTPProver[T], call: Future[Result[T]]): Unit = {
     if (openExtCalls0.isDefinedAt(prover)) {
       val openCalls = openExtCalls0(prover)
       openExtCalls0 = openExtCalls0 + (prover -> openCalls.+(call))
@@ -320,7 +321,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
 
   var lastPick: Pick = HEAD
 
-  def nextQueuedCall(prover: TptpProver[T]): Set[T] = {
+  def nextQueuedCall(prover: TPTPProver[T]): Set[T] = {
     if (queuedExtCalls0.isDefinedAt(prover)) {
       val list = queuedExtCalls0(prover)
       if (list.isEmpty) throw new NoSuchElementException("nextQueueCall on empty queueExtCalls entry")
@@ -339,12 +340,12 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
       throw new NoSuchElementException("nextQueueCall on empty queueExtCalls")
     }
   }
-  def queuedCallExists(prover: TptpProver[T]): Boolean = {
+  def queuedCallExists(prover: TPTPProver[T]): Boolean = {
     if (queuedExtCalls0.isDefinedAt(prover)) {
       queuedExtCalls0(prover).nonEmpty
     } else false
   }
-  def enqueueCall(prover: TptpProver[T], problem: Set[T]): Unit = {
+  def enqueueCall(prover: TPTPProver[T], problem: Set[T]): Unit = {
     if (queuedExtCalls0.isDefinedAt(prover)) {
       val list = queuedExtCalls0(prover)
       val list0 = list :+ problem

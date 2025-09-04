@@ -48,10 +48,10 @@ class InterleavableLoopPhase
   override def execute(): Boolean = {
     implicit val s = sig
     if (Configuration.ATPS.nonEmpty) {
-      import leo.modules.external.ExternalProver
+      import leo.modules.external.ExternalProvers
       Configuration.ATPS.foreach { case(name, path) =>
         try {
-          val p = ExternalProver.createProver(name,path)
+          val p = ExternalProvers.createProver(name,path)
           state.state.addExternalProver(p)
           leo.Out.info(s"$name registered as external prover.")
           leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")

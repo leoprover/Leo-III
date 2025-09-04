@@ -4,7 +4,7 @@ import java.io.{PrintWriter, StringWriter}
 
 import leo.datastructures._
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{DataformSZS, Output, StatusSZS, ToTPTP}
+import leo.modules.output.{DataformSZS, Output, StatusSZS, ToTHF}
 import leo.modules.proof_object.CompressProof
 
 import scala.annotation.elidable
@@ -111,7 +111,7 @@ package object modules {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.foreach { key =>
       val name = sig.apply(key).name
-      sb.append(ToTPTP(key)(sig))
+      sb.append(ToTHF(key)(sig))
       sb.append("\n")
     }
     sb.dropRight(1).toString()
@@ -146,18 +146,18 @@ package object modules {
     val (userTypes, otherSymbols) = relevantSymbols.partition(key => sig(key).hasKind)
     // first print all user types (sorts)
     userTypes.foreach { key =>
-      sb.append(ToTPTP(key))
+      sb.append(ToTHF(key))
       sb.append("\n")
     }
     // then print all type declarations
     otherSymbols.foreach { key =>
-      sb.append(ToTPTP(key, typeOnly = true))
+      sb.append(ToTHF(key, typeOnly = true))
       sb.append("\n")
     }
     // then print definitions
     otherSymbols.foreach { key =>
       if (sig(key).hasDefn) {
-        sb.append(ToTPTP.definitionToTPTP(key))
+        sb.append(ToTHF.definitionToTPTP(key))
         sb.append("\n")
       }
     }
@@ -223,7 +223,7 @@ package object modules {
 
   private def mkTPTP(cl : ClauseProxy)(sig: Signature) : String = {
     try{
-      ToTPTP.withAnnotation(cl)(sig)
+      ToTHF.withAnnotation(cl)(sig)
     } catch {
       case e : Throwable => leo.Out.warn(s"Could not translate: ${cl.pretty}.\n Error: ${e.toString}"); cl.pretty
     }

@@ -5,7 +5,7 @@ import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
-import leo.modules.external.TptpResult
+import leo.modules.external.TPTPProver.Result
 import leo.modules.output._
 import leo.modules.input.Input
 
@@ -340,7 +340,7 @@ package object prover {
         val effectiveEmptyClause = emptyClause.cl
         assert(FlexFlexUni.canApply(effectiveEmptyClause))
         val (solvedFlexFlexClause0, subst) = FlexFlexUni.apply(effectiveEmptyClause)
-        val substAsOutput: Output = ToTPTP(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
+        val substAsOutput: Output = ToTHF(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
         val solvedFlexFlexClause = AnnotatedClause(solvedFlexFlexClause0, InferredFrom(FlexFlexUni, Seq((emptyClause, substAsOutput))), ClauseAnnotation.PropNoProp)
         val simplifiedClause = Control.simp(solvedFlexFlexClause)(state)
         simplifiedClause
@@ -352,7 +352,7 @@ package object prover {
     }
   }
 
-  final def endgameResult(result: TptpResult[_]): Boolean = {
+  final def endgameResult(result: Result[_]): Boolean = {
     import leo.modules.external.Capabilities
     if (result.szsStatus == SZS_Unsatisfiable)
       true

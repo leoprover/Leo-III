@@ -88,7 +88,7 @@ object Control {
 
   // External prover call
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
-  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TPTPProver.Result[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def despairSubmit(startTime: Long, timeout: Float)(implicit state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.despairSubmit(startTime, timeout)(state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
@@ -476,7 +476,7 @@ package inferenceControl {
                                      shiftedIntoTerm: Term,
                                      intermediateClause: AnnotatedClause,
                                      initialTypeSubst: TypeSubst)(implicit sig: Signature): AnnotatedClause = {
-      import leo.modules.output.ToTPTP
+      import leo.modules.output.ToTHF
 
       Out.finest(s"Intermediate result: ${intermediateClause.pretty(sig)}")
       val uniLit = intermediateClause.cl.lits.last
@@ -538,7 +538,7 @@ package inferenceControl {
               myAssert(Clause.wellTyped(withClauseSubst))
               myAssert(Literal.wellTyped(withLitSubst))
               if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
-                val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
+                val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTHF(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
                 res
               } else {
                 leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
@@ -885,7 +885,7 @@ package inferenceControl {
 
   protected[modules] object UnificationControl {
     import leo.datastructures.ClauseAnnotation._
-    import leo.modules.output.ToTPTP
+    import leo.modules.output.ToTHF
 
     type UniLits = Seq[(Term, Term)]
     type OtherLits = Seq[Literal]
@@ -1125,7 +1125,7 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      val res = AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, subst._2, origin.cl.implicitlyBound, origin.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
+      val res = AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTHF(subst._1, subst._2, origin.cl.implicitlyBound, origin.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
       res
     }
 
@@ -1214,7 +1214,7 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.HOLSignature.{!===, ===, LitFalse, LitTrue, Not, |||}
-    import leo.modules.output.ToTPTP
+    import leo.modules.output.ToTHF
 
     val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||)
     final def eqBindings(tys: Seq[Type]): Set[Term] = {
@@ -1269,7 +1269,7 @@ package inferenceControl {
               }
             }
           }
-          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, Subst.id, cw.cl.implicitlyBound, cw.cl.typeVars)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTHF(subst, Subst.id, cw.cl.implicitlyBound, cw.cl.typeVars)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
           Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
@@ -2312,7 +2312,7 @@ package inferenceControl {
 
   protected[modules] object DefinedEqualityProcessing {
     import leo.datastructures.ClauseAnnotation._
-    import leo.modules.output.ToTPTP
+    import leo.modules.output.ToTHF
 
     final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
       val replaceLeibniz = !Configuration.isSet("nleq")
@@ -2349,7 +2349,7 @@ package inferenceControl {
       if (cA_leibniz) {
         Out.trace(s"[DefEq][LEq] On ${cl.id}: Leibniz equalities found, replacing ...")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][LEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2368,7 +2368,7 @@ package inferenceControl {
       if (cA_Andrews) {
         Out.trace(s"[DefEq][AEq] On ${cl.id}: Andrews equalities found, replacing ...")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][AEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -3065,6 +3065,7 @@ package  externalProverControl {
   import leo.modules.external.Capabilities.Language
   import leo.modules.output.SuccessSZS
   import leo.modules.prover.State.LastCallStat
+  import leo.modules.external.TPTPProver.Result
 
   object ExtProverControl {
     import leo.modules.external._
@@ -3081,10 +3082,10 @@ package  externalProverControl {
     }
 
     final def registerExtProver(provers: Seq[(String, String)])(implicit state: S): Unit = {
-      import leo.modules.external.ExternalProver
+      import leo.modules.external.ExternalProvers
       Configuration.ATPS.foreach { case (name, path) =>
         try {
-          val p = ExternalProver.createProver(name, path)
+          val p = ExternalProvers.createProver(name, path)
           state.addExternalProver(p)
           leo.Out.info(s"$name registered as external prover.")
         } catch {
@@ -3144,16 +3145,16 @@ package  externalProverControl {
       }
     }
 
-    final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
+    final def checkExternalResults(state: State[AnnotatedClause]): Seq[Result[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) Seq.empty
       else {
         leo.Out.debug(s"[ExtProver]: Checking for finished jobs ...")
-        var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
+        var results: Seq[Result[AnnotatedClause]] = Vector.empty
 
         val proversIt = synchronized(state.openExtCalls.iterator)
         while (proversIt.hasNext) {
           val (prover, openCalls0) = proversIt.next()
-          var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
+          var finished: Set[Future[Result[AnnotatedClause]]] = Set.empty
           val openCallsIt = openCalls0.iterator
           while (openCallsIt.hasNext) {
             val openCall = openCallsIt.next()
@@ -3187,7 +3188,7 @@ package  externalProverControl {
     }
 
 
-    final def checkExternalResults(): Map[S, Seq[TptpResult[AnnotatedClause]]] =
+    final def checkExternalResults(): Map[S, Seq[Result[AnnotatedClause]]] =
       openCalls.map(state => (state, checkExternalResults(state))).toMap
 
 
@@ -3232,7 +3233,7 @@ package  externalProverControl {
     }
 
 
-    final def submitSingleProver(prover : TptpProver[AnnotatedClause],
+    final def submitSingleProver(prover : TPTPProver[AnnotatedClause],
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
@@ -3240,7 +3241,7 @@ package  externalProverControl {
       submit0(prover, clauses, state)
     }
 
-    private def submit0(prover: TptpProver[AnnotatedClause],
+    private def submit0(prover: TPTPProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
       val openCallState = state.openExtCalls
       if (openCallState.isDefinedAt(prover)) {
@@ -3269,7 +3270,7 @@ package  externalProverControl {
       )
     }
 
-    private def submit1(prover: TptpProver[AnnotatedClause],
+    private def submit1(prover: TPTPProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
       val problem = realProblem(clauses)(state)
       val futureResult = callProver(prover,problem, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
@@ -3284,9 +3285,9 @@ package  externalProverControl {
       state.initialProblem union problem
     }
 
-    final def callProver(prover: TptpProver[AnnotatedClause],
-                                 problem: Set[AnnotatedClause], timeout : Int,
-                                 state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
+    final def callProver(prover: TPTPProver[AnnotatedClause],
+                         problem: Set[AnnotatedClause], timeout : Int,
+                         state: State[AnnotatedClause], sig: Signature): Future[Result[AnnotatedClause]] = {
       import leo.modules.encoding._
       import leo.modules.external.Capabilities._
       // Check what the provers speaks, translate only to first-order if necessary
@@ -3322,10 +3323,10 @@ package  externalProverControl {
       }
     }
 
-    private def callProver0(prover: TptpProver[AnnotatedClause],
+    private def callProver0(prover: TPTPProver[AnnotatedClause],
                             referenceProblem: Set[AnnotatedClause], problem: Set[Clause],
                             sig: Signature, language: Capabilities.Language, timeout: Int,
-                            extraArgs: Seq[String]): Future[TptpResult[AnnotatedClause]] = {
+                            extraArgs: Seq[String]): Future[Result[AnnotatedClause]] = {
       try {
         prover.call(referenceProblem, problem, sig, language, timeout, extraArgs)
       } catch {
@@ -3388,7 +3389,7 @@ package  externalProverControl {
       override def fresh: LastCallStat[AnnotatedClause] = new MixedInfoLastCallStat
     }
 
-    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+    final private def helpfulAnswer(result: Result[AnnotatedClause]): Boolean = {
       result.szsStatus match {
         case _:SuccessSZS => true
         case _ => false

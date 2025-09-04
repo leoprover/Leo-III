@@ -8,6 +8,35 @@ import leo.datastructures.{Kind, Type, Signature}
   */
 package object output {
   ///////////////////////////////
+  // TPTP reading stuff (find good location at some point)
+  ///////////////////////////////
+  final def readSZSResults(lines: Seq[String]): (Option[StatusSZS], Option[(DataformSZS, Seq[String])]) = {
+    var szsStatus: Option[StatusSZS] = None
+    var szsOutputForm: Option[DataformSZS] = None
+    var szsOutput: Seq[String] = Seq.empty
+    var listening: Boolean = false
+
+    val linesIt = lines.iterator
+    while (linesIt.hasNext) {
+      val line = linesIt.next()
+      if (line.startsWith("% SZS status") && szsStatus.isEmpty) {
+        szsStatus = StatusSZS.answerLine(line)
+      } else if (line.startsWith("% SZS output start")) {
+        szsOutputForm = DataformSZS.outputFormatLine(line)
+        listening = true
+      } else if (line.startsWith("% SZS output end")) {
+        listening = false
+      } else if (listening) {
+        szsOutput = szsOutput :+ line
+      }
+    }
+    szsOutputForm match {
+      case Some(value) => (szsStatus, Some(value -> szsOutput))
+      case None => (szsStatus, None)
+    }
+  }
+
+  ///////////////////////////////
   // Naming of variables
   ///////////////////////////////
 
@@ -31,17 +60,34 @@ package object output {
     case _ => throw new IllegalArgumentException
   }
 
-  private final val simpleNameRegex = "^([a-z]([a-zA-Z\\d_]*))|[\\d]*$"
-  final def tptpEscapeName(str: String): String = {
-    if (str.matches(simpleNameRegex)) str
-    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+//  private final val simpleNameRegex = "^([a-z]([a-zA-Z\\d_]*))|[\\d]*$"
+//  final def tptpEscapeName(str: String): String = {
+//    if (str.matches(simpleNameRegex)) str
+//    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+//  }
+//  private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d_]*)$"
+//  private final val definedSimpleConnectives = Vector("=", "!=", "&", "|", "~")
+//  final def tptpEscapeExpression(str: String): String = {
+//    if (str.matches(simpleExpressionRegex)) str
+//    else if (definedSimpleConnectives.contains(str)) str
+//    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+//  }
+
+
+  final def unescapeTPTPName(name: String): String = {
+    if (name.startsWith("'") && name.endsWith("'")) {
+      name.tail.init
+    } else name
   }
-  private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d_]*)$"
-  private final val definedSimpleConnectives = Vector("=", "!=", "&", "|", "~")
-  final def tptpEscapeExpression(str: String): String = {
-    if (str.matches(simpleExpressionRegex)) str
-    else if (definedSimpleConnectives.contains(str)) str
-    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+
+  final def escapeTPTPName(name: String): String = {
+    val integerRegex = "^[+-]?[\\d]+$"
+    if (name.matches(integerRegex)) name else escapeTPTPAtomicWord(name)
+  }
+  final def escapeTPTPAtomicWord(word: String): String = {
+    val simpleLowerWordRegex = "^[a-z][a-zA-Z\\d_]*$"
+    if (word.matches(simpleLowerWordRegex)) word
+    else s"'${word.replace("\\", "\\\\").replace("'", "\\'")}'"
   }
 
   /**

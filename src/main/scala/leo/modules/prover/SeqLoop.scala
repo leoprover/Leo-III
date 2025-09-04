@@ -3,8 +3,9 @@ package leo.modules.prover
 import leo.{Configuration, Out}
 import leo.datastructures._
 import leo.datastructures.TPTP.AnnotatedFormula
-import leo.modules.{SZSOutput, SZSResult, myAssert}
+import leo.modules.{SZSOutput, SZSResult, myAssert, printUserDefinedSignature}
 import leo.modules.control.Control
+import leo.modules.external.ExternalProof
 import leo.modules.input.ProblemStatistics
 import leo.modules.output._
 
@@ -204,9 +205,19 @@ object SeqLoop {
             loop = false
             val extResAnswer = extRes0.head
             if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
+              val parents = extResAnswer.szsOutput match {
+                case Some(value) =>
+                  value._1 match {
+                    case SZS_Refutation | SZS_CNFRefutation =>
+//                      val proof = ExternalProof.fromTSTPLines(value._2.toSeq)
+//                      println(proof.bottom.get.pretty(proof.sig))
+                      extResAnswer.problem // TODO
+                    case  _ => extResAnswer.problem
+                  }
+                case None => extResAnswer.problem
+              }
               val emptyClause = AnnotatedClause(Clause.empty,
-                extCallInference(extResAnswer.prover.name,
-                  extResAnswer.problem))
+                extCallInference(extResAnswer.prover.name, parents))
               endplay(emptyClause, state)
             } else {
               endplay(null, state)
