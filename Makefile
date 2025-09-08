@@ -24,49 +24,5 @@ clean:
 
 native:
 		@echo Creating native Leo-III image with graalvm
-		$(GRAALVM_HOME)/bin/native-image -jar bin/leo3.jar \
-		-H:+ReportExceptionStackTraces \
-		-H:Name="leo3-bin" \
-		--initialize-at-build-time=scala.runtime.Statics$$VM \
-		-H:ConfigurationFileDirectories=${CONTRIB}/graalvm/ \
-		-O2 \
-		--no-server \
-		--no-fallback \
-		--static \
-		--libc=musl
-		mv leo3-bin bin/leo3-bin
-
-
-native-profile:
-		@echo Creating native Leo-III image with graalvm
-		$(GRAALVM_HOME)/bin/native-image -jar bin/leo3.jar \
-		-H:+ReportExceptionStackTraces \
-		-H:Name="leo3-profile" \
-		--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
-		--initialize-at-build-time=scala.runtime.Statics$$VM \
-		-H:ConfigurationFileDirectories=${CONTRIB}/graalvm/ \
-		--no-server \
-		--no-fallback \
-		--pgo-instrument
-
-
-
-native-profile-run:
-		@echo run LEO profile
-		./leo3-profile ./src/test/resources/problems/choice/SYO556\^1.p --seq -t 300 --atp cvc4 --atp eprover
-
-
-native-pgo:
-			@echo Creating native Leo-III image with graalvm
-			$(GRAALVM_HOME)/bin/native-image -jar bin/leo3.jar \
-			-H:+ReportExceptionStackTraces \
-			-H:Name="leo3-pgo" \
-			--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
-			-H:ReflectionConfigurationFiles=${CONTRIB}/graalvm/reflect-config.json \
-			-H:ResourceConfigurationFiles=${CONTRIB}/graalvm/resource-config.json \
-			-O2 \
-			--no-server \
-			--static \
-			--pgo
-			mv leo3-pgo bin/leo3-pgo
-
+		sbt nativeImage
+		mv target/native-image/"Leo-III" bin/leo3-native

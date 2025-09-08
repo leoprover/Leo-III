@@ -1,0 +1,7 @@
+{
+  "resources":[
+    {"pattern":"\\Qscripts/TreeLimitedRun\\E"}, 
+    {"pattern":"\\Qscripts/run-script-cascj8-tfa\\E"}
+  ],
+  "bundles":[]
+}
