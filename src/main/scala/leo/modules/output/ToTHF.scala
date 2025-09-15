@@ -168,6 +168,15 @@ object ToTHF {
     * ```<bound_type>           ::= $thf(<thf_top_level_type>) | $tff(<tff_top_level_type>)```
     *
     *
+    * it's bugged, see ...
+    * {{{
+    * thf(7166,plain,(! [C:(($o > $o) > $o),B:($o > $o),A:($o > $o)] : (((A) = (B)) | ((A) = (^ [D:$o]: (($true)))) | ((A) = (^ [D:$o]: (D))) | ((B) = (^ [D:$o]: (($true)))) | ((B) = (^ [D:$o]: (D))) | ((^ [D:$o]: (($true))) = (^ [D:$o]: (D))) | (sk1 @ (^ [D:$o]: (($true))) @ (A)) | (sk1 @ (^ [D:$o]: (($true))) @ (B)) | (sk1 @ (^ [D:$o]: (D)) @ (A)) | (sk1 @ (^ [D:$o]: (D)) @ (B)) | (~ (C @ (A))) | (C @ (B)))),inference(pattern_uni,[status(thm)],[7165:[bind(A, $thf(A)),bind(B, $thf(B)),bind(C, $thf(A)),bind(D, $thf(B))1•2•λ[ty(1)]. (2:ty(1) -> ty(1) ⋅ (1:ty(1) ⋅ (⊥);⊥))•λ[ty(1)]. (3:ty(1) -> ty(1) ⋅ (1:ty(1) ⋅ (⊥);⊥))↑4]])).
+    *
+    * thf(7706,plain,(! [B:($o > $o),A:($o > $o)] : (((A) = (B)) | ((A) = (^ [C:$o]: (($true)))) | ((A) = (^ [C:$o]: (C))) | ((B) = (^ [C:$o]: (($true)))) | ((B) = (^ [C:$o]: (C))) | ((^ [C:$o]: (($true))) = (^ [C:$o]: (C))) | (sk1 @ (^ [C:$o]: (($true))) @ (A)) | (sk1 @ (^ [C:$o]: (($true))) @ (B)) | (sk1 @ (^ [C:$o]: (C)) @ (A)) | (sk1 @ (^ [C:$o]: (C)) @ (B)) | (~ ((A) = (A))) | ((A) = (B)))),inference(replace_leibeq,[status(thm)],[7166:[
+    * bind(A, $thf(?)),bind(B, $thf(@)),bind(C, $thf((=) @ ($o > $o) @ ?))1•2•3•4•λ[ty(1) -> ty(1)]. (const(11, ∀. 1 -> 1 -> ty(1)) ⋅ (ty(1) -> ty(1);λ[ty(1)]. (3:ty(1) -> ty(1) ⋅ (1:ty(1) ⋅ (⊥);⊥));1:ty(1) -> ty(1) ⋅ (⊥);⊥))↑5]])).
+    *}}}
+    * for `GRA028^1.p`
+    *
     * @param termsubst
     * @param typesubst
     * @param implicitlyBound

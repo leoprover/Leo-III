@@ -12,7 +12,7 @@ import leo.datastructures._
   * Object to construct provers from their paths.
   * Checks for the commands, for their executability.
   */
-object ExternalProvers {
+object TPTPProvers {
   private final val SCRIPTDIR_NAME: String = "ext_scripts"
   private final lazy val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
   private final lazy val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
@@ -233,7 +233,7 @@ class Vampire(val path : String) extends TPTPProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProvers.limitedRun(timeout+2, Seq(path, "--mode", "casc", "-t", timeout.toString, problemFileName))
+    TPTPProvers.limitedRun(timeout+2, Seq(path, "--mode", "casc", "-t", timeout.toString, problemFileName))
   }
 }
 
@@ -243,7 +243,7 @@ class CVC4(execScript: String, val path: String) extends TPTPProver[AnnotatedCla
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProvers.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
+    TPTPProvers.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
   }
 }
 object CVC4 {
@@ -258,7 +258,7 @@ class EProver(val path : String) extends TPTPProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProvers.limitedRun(timeout+2, Seq(path,
+    TPTPProvers.limitedRun(timeout+2, Seq(path,
       "--delete-bad-limit=2000000000",
       "--definitional-cnf=24",
       "--output-level=0",
@@ -297,7 +297,7 @@ class IProver(val path : String) extends TPTPProver[AnnotatedClause] {
                                         problemFileName: String): Seq[String] = {
 
 
-    ExternalProvers.limitedRun(timeout, Seq(path, "--time_out_real", timeout.toString, problemFileName) ++ args)
+    TPTPProvers.limitedRun(timeout, Seq(path, "--time_out_real", timeout.toString, problemFileName) ++ args)
   }
 }
 
@@ -307,7 +307,7 @@ class Zipperposition(val path: String) extends TPTPProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProvers.limitedRun(timeout+2, Seq(path, problemFileName, "--timeout", String.valueOf(timeout)))
+    TPTPProvers.limitedRun(timeout+2, Seq(path, problemFileName, "--timeout", String.valueOf(timeout)))
   }
 }
 object Zipperposition {
@@ -324,7 +324,7 @@ class Leo2Prover(val path : String) extends TPTPProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
     val call0 = Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName)
-    ExternalProvers.limitedRun(timeout, call0)
+    TPTPProvers.limitedRun(timeout, call0)
   }
 }
 
@@ -336,7 +336,7 @@ class SatallaxProver(val path : String) extends TPTPProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
     val call0 = Seq(path, "-p", "tstp" ,"-t" , timeout0.toString) ++ args ++ Seq(problemFileName)
-    ExternalProvers.limitedRun(timeout, call0)
+    TPTPProvers.limitedRun(timeout, call0)
   }
 }
 
@@ -348,6 +348,6 @@ class NitpickProver(val path : String) extends TPTPProver[AnnotatedClause] {
 
   // nitpick needs a lot of time for start-up. give it 15seconds more
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    ExternalProvers.limitedRun(timeout+15, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
+    TPTPProvers.limitedRun(timeout+15, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
   }
 }
