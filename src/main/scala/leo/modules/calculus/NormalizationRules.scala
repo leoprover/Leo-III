@@ -412,7 +412,6 @@ object ReplaceLeibnizEq extends CalculusRule {
         if (args.size == 1) {
           val (headType, headIndex) = Bound.unapply(head).get
           val arg = args.head
-          if (!(arg.looseBounds contains headIndex)) {
             if (lit.polarity) {
               flexHeadSet = flexHeadSet + headIndex
             } else {
@@ -426,7 +425,6 @@ object ReplaceLeibnizEq extends CalculusRule {
               }
 
             }
-          }
 
         }
       }
