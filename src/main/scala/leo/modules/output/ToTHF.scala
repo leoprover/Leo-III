@@ -83,7 +83,36 @@ object ToTHF {
     if (constant.hasDefn) {
       val symbolName = constant.name
       val name = s"${unescapeTPTPName(symbolName)}_def"
-      s"thf(${escapeTPTPName(name)}, definition, $symbolName = (${toTPTP0(constant._defn, 0)(sig)}) )."
+      val dfn = constant._defn
+
+      val fvSeq: Seq[(Int, Type)] = dfn.fv.toSeq.sortBy(_._1)
+      val tyIdxs: Seq[Int] = dfn.tyFV.toSeq.sorted
+
+      val freeVarsExist = fvSeq.nonEmpty || tyIdxs.nonEmpty
+      if (freeVarsExist) {
+        val (namedFVEnumeration, bVars) = clauseVarsToTPTP(fvSeq, typeToTHF1(_)(sig))
+        val tyNames: Seq[String] = tyIdxs.map(i => s"T${intToName(i - 1)}")
+        val termNames: Seq[String] = fvSeq.map { case (i, _) => bVars(i) }
+
+        val quantification = {
+          val sb = new StringBuffer()
+          sb.append("! [")
+          sb.append(tyNames.map(n => s"$n:$$tType").mkString(","))
+          if (tyIdxs.nonEmpty && fvSeq.nonEmpty) sb.append(",")
+          sb.append(namedFVEnumeration)
+          sb.append("] :")
+          sb.toString
+        }
+
+        val appliedCname = {
+          val typeApps = if (tyNames.nonEmpty) " @ " + tyNames.mkString(" @ ") else ""
+          val termApps = if (termNames.nonEmpty) " @ " + termNames.mkString(" @ ") else ""
+          s"$symbolName$typeApps$termApps"
+        }
+        s"thf(${escapeTPTPName(name)}, definition, $quantification ($appliedCname = (${toTPTP0(constant._defn, tyNames.length, bVars)(sig)})))."
+      } else {
+        s"thf(${escapeTPTPName(name)}, definition, $symbolName = (${toTPTP0(constant._defn, 0)(sig)}) )."
+      }
     } else ""
   }
 

@@ -598,7 +598,7 @@ object OrderedParamod extends CalculusRule {
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
             intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term,
-                  simulateResolution: Boolean = false)(implicit sig: Signature): Clause = {
+                  simulateResolution: Boolean = false)(implicit sig: Signature): (Clause,Clause) = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
@@ -611,9 +611,8 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"toFind: ${toFind.pretty(sig)}")
     Out.finest(s"replaceBy: ${replaceBy.pretty(sig)}")
 
-    /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
-    * i.e. it is lated eliminated using Simp. */
-    val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false)).map(l =>
+    /* We delete the withLiteral from the withClause */
+    val withLits_without_withLiteral = withClause.lits.patch(withIndex, Nil, 1).map(l =>
       Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
     )
     Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
@@ -639,10 +638,12 @@ object OrderedParamod extends CalculusRule {
     val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
-    val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
+    val withoutUniLit = withLits_without_withLiteral ++ rewrittenIntoLits
+    val result_preSimp = Clause(withoutUniLit :+ unificationLit)
+    val newlits_simp = Simp.shallowSimp(withoutUniLit)(sig)  :+ unificationLit
     val result = Clause(newlits_simp)
     Out.finest(s"result: ${result.pretty(sig)}")
-    result
+    (result,result_preSimp)
   }
 }
 
