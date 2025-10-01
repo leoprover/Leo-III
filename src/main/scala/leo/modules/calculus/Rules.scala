@@ -6,9 +6,7 @@ import leo.datastructures.Term.{Bound, TermApp}
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
 import leo.modules.{HOLSignature, calculus}
-import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
-
-import scala.annotation.tailrec
+import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem, SuccessSZS}
 
 ////////////////////////////////////////////////////////////////
 ////////// Extensionality
@@ -184,7 +182,7 @@ object FlexFlexUni extends CalculusRule {
       val lit = lits.next()
       val (left,right) = (lit.left, lit.right)
       (left,right) match {
-        case (TermApp(Bound(tyLeft,idxLeft), argsLeft), TermApp(Bound(tyRight,idxRight), argsRight)) =>
+        case (TermApp(Bound(_,idxLeft), argsLeft), TermApp(Bound(_,idxRight), argsRight)) =>
           // this is idxLeft_tyleft(argsleft) =? idxRight_tyright(argsRight)
           // we want substitutions: idxLeft -> lambda (argsleft.size). freshVar,
           //                        idxRight -> lambda (argsRight.size). freshVar
@@ -644,6 +642,88 @@ object OrderedParamod extends CalculusRule {
     val result = Clause(newlits_simp)
     Out.finest(s"result: ${result.pretty(sig)}")
     (result,result_preSimp)
+  }
+}
+
+object InverseFunction extends CalculusRule {
+  override final val name: String = "detectInverse"
+  override final val inferenceStatus: SuccessSZS = SZS_Theorem
+
+  type ParameterIndex = Int
+  final def canApply(cl: Clause)(implicit sig: Signature): Option[(Signature.Key, ParameterIndex, Type)]  = {
+    import leo.datastructures.Term.{TermApp, Symbol}
+    val lits = cl.lits
+    if (lits.size == 2) {
+      val l1 = lits.head
+      val l2 = lits.tail.head
+
+      val (negLit, posLit) = if (l1.polarity) (l2, l1) else (l1, l2)
+      if (!negLit.polarity && posLit.polarity) {
+        if (negLit.equational && posLit.equational) {
+          (negLit.left, negLit.right) match {
+            case (TermApp(Symbol(idLeft), argsLeft), TermApp(Symbol(idRight), argsRight)) if idLeft == idRight && argsLeft.nonEmpty && argsRight.nonEmpty =>
+              assert(argsLeft.size == argsRight.size)
+              val leftVars = argsLeft.map(getVariableModuloEta(_))
+              if (leftVars.forall(_ > 0)) {
+                val rightVars = argsRight.map(getVariableModuloEta(_))
+                if (rightVars.forall(_ > 0)) {
+                  val posLitLeftVar = getVariableModuloEta(posLit.left)
+                  if (posLitLeftVar > 0) {
+                    val posLitRightVar = getVariableModuloEta(posLit.right)
+                    if (posLitRightVar > 0) {
+                      val argTuples = leftVars.zip(rightVars)
+                      val possiblyIdx = argTuples.indexOf((posLitLeftVar, posLitRightVar))
+                      if (possiblyIdx >= 0) {
+                        val paraPos = possiblyIdx
+                        Some((idLeft, paraPos, generateInvType(sig(idLeft)._ty, paraPos)))
+                      } else {
+                        val possiblyIdx = argTuples.indexOf((posLitRightVar, posLitLeftVar))
+                        if (possiblyIdx >= 0) {
+                          val paraPos = possiblyIdx
+                          Some((idLeft, paraPos, generateInvType(sig(idLeft)._ty, paraPos)))
+                        } else None
+                      }
+                    } else None
+                  } else None
+                } else None
+              } else None
+            case _ => None
+          }
+        } else None
+      } else None
+    } else None
+  }
+
+  /** ?[G:invtype]: ![X1....Xn]: G(X1,...,X(idx-1),X(idx+1),...,Xn,f(X1,...,Xn)) = X(idx)*/
+  final def apply(function: Signature.Key, invFunType: Type,
+                  parameterIndex: ParameterIndex)(implicit sig: Signature): Clause = {
+    import Term.{mkTermApp, mkBound, mkAtom}
+    import HOLSignature.===
+    val f = mkAtom(function) // The injective function
+    val fTypes = f.ty.funParamTypes
+    val inv = mkBound(invFunType, fTypes.size+1) // the inverse function to f, to be quantified first (therefore largest index)
+    val univArgs = fTypes.zip(Range.inclusive(fTypes.size, 1, -1)).map { case (ty,idx) => mkBound(ty, idx) }
+    val fAppliedWithArgs = mkTermApp(f, univArgs)
+    val (univArgsForInvBeforeAndIncludingIdx,univArgsForInvAfterIdx) = univArgs.splitAt(parameterIndex+1)
+    val invAppliedToArguments = mkTermApp(inv, (univArgsForInvBeforeAndIncludingIdx.init ++ univArgsForInvAfterIdx) :+ fAppliedWithArgs)
+    val equality = ===(invAppliedToArguments, univArgsForInvBeforeAndIncludingIdx.last)
+    val universallyQuantifiedBody = mkPolyUnivQuant(fTypes, equality)
+    val existentiallyQuantified = mkPolyExistQuant(Seq(invFunType), universallyQuantifiedBody)
+    val lit = Literal.mkLit(existentiallyQuantified, pol = true)
+    Clause(lit)
+  }
+
+
+  /**
+    * If the function `f` has type `ty` and is injective in parameter index `paraPos`, i.e.
+    * `f :: ty0 -> ty1 -> ... -> ty(paraPos)-> ... -> tyn`,
+    * then the inverse function to `f`, call it `g`, has type
+    * `g :: ty0 -> ty1 -> ... -> ... -> tyn -> ty(paraPos)`
+    */
+  private final def generateInvType(ty: Type, paraPos: Int): Type = {
+    val funTys = ty.funParamTypesWithResultType
+    val (pre0,post0) = funTys.splitAt(paraPos)
+    Type.mkFunType(pre0 ++ post0.tail, post0.head)
   }
 }
 
