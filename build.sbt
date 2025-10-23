@@ -11,7 +11,7 @@ lazy val leo = (project in file("."))
 
     Compile/mainClass := Some("leo.Main"),
     assembly/mainClass := Some("leo.Main"),
-    assembly/assemblyJarName := "leo3.jar",
+    assembly/assemblyJarName := s"leo3-${version.value}.jar",
     assembly/logLevel := Level.Error,
     assembly/test := {},
 
