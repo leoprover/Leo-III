@@ -5,7 +5,7 @@ import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, 
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
-import leo.Out
+import leo.{Configuration, Out}
 import leo.datastructures.TPTP.TCF
 
 import scala.annotation.tailrec
@@ -1580,8 +1580,12 @@ object InputProcessing {
     else {
       if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
       else {
-        leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
-        sig.addUninterpreted(name, ty)
+        if (Configuration.isSet("no-default-types"))
+          throw new SZSException(SZS_TypeError, s"Symbol '$name' has unknown type. Declare its type first.")
+        else {
+          leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
+          sig.addUninterpreted(name, ty)
+        }
       }
     }
   }
