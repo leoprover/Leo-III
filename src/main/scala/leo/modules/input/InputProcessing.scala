@@ -6,7 +6,6 @@ import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, m
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
 import leo.{Configuration, Out}
-import leo.datastructures.TPTP.TCF
 
 import scala.annotation.tailrec
 
@@ -27,8 +26,8 @@ object InputProcessing {
 
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
-  type TermOrType = Either[Term, Type]
-  type TypeOrKind = Either[Type, Kind]
+  private type TermOrType = Either[Term, Type]
+  private type TypeOrKind = Either[Type, Kind]
 
   // Ad-hoc polymorphic arithmetic constants of TPTP.
   // This is a bit hacky, as they are defined on multiple different types; so we make a case distinction below
@@ -211,7 +210,6 @@ object InputProcessing {
                 val convertedRight = convertTHFType0(sig)(right, typeVars)
                 convertedRight match {
                   case Left(convertedRight0) =>
-                    Left(mkTypeApp(convertedLeft, convertedRight0))
                     mkTypeApp(convertedLeft, convertedRight0)
                   case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
                 }
@@ -415,7 +413,7 @@ object InputProcessing {
     }
   }
 
-  lazy val letInfo: Unit = {
+  private lazy val letInfo: Unit = {
     leo.Out.info(s"Let expressions in the input problem have been expanded exhaustively.")
   }
   ////// Functions related to THF let-expression expansion BEGIN
@@ -887,7 +885,7 @@ object InputProcessing {
         }
         // (1) transform implicit variables to "lambda form":
         // transformedBindingMap is a map: atom -> (function that maps given arguments to the RHS in which the formal parameters are replaced by them.)
-        val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
+        val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (_, lhs, rhs)) =>
           tffLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, params)) =>
               if (params.isEmpty) {
@@ -1590,7 +1588,7 @@ object InputProcessing {
     }
   }
 
-  lazy val numberWarning: Unit = {
+  private lazy val numberWarning: Unit = {
     leo.Out.warn(s"Leo-III currently does not fully support arithmetic. " +
       s"Numbers in the problem file are recognized, but there is no guarantee for adequateness of processing them whatsoever.")
   }
