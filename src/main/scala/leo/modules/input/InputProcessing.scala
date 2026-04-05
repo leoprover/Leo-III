@@ -1,6 +1,6 @@
 package leo.modules.input
 
-import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
+import leo.datastructures.{Kind, NotWellTypedException, Role, Signature, TPTP, Term, Type}
 import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
@@ -78,6 +78,10 @@ object InputProcessing {
       }
     } catch {
       case e: SZSException => throw new SZSException(e.status, s"Interpreter error in annotated TPTP formula '$name': ${e.getMessage}")
+      case e: NotWellTypedException =>
+        Out.finest(leo.modules.output.ToTHF.apply(sig))
+        e.printStackTrace()
+        throw new SZSException(SZS_TypeError, s"Type error in annotated TPTP formula '$name': ${e.getMessage}")
     }
   }
 
@@ -141,7 +145,12 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): Term = {
-    convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
+    try {
+      convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
+    } catch {
+      case _:NotWellTypedException => throw new SZSException(SZS_TypeError, s"Formula ${formula.pretty} is ill-typed.")
+    }
+
   }
 
   private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
@@ -191,55 +200,56 @@ object InputProcessing {
 
       case BinaryFormula(TPTP.THF.App, left, right) => // handle specially, as there might be polymorphic symbols involved
         val convertedLeft = convertTHFFormula0(sig)(left, termVars, typeVars, vars)
-        if (convertedLeft.ty.isPolyType) {
-          import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
-          // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
-          // explicitly as it is not expected to be given by the user.
-          // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
-          // For the TH1 function @=, this needs to be given explicitly by the user
-          // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
-          // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
-          if (convertedLeft == HOLBinaryConnective.toTerm(EQ)) {
-            // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
-            try {
-              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-              val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
-              mkTermApp(intermediate, convertedRight)
-            } catch {
-              case _: SZSException =>
-                val convertedRight = convertTHFType0(sig)(right, typeVars)
-                convertedRight match {
-                  case Left(convertedRight0) =>
-                    mkTypeApp(convertedLeft, convertedRight0)
-                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
-                }
-            }
 
-          } else if (convertedLeft == HOLBinaryConnective.toTerm(NEQ)) {
-            // Special case 2: Non-equality -- Fill implicit type argument manually
-            val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-            val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
-            mkTermApp(intermediate, convertedRight)
-          } else {
-            convertedLeft match {
-              case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
-                // AdHoc polymorphic case for arithmetic constants, applied with @
+          if (convertedLeft.ty.isPolyType) {
+            import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
+            // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
+            // explicitly as it is not expected to be given by the user.
+            // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
+            // For the TH1 function @=, this needs to be given explicitly by the user
+            // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
+            // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
+            if (convertedLeft == HOLBinaryConnective.toTerm(EQ)) {
+              // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
+              try {
                 val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
                 val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
                 mkTermApp(intermediate, convertedRight)
-              case _ => // Standard polymorphic case: Expect type argument
-                val convertedRight = convertTHFType0(sig)(right, typeVars)
-                convertedRight match {
-                  case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
-                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
-                }
+              } catch {
+                case _: SZSException =>
+                  val convertedRight = convertTHFType0(sig)(right, typeVars)
+                  convertedRight match {
+                    case Left(convertedRight0) =>
+                      mkTypeApp(convertedLeft, convertedRight0)
+                    case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                  }
+              }
+
+            } else if (convertedLeft == HOLBinaryConnective.toTerm(NEQ)) {
+              // Special case 2: Non-equality -- Fill implicit type argument manually
+              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+              val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+              mkTermApp(intermediate, convertedRight)
+            } else {
+              convertedLeft match {
+                case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
+                  // AdHoc polymorphic case for arithmetic constants, applied with @
+                  val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+                  val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+                  mkTermApp(intermediate, convertedRight)
+                case _ => // Standard polymorphic case: Expect type argument
+                  val convertedRight = convertTHFType0(sig)(right, typeVars)
+                  convertedRight match {
+                    case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
+                    case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                  }
+              }
             }
+          } else {
+            // Standard monomorphic case: Expect term argument
+            val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+            mkTermApp(convertedLeft, convertedRight)
           }
-        } else {
-          // Standard monomorphic case: Expect term argument
-          val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-          mkTermApp(convertedLeft, convertedRight)
-        }
 
       case BinaryFormula(connective, left, right) =>
         assert(connective != TPTP.THF.App)
