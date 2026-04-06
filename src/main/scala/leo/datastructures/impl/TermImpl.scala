@@ -144,7 +144,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
     case SNil => funty
     case App(s0,tail) => funty match {
       case (_ -> out) => ty0(out, tail)
-      case _ => throw NotWellTypedException(this) // this should not happen if well-typed
+      case _ => throw NotWellTypedException("A symbol without function type is applied like a function.", this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
       case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)

@@ -322,6 +322,10 @@ object ToTHF {
     sb.toString()
   }
 
+  final def apply(t: Term)(sig: Signature): String = {
+    toTPTP0(t, t.tyFV.size, Map.empty.withDefault(intToName))(sig)
+  }
+
   final private def toTPTP0(t: Term, tyVarCount: Int, bVars: Map[Int,String] = Map())(sig: Signature): String = {
     t match {
       // Constant symbols that are (unapplied) connectives, they need to be ()'d

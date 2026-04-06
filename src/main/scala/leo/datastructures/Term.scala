@@ -143,7 +143,7 @@ trait Term extends Pretty with Prettier {
 // Associated traits, exceptions, ...
 /////////////////////////////
 
-class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeException(msg) {
+class NotWellTypedException(msg: String, val term: Option[Term]) extends RuntimeException(msg) {
   def this(msg: String) = {
     this(msg, None)
   }

@@ -80,8 +80,8 @@ object InputProcessing {
       case e: SZSException => throw new SZSException(e.status, s"Interpreter error in annotated TPTP formula '$name': ${e.getMessage}")
       case e: NotWellTypedException =>
         Out.finest(leo.modules.output.ToTHF.apply(sig))
-        e.printStackTrace()
-        throw new SZSException(SZS_TypeError, s"Type error in annotated TPTP formula '$name': ${e.getMessage}")
+        val errorDetail = e.term.map(leo.modules.output.ToTHF.apply(_)(sig))
+        throw new SZSException(SZS_TypeError, s"Type error in annotated TPTP formula '$name'. Subterm: ${errorDetail.getOrElse("")} (variable identifiers may differ). Reason: ${e.getMessage}")
     }
   }
 
@@ -145,12 +145,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def convertTHFFormula(sig: Signature)(formula: TPTP.THF.Formula): Term = {
-    try {
-      convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
-    } catch {
-      case _:NotWellTypedException => throw new SZSException(SZS_TypeError, s"Formula ${formula.pretty} is ill-typed.")
-    }
-
+    convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
   }
 
   private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
