@@ -265,6 +265,13 @@ package object prover {
     }
   }
 
+  /** The inference that turns an axiom into one of its instances (instantiateSetAxioms);
+    * an instance of a universally quantified formula is a logical consequence of it. */
+  object InstantiateSets extends leo.modules.calculus.CalculusRule {
+    final val name = "instantiate_sets"
+    final val inferenceStatus = SZS_Theorem
+  }
+
   /** Set when an axiom was replaced by instances of it (instantiateSetAxioms): a
     * refutation of what remains refutes the problem, a saturation of it is no model. */
   var axiomsReplaced: Boolean = false
@@ -279,7 +286,8 @@ package object prover {
     * Only where a constant of the type occurs: the empty set alone would turn, e.g.,
     * a choice axiom into its trivial instance.  The same rule as LEO-II 2.3. */
   final def instantiateSetAxioms(input: Seq[AnnotatedClause], state: LocalGeneralState): Seq[AnnotatedClause] = {
-    import leo.datastructures.{Clause, Literal, Type, Signature, Role_Axiom}
+    import leo.datastructures.{Clause, Literal, Type, Signature, Role_Axiom, Role_Plain}
+    import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.datastructures.Term.:::>
     import leo.modules.HOLSignature.{Forall, LitFalse, o}
     axiomsReplaced = false
@@ -315,7 +323,10 @@ package object prover {
           else {
             axiomsReplaced = true
             Out.debug(s"[instantiate-sets] ${cl.id} replaced by ${is.size} instances: ${is.map(_.pretty(sig)).mkString(" ;; ")}")
-            is.map(t => AnnotatedClause(Clause(Literal(t, true)), cl.role, cl.annotation, cl.properties))
+            // The instance is derived from the axiom, and the proof says so: the axiom stays the
+            // leaf (file(...)) and the instance a plain formula inferred from it.  Giving the
+            // instance the axiom's role and source would print a formula the file does not contain.
+            is.map(t => AnnotatedClause(Clause(Literal(t, true)), Role_Plain, InferredFrom(InstantiateSets, cl), cl.properties))
           }
         } else Seq(cl)
       }
