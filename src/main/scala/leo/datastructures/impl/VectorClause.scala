@@ -34,6 +34,14 @@ import leo.datastructures._
     }
   }
 
+  /* The clause selection orderings ask for this on every comparison, and it
+   * walks every term of every literal.  It became markedly more expensive when
+   * Term.symbolMap was fixed to descend into the arguments of a term whose head
+   * is a bound variable -- which it must, since "X a b" does contain the
+   * symbols of a and b -- so it is now kept rather than recomputed. */
+  override lazy val symbols: Multiset[Signature.Key] =
+    lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature.Key]){case (a,b) => a.sum(b)}
+
   lazy val typeVars: Seq[Int] = {
     if (tyFvs == null)
       lits.flatMap(_.tyFV).distinct.toVector.sortWith{case (x,y) => x > y}

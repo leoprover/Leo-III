@@ -2,6 +2,33 @@ package leo.datastructures.impl
 
 import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
 
+/* Types are immutable, and their hash codes are asked for constantly: every
+ * one of them is a key in the tables that share types, in the term index, and
+ * in the sets the calculus keeps.  The hash code a case class generates walks
+ * the whole type on every call, so asking twice costs twice, and a type that
+ * is a tree of arrows costs its size each time.  Computing it once and keeping
+ * it is safe precisely because the value can never change.  The value has to be
+ * the one the case class would have produced: types are keys in hash tables all
+ * over the prover, and a different value is a different iteration order, which
+ * is a different search -- measured, five problems of the ontological-argument
+ * set.  The expressions below are the ones the compiler generates for these case
+ * classes (read off the bytecode of 1.7.0 built with Scala 2.13.18: productHash with
+ * the class's seed, or the mixing sequence for classes with an Int field);
+ * ScalaRunTime._hashCode computes something else and changed the search.
+ *
+ * The same reasoning applies to equality, where the first question worth
+ * asking is whether the two are the same object: types are shared through
+ * TypeImpl.mkType and friends, so equal types usually are, and that answer is
+ * a pointer comparison instead of a walk.  They are not *always* shared --
+ * substitute and replace used to build nodes directly, and do so no longer --
+ * but the structural test stays as the fallback for anything built elsewhere.
+ * Unshared copies were the whole cost: two equal arrow types built apart are
+ * compared node by node, recursively, and on the ontological-argument problems
+ * those walks, from the term ordering, were a third of the running time.  Before it, the stored hash codes: two types whose
+ * hash codes differ are different, and comparing two integers settles what the
+ * walk would otherwise settle at the first difference, which on the
+ * ontological-argument problems was a third of the running time
+ * (AbstractionTypeNode.equals, 30 per cent of the samples). */
 protected[datastructures] sealed abstract class TypeImpl extends Type {
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Vector.empty)
   protected[impl] def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
@@ -16,6 +43,12 @@ protected[datastructures] sealed abstract class TypeImpl extends Type {
 
 /** Ground type, e.g. `$o` or `list @ $i`. */
 protected[datastructures] final case class GroundTypeNode(id: Signature.Key, args: Seq[Type]) extends TypeImpl {
+  override final lazy val hashCode: Int = scala.runtime.Statics.finalizeHash(scala.runtime.Statics.mix(scala.runtime.Statics.mix(scala.runtime.Statics.mix(-889275714, -80079069), id), scala.runtime.Statics.anyHash(args)), 2)
+  override final def equals(that: Any): Boolean = that match {
+    case o: GroundTypeNode => (this eq o) || (hashCode == o.hashCode && id == o.id && args == o.args)
+    case _ => false
+  }
+
   // Pretty printing
   def pretty: String = if (args.isEmpty) s"ty($id)" else s"ty($id)(${args.map(_.pretty).mkString(",")})"
   def pretty(sig: Signature): String = if (args.isEmpty) sig(id).name else s"${sig(id).name}(${args.map(_.pretty(sig)).mkString(",")})"
@@ -40,20 +73,26 @@ protected[datastructures] final case class GroundTypeNode(id: Signature.Key, arg
   def order: Int = 0
   def polyPrefixArgsCount: Int = 0
 
-  def app(ty: Type): Type = GroundTypeNode(id, args :+ ty)
+  def app(ty: Type): Type = TypeImpl.mkType(id, args :+ ty)
   def occurs(ty: Type): Boolean = ty match {
     case GroundTypeNode(key, args2) if key == id => args == args2 || args.exists(_.occurs(ty))
     case _ => args.exists(_.occurs(ty))
   }
 
   // Substitutions
-  def replace(what: Type, by: Type): Type = if (what == this) by else GroundTypeNode(id, args.map(_.replace(what, by)))
+  def replace(what: Type, by: Type): Type = if (what == this) by else TypeImpl.mkType(id, args.map(_.replace(what, by)))
 
-  def substitute(subst: Subst): Type = GroundTypeNode(id, args.map(_.substitute(subst)))
+  def substitute(subst: Subst): Type = TypeImpl.mkType(id, args.map(_.substitute(subst)))
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
 protected[datastructures] final case class BoundTypeNode(scope: Int) extends TypeImpl {
+  override final lazy val hashCode: Int = scala.runtime.Statics.finalizeHash(scala.runtime.Statics.mix(scala.runtime.Statics.mix(-889275714, -1641679910), scope), 1)
+  override final def equals(that: Any): Boolean = that match {
+    case o: BoundTypeNode => (this eq o) || scope == o.scope
+    case _ => false
+  }
+
   // Pretty printing
   def pretty: String = scope.toString
   def pretty(sig: Signature): String = scope.toString
@@ -93,6 +132,12 @@ protected[datastructures] final case class BoundTypeNode(scope: Int) extends Typ
 
 /** Function type `in -> out` */
 protected[datastructures] final case class AbstractionTypeNode(in: Type, out: Type) extends TypeImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, 1197477489, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: AbstractionTypeNode => (this eq o) || (hashCode == o.hashCode && in == o.in && out == o.out)
+    case _ => false
+  }
+
   // Pretty printing
   def pretty: String = in match {
     case _:AbstractionTypeNode => s"(${in.pretty}) -> ${out.pretty}"
@@ -130,12 +175,18 @@ protected[datastructures] final case class AbstractionTypeNode(in: Type, out: Ty
   def occurs(ty: Type): Boolean = in.occurs(ty) || out.occurs(ty)
 
   // Substitutions
-  def replace(what: Type, by: Type): Type = if (what == this) by else AbstractionTypeNode(in.replace(what,by), out.replace(what,by))
-  def substitute(subst: Subst): Type = AbstractionTypeNode(in.substitute(subst), out.substitute(subst))
+  def replace(what: Type, by: Type): Type = if (what == this) by else TypeImpl.mkFunType(in.replace(what,by), out.replace(what,by))
+  def substitute(subst: Subst): Type = TypeImpl.mkFunType(in.substitute(subst), out.substitute(subst))
 }
 
 /** Product type `ty1 x ty2 x ... x tyN` (type of n-ary tuple). */
 protected[datastructures] final case class ProductTypeNode(tys: Seq[Type]) extends TypeImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, 1573434581, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: ProductTypeNode => (this eq o) || (hashCode == o.hashCode && tys == o.tys)
+    case _ => false
+  }
+
   assert(tys.nonEmpty, "Empty product type.")
 
   // Pretty printing
@@ -176,6 +227,12 @@ protected[datastructures] final case class ProductTypeNode(tys: Seq[Type]) exten
  * @param body The type in which a type variable is now bound to this binder
  */
 protected[datastructures] final case class ForallTypeNode(body: Type) extends TypeImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, 1750769829, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: ForallTypeNode => (this eq o) || (hashCode == o.hashCode && body == o.body)
+    case _ => false
+  }
+
   // Pretty printing
   def pretty: String = s"∀. ${body.pretty}"
   def pretty(sig: Signature): String = s"∀. ${body.pretty(sig)}"
@@ -210,8 +267,8 @@ protected[datastructures] final case class ForallTypeNode(body: Type) extends Ty
 
   // Substitutions
   def replace(what: Type, by: Type): Type = if (what == this) by
-  else ForallTypeNode(body.replace(what, by))
-  def substitute(subst: Subst): Type = ForallTypeNode(body.substitute(subst.sink))
+  else TypeImpl.mkPolyType(body.replace(what, by))
+  def substitute(subst: Subst): Type = TypeImpl.mkPolyType(body.substitute(subst.sink))
 
   override def instantiate(by: Seq[Type]): Type = if (by.isEmpty) this else body.substitute(TypeFront(by.head) +: Subst.id).instantiate(by.tail)
 }

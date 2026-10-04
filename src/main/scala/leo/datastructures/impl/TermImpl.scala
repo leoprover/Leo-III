@@ -97,6 +97,19 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
 
 /** Representation of terms that are in (weak) head normal form. */
 protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
+  /* Terms are immutable and are keys everywhere (the sharing tables, the clause
+     sets); the generated hash code walked the whole term at every call, and that
+     was 14 per cent of the running time on TPTP library problems.  It is computed
+     once now, with the value the case class would compute -- the expression the
+     compiler generates, with the class's seed as it stands in the bytecode of 1.7.0 --
+     so no table iterates differently; equality asks it before walking.  A lazy val: a
+     plain val is read while the object is still being built and is then 0, which
+     changed the search. */
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, -920296880, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: Root => (this eq o) || (hashCode == o.hashCode && hd == o.hd && args == o.args)
+    case _ => false
+  }
   import TermImpl.{headToTerm, mkRedex, mkRoot}
 
   protected[impl] def markBetaNormal(): Unit = {
@@ -303,6 +316,11 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, -357099666, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: Redex => (this eq o) || (hashCode == o.hashCode && body == o.body && args == o.args)
+    case _ => false
+  }
   import TermImpl.mkRedex
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -399,6 +417,11 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
 }
 
 protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, -777815312, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: TermAbstr => (this eq o) || (hashCode == o.hashCode && typ == o.typ && body == o.body)
+    case _ => false
+  }
   import TermImpl.mkTermAbstr
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -510,6 +533,11 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
 }
 
 protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, 1191903704, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: TypeAbstr => (this eq o) || (hashCode == o.hashCode && body == o.body)
+    case _ => false
+  }
   import TermImpl.mkTypeAbstr
   import Type.∀
 
@@ -590,7 +618,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   @inline final val isTermAbs = false
   @inline final val isTypeAbs = false
   @inline final val isApp = false
-  protected[impl] def flexHead0(depth: Int): Boolean = this.betaNormalize.asInstanceOf[TermImpl].flexHead0(depth)
+  protected[impl] def flexHead0(depth: Int): Boolean = betaNF.flexHead0(depth)
 
   // Handling def. expansion
   def δ_expandable(implicit sig: Signature) = false // TODO
@@ -598,21 +626,33 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def δ_expand(implicit sig: Signature) = ???
   def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = ???
 
+  /* Every query below used to beta-normalise the closure afresh: applying the
+   * substitution, inserting the result into the shared term bank, and throwing
+   * it away again.  A closure is a term and a substitution, both immutable, so
+   * its normal form is the same every time it is asked for.  It is now asked
+   * for once.
+   *
+   * That this matters is a consequence of fixing Term.symbolMap to descend
+   * into the arguments of a term whose head is a bound variable: symbolMap is
+   * one of these queries, and the orderings that choose the given clause ask
+   * for it constantly. */
+  private[this] lazy val betaNF: TermImpl = betaNormalize.asInstanceOf[TermImpl]
+
   // Queries on terms
   final def ty = term.ty
-  final def fv: Set[(Int, Type)] = betaNormalize.fv
-  final def tyFV: Set[Int] = betaNormalize.tyFV
-  def vars0(depth: Int): (Multiset[Int], Set[Int]) = betaNormalize.asInstanceOf[TermImpl].vars0(depth)
-  final def symbolMap: Map[Signature.Key, (Count, Depth)] = betaNormalize.asInstanceOf[TermImpl].symbolMap
-  final def headSymbol = betaNormalize.headSymbol
+  final def fv: Set[(Int, Type)] = betaNF.fv
+  final def tyFV: Set[Int] = betaNF.tyFV
+  def vars0(depth: Int): (Multiset[Int], Set[Int]) = betaNF.vars0(depth)
+  final def symbolMap: Map[Signature.Key, (Count, Depth)] = betaNF.symbolMap
+  final def headSymbol = betaNF.headSymbol
   final def headSymbolDepth = 1 + term.headSymbolDepth
-  final def feasibleOccurrences = betaNormalize.feasibleOccurrences
+  final def feasibleOccurrences = betaNF.feasibleOccurrences
   final def size = term.size // this might not be reasonable, but will never occur when used properly
 
   // Other operations
-  final def etaExpand0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaExpand0
+  final def etaExpand0: TermImpl = betaNF.etaExpand0
 
-  final def etaContract0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaContract0
+  final def etaContract0: TermImpl = betaNF.etaContract0
 
   final def replace(what: Term, by: Term): Term = betaNormalize.replace(what, by)
   final def replaceAt(at: Position, by: Term): Term = betaNormalize.replaceAt(at, by)
@@ -641,7 +681,13 @@ protected[impl] sealed abstract class Head extends Pretty with Prettier {
 
   // Queries
   def ty: Type
-  final def toTerm: Term = mkRoot(this, mkSpineNil)
+  /* Every pattern match on an application (TermImpl.appMatcher) turns the head
+     back into a term, and mkRoot answered that with a lookup in the shared
+     table each time -- with the head's hash code, recomputed for a BoundIndex,
+     at every call.  The answer for a given head is always the same shared root,
+     so it is kept.  Keeping it also keeps that root alive, which the table holds
+     only weakly; it would otherwise be rebuilt equal, not different. */
+  final lazy val toTerm: Term = mkRoot(this, mkSpineNil)
 
   // Handling def. expansion
   def defExpandable(sig: Signature): Boolean
@@ -650,6 +696,15 @@ protected[impl] sealed abstract class Head extends Pretty with Prettier {
 }
 
 protected[impl] final case class BoundIndex(ty: Type, scope: Int) extends Head {
+  /* The generated equality compares the type first and the index second.  The
+     index is an integer and differs far more often; asking it first spares the
+     type comparison (18 per cent of the samples on the ontological-argument
+     problems).  Same answer, other order; the hash code stays the generated one. */
+  override final def equals(that: Any): Boolean = that match {
+    case o: BoundIndex => (this eq o) || (scope == o.scope && ty == o.ty)
+    case _ => false
+  }
+  override final lazy val hashCode: Int = scala.runtime.Statics.finalizeHash(scala.runtime.Statics.mix(scala.runtime.Statics.mix(scala.runtime.Statics.mix(-889275714, 676272660), scala.runtime.Statics.anyHash(ty)), scope), 2)
   // Predicates
   @inline override def isBound = true
   @inline override def isConstant = false
@@ -897,6 +952,11 @@ protected[impl] case object SNil extends Spine {
 }
 
 protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, 641717582, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: App => (this eq o) || (hashCode == o.hashCode && hd == o.hd && tail == o.tail)
+    case _ => false
+  }
   import TermImpl.{mkSpineCons => cons}
 
   protected[impl] def markBetaNormal(): Unit = {
@@ -978,6 +1038,11 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
 }
 
 protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
+  override final lazy val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this, -244798555, true)
+  override final def equals(that: Any): Boolean = that match {
+    case o: TyApp => (this eq o) || (hashCode == o.hashCode && hd == o.hd && tail == o.tail)
+    case _ => false
+  }
   import TermImpl.{mkSpineCons => cons}
 
   final protected[impl] def markBetaNormal(): Unit = {
