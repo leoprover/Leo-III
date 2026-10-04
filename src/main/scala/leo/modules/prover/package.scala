@@ -38,7 +38,8 @@ package object prover {
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${state.filteredAxioms.size} axioms).")
-      val result = relevantAxioms.map(ax => processInput(ax, state))
+      val result0 = relevantAxioms.map(ax => processInput(ax, state))
+      val result = instantiateSetAxioms(result0, state)
       Out.info(s"Problem is ${state.languageLevel.pretty}.")
       result
     } else {
@@ -264,6 +265,63 @@ package object prover {
     }
   }
 
+  /** Set when an axiom was replaced by instances of it (instantiateSetAxioms): a
+    * refutation of what remains refutes the problem, a saturation of it is no model. */
+  var axiomsReplaced: Boolean = false
+
+  /** With --instantiate-sets: an axiom whose leading universal quantifier ranges over
+    * sets of properties -- a type whose argument is itself a function type -- is
+    * replaced by its instances at every uninterpreted constant of that type the
+    * problem mentions, and at the empty set when the type ends in $o.  Ax1Gen of the
+    * ontological-argument problems is wanted at P, which neither primitive
+    * substitution nor the special instances offer; made from the formula, before
+    * clause normal form, the instance carries no Skolem terms of the general axiom.
+    * Only where a constant of the type occurs: the empty set alone would turn, e.g.,
+    * a choice axiom into its trivial instance.  The same rule as LEO-II 2.3. */
+  final def instantiateSetAxioms(input: Seq[AnnotatedClause], state: LocalGeneralState): Seq[AnnotatedClause] = {
+    import leo.datastructures.{Clause, Literal, Type, Signature, Role_Axiom}
+    import leo.datastructures.Term.:::>
+    import leo.modules.HOLSignature.{Forall, LitFalse, o}
+    axiomsReplaced = false
+    if (!Configuration.isSet("instantiate-sets")) input
+    else {
+      val sig = state.signature
+      val occurring: Set[Signature.Key] =
+        (input ++ state.negConjecture).flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols.distinct ++ l.right.symbols.distinct)).toSet
+      def setsOfProperties(ty: Type): Boolean =
+        ty.isFunType && ty._funDomainType.isFunType && !ty.isPolyType
+      def emptySet(ty: Type): Seq[Term] = {
+        val tys = ty.funParamTypesWithResultType
+        if (tys.last != o) Seq.empty
+        else Seq(tys.init.foldRight(LitFalse(): Term)((t, b) => Term.mkTermAbs(t, b)))
+      }
+      def candidates(ty: Type): Seq[Term] =
+        if (!setsOfProperties(ty)) Seq.empty
+        else {
+          val cs = sig.uninterpretedSymbolsOfType(ty).filter(occurring.contains).toSeq.sorted.map(k => Term.mkAtom(k)(sig))
+          if (cs.isEmpty) Seq.empty else cs ++ emptySet(ty)
+        }
+      def insts(t: Term): Seq[Term] = t match {
+        case Forall(abs@(ty :::> body)) =>
+          val kept = insts(body).map(b => Forall(Term.mkTermAbs(ty, b)))
+          val here = candidates(ty).map(c => Term.mkTermApp(abs, c).betaNormalize)
+          kept ++ here.flatMap(h => h +: insts(h))
+        case _ => Seq.empty
+      }
+      input.flatMap { cl =>
+        if (cl.role == Role_Axiom && Clause.unit(cl.cl) && cl.cl.lits.head.polarity && !cl.cl.lits.head.equational) {
+          val is = insts(cl.cl.lits.head.left)
+          if (is.isEmpty) Seq(cl)
+          else {
+            axiomsReplaced = true
+            Out.debug(s"[instantiate-sets] ${cl.id} replaced by ${is.size} instances: ${is.map(_.pretty(sig)).mkString(" ;; ")}")
+            is.map(t => AnnotatedClause(Clause(Literal(t, true)), cl.role, cl.annotation, cl.properties))
+          }
+        } else Seq(cl)
+      }
+    }
+  }
+
   final private def processInput(input: TPTP.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {
     import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Input.processFormula(input)(state.signature)
@@ -316,7 +374,8 @@ package object prover {
     false
   }
   final def appropriateSatStatus(state: LocalState): StatusSZS = {
-    if (state.negConjecture.isEmpty) SZS_Satisfiable
+    if (axiomsReplaced) SZS_GaveUp // a saturation of instances is no model of the axioms
+    else if (state.negConjecture.isEmpty) SZS_Satisfiable
     else SZS_CounterSatisfiable
   }
   final def appropriateThmStatus(state: LocalState, proof: Proof): StatusSZS = {
