@@ -4,7 +4,7 @@ lazy val leo = (project in file("."))
     description := "A Higher-Order Theorem Prover.",
     version := "1.7.0",
     organization := "org.leo",
-    scalaVersion := "2.13.8",
+    scalaVersion := "2.13.18",
 
     test in assembly := {},
     logLevel := Level.Warn,
