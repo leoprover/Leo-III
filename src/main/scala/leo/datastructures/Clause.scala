@@ -22,6 +22,14 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
+  /** The multiset of symbols occurring in this clause.
+    *
+    * Asked for once per comparison by the orderings that choose the given
+    * clause, so it is worth keeping rather than recomputing: a clause never
+    * changes.  Implementations should override this with a cached value. */
+  def symbols: Multiset[Signature.Key] =
+    lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature.Key]){case (a,b) => a.sum(b)}
+
   // Further properties
   /** Those literals in `lits` that are positive. */
   def posLits: Seq[Literal]
@@ -126,7 +134,7 @@ object Clause {
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
   /** Returns the multiset of symbols occurring in the clause. */
-  final def symbols(c: Clause): Multiset[Signature.Key] = c.lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature.Key]){case (a,b) => a.sum(b)}
+  @inline final def symbols(c: Clause): Multiset[Signature.Key] = c.symbols
   /** Returns the multiset of variables occurring freely in the clause. */
   final def vars(c: Clause): Multiset[Int] = c.lits.map(Literal.vars).foldLeft(Multiset.empty[Signature.Key]){case (a,b) => a.sum(b)}
   /** Returns a representation of the clause `c` as term. */

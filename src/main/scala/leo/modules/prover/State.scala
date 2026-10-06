@@ -197,9 +197,17 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
   final def removeUnprocessed(cls: Set[T]): Unit = {mpq.remove(cls)}
 
-  final def processed: Set[T] = currentProcessed.toSet
-  final def addProcessed(cl: T): Unit = { currentProcessed += cl }
-  final def removeProcessed(cls: Set[T]): Unit = {currentProcessed --= cls; removeUnits(cls)}
+  /* The main loop asks for the processed clauses several times per iteration and
+     once more for every clause an inference produces; each call copied the set.
+     The copy is kept until the set changes.  It is the same immutable set a fresh
+     copy would be, so it iterates in the same order. */
+  private[this] var processedSnapshot: Set[T] = null
+  final def processed: Set[T] = {
+    if (processedSnapshot == null) processedSnapshot = currentProcessed.toSet
+    processedSnapshot
+  }
+  final def addProcessed(cl: T): Unit = { currentProcessed += cl; processedSnapshot = null }
+  final def removeProcessed(cls: Set[T]): Unit = {currentProcessed --= cls; processedSnapshot = null; removeUnits(cls)}
 
   final def groundRewriteRules: Set[T] = currentGroundRewriteRules.toSet
   final def nonGroundRewriteRules: Set[T] = currentNonGroundRewriteRules.toSet

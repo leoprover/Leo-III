@@ -98,7 +98,13 @@ object Main {
             }
           case e0: OutOfMemoryError =>
             Out.output(SZSResult(SZS_MemoryOut, Configuration.PROBLEMFILE, e0.toString))
-          case _ => Out.output(SZSResult(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+          case _ =>
+            Out.output(SZSResult(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+            // An unexpected throwable otherwise leaves no clue at all: the SZS line carries
+            // the class name and nothing else, and the trace below only appears at a
+            // verbosity nobody runs a prover with.  stderr is outside the SZS protocol, so
+            // a consumer reading stdout is unaffected.
+            System.err.println(stackTraceAsString(e))
         }
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {

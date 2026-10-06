@@ -54,6 +54,7 @@ The most important parameters are
 | --primsubst `level` | Use the "itensity" `level` for instantiating flexible heads according to the primitive substitution rule <br><br> Default: 1<br>Valid values: 1-6 |
 | --unifiers `n` | During unification, use at most `n` distinct unifiers<br> <br> Default: 1<br> Valud values: non-negative numbers |
 | --unidepth `n` | During unification, use `n` as maximal unification search depth <br><br>Default: 8<br>Valid values: Non-negative numbers |
+| --instantiate-sets | Replace an axiom whose leading universal quantifier ranges over sets of properties (a type whose argument is itself a function type) by its instances at the problem's own constants of that type and at the empty set. A refutation of the instances refutes the problem; their saturation is reported as GaveUp, not as a countermodel. <br><br> Default: off |
 
 There are many more parameters, we will add them here some time in the future.
 
