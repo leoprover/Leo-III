@@ -142,7 +142,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
   override def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = hd match {
     case Atom(key,_) if !symbs.contains(key) => {
       val meta = sig(key)
-      if (meta.hasDefn) {
+      if (meta.hasDefn && !meta._defn.symbols.contains(key) && !isPropSet(Signature.PropSkolemConstant, meta.flag)) {
         mkRedex(meta._defn.δ_expand_upTo(symbs)(sig), args.δ_expand_upTo(symbs)(sig))
       } else {
         mkRoot(hd, args.δ_expand_upTo(symbs)(sig))
@@ -157,7 +157,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
     case SNil => funty
     case App(s0,tail) => funty match {
       case (_ -> out) => ty0(out, tail)
-      case _ => throw NotWellTypedException(this) // this should not happen if well-typed
+      case _ => throw NotWellTypedException("A symbol without function type is applied like a function.", this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
       case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)
@@ -180,11 +180,11 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
 
   override lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = {
     hd match {
-      case BoundIndex(_,_) => Map()
+      case BoundIndex(_,_) => args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
       case Atom(key,_)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
       case HeadClosure(Atom(key,_), _) => fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
       case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
-        case BoundFront(_) => Map()
+        case BoundFront(_) => args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap
         case TermFront(t) => fuseSymbolMap(t.asInstanceOf[TermImpl].symbolMap, args.symbolMap.view.mapValues {case (c,d) => (c,d+1)}.toMap)
         case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
       }
@@ -1402,6 +1402,7 @@ object TermImpl extends TermBank {
       case other       => Redex(other, mkSpine(args.toVector))
     }
     override final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    override final def mkTermAbs(ts: Seq[Type], body: Term): Term = ts.foldRight(body){case (ty, acc) => mkTermAbs(ty, acc)}
 
     override final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
     override final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
@@ -1439,6 +1440,7 @@ object TermImpl extends TermBank {
       case other       => mkRedex(other, mkSpine(args.toVector))
     }
   override final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
+  override final def mkTermAbs(typs: Seq[Type], body: Term): TermImpl = typs.foldRight(body.asInstanceOf[TermImpl]) {case (ty,acc) => mkTermAbstr(ty, acc) }
 
   override final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
   override final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {

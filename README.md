@@ -7,7 +7,7 @@ It is based on a paramodulation calculus with ordering constraints and, in tradi
 
 In addition for its HOL reasoning capabilities, Leo-III supports reasoning in many higher-order quantified modal logics [GS18,GSB17].
 
-Leo-III is developed at Freie Universität Berlin and the University of Luxembourg. From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). Since 2018, Leo-III is maintained and developed at the University of Luxembourg. The main contributors are (sorted alphabetically): Christoph Benzmüller, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
+Leo-III was initially developed at Freie Universität Berlin, and then at University of Luxembourg (until 2021). From 2014 - 2018, it was supported by the German National Research Foundation (DFG) under project BE 2501/11-1 (Leo-III). Since 2022, Leo-III is maintained and developed at the University of Greifswald, Germany. The main contributors are (sorted alphabetically): Christoph Benzmüller, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
 Leo-III may be cited as [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4435994.svg)](https://doi.org/10.5281/zenodo.4435994)
 
@@ -28,7 +28,7 @@ We are always greateful to hear feedback from our users:
 - If you are interested to contribute to the project, simply fork the GitHub repository and open pull requests!
 
 ## Further information
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](http://www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17] and Steen's dissertation [S18].
+Further information including related projects can be found on the [Leo-III project GitHub page](https://github.com/leoprover/), and for details on the Leo-III system (implementation), we refer to the system description [BSW17] and Steen's dissertation [S18].
 
 ## References
 

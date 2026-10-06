@@ -3,7 +3,7 @@ package leo.modules.encoding
 import leo.LeoTestSuite
 import leo.datastructures.{Role_Axiom, Term}
 import leo.modules.{signatureAsString,termToClause}
-import leo.modules.output.ToTPTP
+import leo.modules.output.ToTHF
 import leo.modules.input.Input
 
 /**
@@ -32,10 +32,10 @@ class MonomorphizationTest extends LeoTestSuite {
 
     Out.finest(signatureAsString(monoSig))
 
-    println(ToTPTP(monoSig))
+    println(ToTHF(monoSig))
     var i_prob = 0
     monoProb.foreach { prob =>
-      println(ToTPTP.toTPTP(s"prob_$i_prob", prob, Role_Axiom)(monoSig))
+      println(ToTHF.toTPTP(s"prob_$i_prob", prob, Role_Axiom)(monoSig))
       i_prob += 1
     }
   }

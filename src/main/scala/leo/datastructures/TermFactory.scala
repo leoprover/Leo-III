@@ -26,6 +26,8 @@ trait TermFactory {
   def mkTermApp(func: Term, args: Seq[Term]): Term
   /** Create abstraction term `(λ:t. body)` */
   def mkTermAbs(t: Type, body: Term): Term
+  /** Create abstraction `(λ:t1. ... λ:tn. body)`  */
+  def mkTermAbs(ts: Seq[Type], body: Term): Term
 
   /** Create type application term `(func arg)` */
   def mkTypeApp(func: Term, arg: Type): Term

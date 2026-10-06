@@ -133,11 +133,11 @@ object HOLSignature {
         mkTermApp(disj, mkTermApp(not, (2, o))),
         (1, o))))
 
-  protected def ifDef: Term = mkTermAbs(o,
+  protected def ifDef: Term =
     mkTermAbs(o,
-      mkTermApp(
-        mkTermApp(disj, (2, o)),
-        mkTermApp(not, (1, o)))))
+      mkTermAbs(o,
+        mkTermApp(
+          mkTermApp(impl, (1, o)), (2, o))))
 
   protected def iffDef: Term = mkTermAbs(o,
     mkTermAbs(o,

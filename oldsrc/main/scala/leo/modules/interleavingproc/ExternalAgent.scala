@@ -5,7 +5,7 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard._
 import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.external.{Future, TptpProver, TptpResult}
+import leo.modules.external.{Future, TPTPProver, TptpResult}
 import leo.modules.output.SZS_Unsatisfiable
 import leo.modules.prover.extCallInference
 
@@ -52,7 +52,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
     super.kill()
   }
 
-  class ExtCallTask(ext : TptpProver[AnnotatedClause], problem : Set[AnnotatedClause]) extends Task {
+  class ExtCallTask(ext : TPTPProver[AnnotatedClause], problem : Set[AnnotatedClause]) extends Task {
     override val name: String = "extCall"
     override def run: Delta = {
       ExtProverControl.submitSingleProver(ext, problem, state.state)
@@ -73,7 +73,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
       val szs = res.szsStatus // TODO Check again here for correct szs status?
       val origin = res.problem
       leo.Out.trace(s"[ExtProver]: ${res.prover.name} got the result ${szs.pretty}")
-      val emptyClause = AnnotatedClause(Clause.empty, extCallInference(res.proverName, res.problem))
+      val emptyClause = AnnotatedClause(Clause.empty, extCallInference(res.prover.name, res.problem))
       d.insert(ProcessedClause)(emptyClause)
       d.insert(SZSStatus)(szs)
       d.insert(DerivedClause)(emptyClause)
@@ -83,6 +83,6 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
     override val writeSet: Map[DataType[Any], Set[Any]] = Map()
     override def bid: Double = 1.0 / maxExtCall
     override def getAgent: Agent = self
-    override lazy val pretty: String = s"result(${res.proverName} -> ${res.szsStatus})"
+    override lazy val pretty: String = s"result(${res.prover.name} -> ${res.szsStatus})"
   }
 }

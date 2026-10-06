@@ -4,7 +4,7 @@ import leo.datastructures.TPTP.AnnotatedFormula
 import leo.datastructures.{Role_Definition, Role_Type, Signature}
 import leo.{Configuration, Out}
 import leo.modules.output._
-import leo.modules.input.{Input, ProblemStatistics}
+import leo.modules.input.{Input, ProblemStatistics, TPTPParser}
 
 object Modes {
   final def apply(beginTime: Long, parsedProblem: Seq[AnnotatedFormula], stats: ProblemStatistics): Unit = {
@@ -30,11 +30,11 @@ object Modes {
     implicit val sig: Signature = Signature.freshWithHOL()
     val sb: StringBuilder = new StringBuilder
     val erg = Input.processProblem(parsedProblem)
-    sb.append(ToTPTP(sig))
-    sb.append(ToTPTP.printDefinitions(sig))
+    sb.append(ToTHF(sig))
+    sb.append(ToTHF.printDefinitions(sig))
     erg.foreach {case (id, t, role) =>
       if (role != Role_Definition && role != Role_Type) {
-        sb.append(ToTPTP.toTPTP(id, termToClause(t), role)(sig))
+        sb.append(ToTHF.toTPTP(id, termToClause(t), role)(sig))
         sb.append("\n")
       }
     }
@@ -50,17 +50,25 @@ object Modes {
   final def typeCheck(parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     import leo.datastructures.{Term, Role}
     implicit val sig: Signature = Signature.freshWithHOL()
-    val erg = Input.processProblem(parsedProblem)
-    var notWellTyped: Seq[(Input.FormulaId, Term, Role)] = Seq.empty
-    erg.foreach {case (id, t, role) =>
-      val wellTyped = Term.wellTyped(t)
-      if (!wellTyped) notWellTyped = notWellTyped :+ (id, t, role)
+    var illTypedFormulas: Seq[AnnotatedFormula] = Seq.empty
+    parsedProblem.foreach { af =>
+      val processed = Input.processFormula(af)
+      if (!Term.wellTyped(processed._2))
+        illTypedFormulas = illTypedFormulas :+ af
     }
-    if (notWellTyped.isEmpty)
+    if (illTypedFormulas.isEmpty)
       Out.output(SZSResult(SZS_Success, Configuration.PROBLEMFILE, "Type check succeeded"))
     else {
       Out.output(SZSResult(SZS_TypeError, Configuration.PROBLEMFILE, "Problem is not well-typed"))
-      Out.output(SZSOutput(SZS_LogicalData, Configuration.PROBLEMFILE, s"Formulae ${notWellTyped.map(_._1).mkString(", ")} are not well-typed."))
+      val responseText = illTypedFormulas.map { af =>
+        val name = af.name
+        val origin = if (af.meta.isDefinedAt(TPTPParser.META_ORIGIN)) {
+          val origin0 = af.meta(TPTPParser.META_ORIGIN).asInstanceOf[TPTPParser.META_ORIGIN_TYPE]
+          s"${origin0._1}:${origin0._2}"
+        } else "<unknown origin>"
+        s"Illtyped formula $name in line $origin."
+      }
+      Out.output(SZSOutput(SZS_LogicalData, Configuration.PROBLEMFILE, responseText.mkString("\n")))
     }
   }
 

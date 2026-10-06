@@ -5,9 +5,9 @@
 
 %--- logic specification
 thf(spec, logic, ( $modal == [
-   $constants == $rigid,
-   $quantification == $constant,
+   $designation == $rigid,
+   $domains == $constant,
    $modalities == $modal_system_S5 ] )).
 
 %--- does ϕ → □◇ϕ hold?
-thf(mysterious, conjecture, ![A:$o]: (A => ([.] @ (<.> @ A))) ).
+thf(mysterious, conjecture, ![A:$o]: (A => [.]<.> A) ).

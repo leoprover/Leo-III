@@ -33,10 +33,10 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
 
   override def execute(): Boolean = {
     if (Configuration.ATPS.nonEmpty) {
-      import leo.modules.external.ExternalProver
+      import leo.modules.external.TPTPProvers
       Configuration.ATPS.foreach { case(name, path) =>
         try {
-          val p = ExternalProver.createProver(name,path)
+          val p = TPTPProvers.createProver(name,path)
 
           state.addExternalProver(p)
 

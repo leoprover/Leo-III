@@ -8,8 +8,8 @@
 
 %--- logic specification
 thf(spec, logic, ($modal == [
-   $constants == $rigid,
-   $quantification == $constant,
+   $designation == $rigid,
+   $domains == $constant,
    $modalities == $modal_system_K ] ) ).
 
 %--- a is some formula
@@ -21,7 +21,7 @@ thf(ax1, axiom, a).
 %thf(ax1, hypothesis, a).
 
 %--- Does □a hold? (true in case of globally valid ax1, otherwise not)
-thf(c, conjecture, ([.] @ a)).
+thf(c, conjecture, ([.] a)).
 
 % alternative: is □a valid in every world?
-%thf(c, conjecture-global, ([.] @ a)).
+%thf(c, conjecture-global, ([.] a)).

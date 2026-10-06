@@ -2,11 +2,11 @@ package leo.modules.calculus
 
 import leo.Out
 import leo.datastructures.Literal.Side
+import leo.datastructures.Term.{Bound, TermApp}
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
-import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
-
-import scala.annotation.tailrec
+import leo.modules.{HOLSignature, calculus}
+import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem, SuccessSZS}
 
 ////////////////////////////////////////////////////////////////
 ////////// Extensionality
@@ -163,6 +163,46 @@ object BoolExt extends CalculusRule {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////
+////////// Unification of flex-flex literals
+////////////////////////////////////////////////////////////////
+object FlexFlexUni extends CalculusRule {
+  final val name = "flex_uni"
+  final val inferenceStatus = SZS_Theorem
+
+  final def canApply(cl: Clause): Boolean = Clause.effectivelyEmpty(cl)
+
+  final def apply(cl: Clause): (Clause, Subst) = {
+    val variableGenerator = calculus.freshVarGen(cl)
+    val freshVar = variableGenerator.apply(HOLSignature.i) // the result to project everything on.
+    var substMap: Map[Int, Term] = Map.empty
+    val lits = cl.lits.iterator
+    while (lits.hasNext) {
+      val lit = lits.next()
+      val (left,right) = (lit.left, lit.right)
+      (left,right) match {
+        case (TermApp(Bound(_,idxLeft), argsLeft), TermApp(Bound(_,idxRight), argsRight)) =>
+          // this is idxLeft_tyleft(argsleft) =? idxRight_tyright(argsRight)
+          // we want substitutions: idxLeft -> lambda (argsleft.size). freshVar,
+          //                        idxRight -> lambda (argsRight.size). freshVar
+          if (!substMap.contains(idxLeft)) {
+            val leftBindingTarget: Term = Term.mkTermAbs(argsLeft.map(_.ty), freshVar.lift(argsLeft.size))
+            substMap = substMap + (idxLeft -> leftBindingTarget)
+          }
+          if (!substMap.contains(idxRight)) {
+            val rightBindingTarget: Term = Term.mkTermAbs(argsRight.map(_.ty), freshVar.lift(argsRight.size))
+            substMap = substMap + (idxLeft -> rightBindingTarget)
+          }
+        case _ =>  // Nothing to do, cannot be applied
+      }
+    }
+    val subst = Subst.fromMap(substMap)
+    val resultClause = cl.substitute(subst)
+    (resultClause, subst)
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////
 ////////// pre-Unification
@@ -556,7 +596,7 @@ object OrderedParamod extends CalculusRule {
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
             intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term,
-                  simulateResolution: Boolean = false)(implicit sig: Signature): Clause = {
+                  simulateResolution: Boolean = false)(implicit sig: Signature): (Clause,Clause) = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
@@ -569,9 +609,8 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"toFind: ${toFind.pretty(sig)}")
     Out.finest(s"replaceBy: ${replaceBy.pretty(sig)}")
 
-    /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
-    * i.e. it is lated eliminated using Simp. */
-    val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false)).map(l =>
+    /* We delete the withLiteral from the withClause */
+    val withLits_without_withLiteral = withClause.lits.patch(withIndex, Nil, 1).map(l =>
       Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
     )
     Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
@@ -597,10 +636,94 @@ object OrderedParamod extends CalculusRule {
     val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
-    val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
+    val withoutUniLit = withLits_without_withLiteral ++ rewrittenIntoLits
+    val result_preSimp = Clause(withoutUniLit :+ unificationLit)
+    val newlits_simp = Simp.shallowSimp(withoutUniLit)(sig)  :+ unificationLit
     val result = Clause(newlits_simp)
     Out.finest(s"result: ${result.pretty(sig)}")
-    result
+    (result,result_preSimp)
+  }
+}
+
+object InverseFunction extends CalculusRule {
+  override final val name: String = "detectInverse"
+  override final val inferenceStatus: SuccessSZS = SZS_Theorem
+
+  type ParameterIndex = Int
+  final def canApply(cl: Clause)(implicit sig: Signature): Option[(Signature.Key, ParameterIndex, Type)]  = {
+    import leo.datastructures.Term.{TermApp, Symbol}
+    val lits = cl.lits
+    if (lits.size == 2) {
+      val l1 = lits.head
+      val l2 = lits.tail.head
+
+      val (negLit, posLit) = if (l1.polarity) (l2, l1) else (l1, l2)
+      if (!negLit.polarity && posLit.polarity) {
+        if (negLit.equational && posLit.equational) {
+          (negLit.left, negLit.right) match {
+            case (TermApp(Symbol(idLeft), argsLeft), TermApp(Symbol(idRight), argsRight)) if idLeft == idRight && argsLeft.nonEmpty && argsRight.nonEmpty =>
+              assert(argsLeft.size == argsRight.size)
+              val leftVars = argsLeft.map(getVariableModuloEta(_))
+              if (leftVars.forall(_ > 0)) {
+                val rightVars = argsRight.map(getVariableModuloEta(_))
+                if (rightVars.forall(_ > 0)) {
+                  val posLitLeftVar = getVariableModuloEta(posLit.left)
+                  if (posLitLeftVar > 0) {
+                    val posLitRightVar = getVariableModuloEta(posLit.right)
+                    if (posLitRightVar > 0) {
+                      val argTuples = leftVars.zip(rightVars)
+                      val possiblyIdx = argTuples.indexOf((posLitLeftVar, posLitRightVar))
+                      if (possiblyIdx >= 0) {
+                        val paraPos = possiblyIdx
+                        Some((idLeft, paraPos, generateInvType(sig(idLeft)._ty, paraPos)))
+                      } else {
+                        val possiblyIdx = argTuples.indexOf((posLitRightVar, posLitLeftVar))
+                        if (possiblyIdx >= 0) {
+                          val paraPos = possiblyIdx
+                          Some((idLeft, paraPos, generateInvType(sig(idLeft)._ty, paraPos)))
+                        } else None
+                      }
+                    } else None
+                  } else None
+                } else None
+              } else None
+            case _ => None
+          }
+        } else None
+      } else None
+    } else None
+  }
+
+  /** ?[G:invtype]: ![X1....Xn]: G(X1,...,X(idx-1),X(idx+1),...,Xn,f(X1,...,Xn)) = X(idx)*/
+  final def apply(function: Signature.Key, invFunType: Type,
+                  parameterIndex: ParameterIndex)(implicit sig: Signature): Clause = {
+    import Term.{mkTermApp, mkBound, mkAtom}
+    import HOLSignature.===
+    val f = mkAtom(function) // The injective function
+    val fTypes = f.ty.funParamTypes
+    val inv = mkBound(invFunType, fTypes.size+1) // the inverse function to f, to be quantified first (therefore largest index)
+    val univArgs = fTypes.zip(Range.inclusive(fTypes.size, 1, -1)).map { case (ty,idx) => mkBound(ty, idx) }
+    val fAppliedWithArgs = mkTermApp(f, univArgs)
+    val (univArgsForInvBeforeAndIncludingIdx,univArgsForInvAfterIdx) = univArgs.splitAt(parameterIndex+1)
+    val invAppliedToArguments = mkTermApp(inv, (univArgsForInvBeforeAndIncludingIdx.init ++ univArgsForInvAfterIdx) :+ fAppliedWithArgs)
+    val equality = ===(invAppliedToArguments, univArgsForInvBeforeAndIncludingIdx.last)
+    val universallyQuantifiedBody = mkPolyUnivQuant(fTypes, equality)
+    val existentiallyQuantified = mkPolyExistQuant(Seq(invFunType), universallyQuantifiedBody)
+    val lit = Literal.mkLit(existentiallyQuantified, pol = true)
+    Clause(lit)
+  }
+
+
+  /**
+    * If the function `f` has type `ty` and is injective in parameter index `paraPos`, i.e.
+    * `f :: ty0 -> ty1 -> ... -> ty(paraPos)-> ... -> tyn`,
+    * then the inverse function to `f`, call it `g`, has type
+    * `g :: ty0 -> ty1 -> ... -> ... -> tyn -> ty(paraPos)`
+    */
+  private final def generateInvType(ty: Type, paraPos: Int): Type = {
+    val funTys = ty.funParamTypesWithResultType
+    val (pre0,post0) = funTys.splitAt(paraPos)
+    Type.mkFunType(pre0 ++ post0.tail, post0.head)
   }
 }
 

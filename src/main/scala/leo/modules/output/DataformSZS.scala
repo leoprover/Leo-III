@@ -42,47 +42,71 @@ import leo.datastructures.Pretty
   * @since 03.11.2017
   * @note Only relevant parts are implemented (further values may be implemented as necessary)
   */
-sealed abstract class DataformSZS extends Output with Pretty
+sealed abstract class DataformSZS extends Output with Pretty {
+  def longName: String
+  def shortName: String
+  override final def apply: String = longName
+  override final def pretty: String = shortName
+}
 
+object DataformSZS {
+  final def outputFormatLine(line : String) : Option[DataformSZS] = {
+    if(line.startsWith("% SZS output start")) apply(line.drop(19).takeWhile(!_.isWhitespace))
+    else None
+  }
+
+  final def apply(dataform: String): Option[DataformSZS] = {
+    dataform match {
+      case SZS_LogicalData.longName => Some(SZS_LogicalData)
+      case SZS_Proof.longName => Some(SZS_Proof)
+      case SZS_Refutation.longName => Some(SZS_Refutation)
+      case SZS_CNFRefutation.longName => Some(SZS_CNFRefutation)
+      case SZS_ListOfFormulae.longName => Some(SZS_ListOfFormulae)
+      case SZS_ListOfTHF.longName => Some(SZS_ListOfTHF)
+      case SZS_Assurance.longName => Some(SZS_Assurance)
+      case _ => None
+    }
+  }
+}
 /** Logical data. */
 case object SZS_LogicalData extends DataformSZS {
-  val apply = "LogicalData"
-  val pretty = "LDa"
+  override final val longName: String = "LogicalData"
+  override final val shortName: String = "LDa"
 }
 
 /** A proof. */
 case object SZS_Proof extends DataformSZS {
-  val apply = "Proof"
-  val pretty = "Prf"
+  override final val longName: String = "Proof"
+  override final val shortName: String = "Prf"
 }
 
 case object SZS_Refutation extends DataformSZS {
-  val apply = "Refutation"
-  val pretty = "Ref"
+  override final val longName: String = "Refutation"
+  override final val shortName: String = "Ref"
 }
 
 /** A refutation in clause normal form, including, for FOF Ax or C, the
   translation from FOF to CNF (without the FOF to CNF translation it's an
   IncompleteProof). */
 case object SZS_CNFRefutation extends DataformSZS {
-  val apply = "CNFRefutation"
-  val pretty = "CRf"
+  override final val longName: String = "CNFRefutation"
+  override final val shortName: String = "CRf"
 }
 
 /** A list of formulae. */
 case object SZS_ListOfFormulae extends DataformSZS {
-  val apply = "ListOfFormulae"
-  val pretty = "Lof"
+  override final val longName: String = "ListOfFormulae"
+  override final val shortName: String = "Lof"
 }
 
 /** A list of THF formulae. */
 case object SZS_ListOfTHF extends DataformSZS {
-  val apply = "ListOfTHF"
-  val pretty = "Lth"
+  override final val longName: String = "ListOfTHF"
+  override final val shortName: String = "Lth"
 }
 
 /** Only an assurance of the success ontology value. */
 case object SZS_Assurance extends DataformSZS {
-  val apply = "Assurance"
-  val pretty = "Ass"
+  override final val longName: String = "Assurance"
+  override final val shortName: String = "Ass"
 }

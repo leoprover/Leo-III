@@ -143,7 +143,7 @@ trait Term extends Pretty with Prettier {
 // Associated traits, exceptions, ...
 /////////////////////////////
 
-class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeException(msg) {
+class NotWellTypedException(msg: String, val term: Option[Term]) extends RuntimeException(msg) {
   def this(msg: String) = {
     this(msg, None)
   }
@@ -176,6 +176,7 @@ object Term extends TermBank {
   override final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
   override final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
   override final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
+  override final def mkTermAbs(ts: Seq[Type], body: Term): Term = TermImpl.mkTermAbs(ts, body)
   override final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
   override final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
   override final def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)

@@ -1,11 +1,11 @@
 package leo.modules.input
 
-import leo.datastructures.{Kind, Role, Signature, TPTP, Term, Type}
+import leo.datastructures.{Kind, NotWellTypedException, Role, Signature, TPTP, Term, Type}
 import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
-import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkType, mkVarType, mkProdType, typeKind}
+import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkVarType, typeKind}
 import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 import leo.modules.SZSException
-import leo.Out
+import leo.{Configuration, Out}
 
 import scala.annotation.tailrec
 
@@ -26,8 +26,8 @@ object InputProcessing {
 
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
-  type TermOrType = Either[Term, Type]
-  type TypeOrKind = Either[Type, Kind]
+  private type TermOrType = Either[Term, Type]
+  private type TypeOrKind = Either[Type, Kind]
 
   // Ad-hoc polymorphic arithmetic constants of TPTP.
   // This is a bit hacky, as they are defined on multiple different types; so we make a case distinction below
@@ -66,8 +66,8 @@ object InputProcessing {
         case f@TFFAnnotated(_, _, _, _) => processAnnotatedTFF(sig)(f)
         case f@FOFAnnotated(_, _, _, _) => processAnnotatedFOF(sig)(f)
         case f@CNFAnnotated(_, _, _, _) => Some(processAnnotatedCNF(sig)(f))
-        case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported (yet).")
-        case TCFAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TCF format not supported (yet).")
+        case f@TCFAnnotated(_, _, _, _) => processAnnotatedTCF(sig)(f)
+        case TPIAnnotated(_, _, _, _) => throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
       }
       maybeFormula match {
         case None => (name, LitTrue, role)
@@ -78,6 +78,10 @@ object InputProcessing {
       }
     } catch {
       case e: SZSException => throw new SZSException(e.status, s"Interpreter error in annotated TPTP formula '$name': ${e.getMessage}")
+      case e: NotWellTypedException =>
+        Out.finest(leo.modules.output.ToTHF.apply(sig))
+        val errorDetail = e.term.map(leo.modules.output.ToTHF.apply(_)(sig))
+        throw new SZSException(SZS_TypeError, s"Type error in annotated TPTP formula '$name'. Subterm: ${errorDetail.getOrElse("")} (variable identifiers may differ). Reason: ${e.getMessage}")
     }
   }
 
@@ -191,56 +195,56 @@ object InputProcessing {
 
       case BinaryFormula(TPTP.THF.App, left, right) => // handle specially, as there might be polymorphic symbols involved
         val convertedLeft = convertTHFFormula0(sig)(left, termVars, typeVars, vars)
-        if (convertedLeft.ty.isPolyType) {
-          import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
-          // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
-          // explicitly as it is not expected to be given by the user.
-          // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
-          // For the TH1 function @=, this needs to be given explicitly by the user
-          // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
-          // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
-          if (convertedLeft == HOLBinaryConnective.toTerm(EQ)) {
-            // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
-            try {
-              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-              val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
-              mkTermApp(intermediate, convertedRight)
-            } catch {
-              case _: SZSException =>
-                val convertedRight = convertTHFType0(sig)(right, typeVars)
-                convertedRight match {
-                  case Left(convertedRight0) =>
-                    Left(mkTypeApp(convertedLeft, convertedRight0))
-                    mkTypeApp(convertedLeft, convertedRight0)
-                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
-                }
-            }
 
-          } else if (convertedLeft == HOLBinaryConnective.toTerm(NEQ)) {
-            // Special case 2: Non-equality -- Fill implicit type argument manually
-            val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-            val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
-            mkTermApp(intermediate, convertedRight)
-          } else {
-            convertedLeft match {
-              case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
-                // AdHoc polymorphic case for arithmetic constants, applied with @
+          if (convertedLeft.ty.isPolyType) {
+            import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
+            // Special case (due to TH0 compliance): If (=) or (!=) used as prefix conn_term, we need to provide the type argument
+            // explicitly as it is not expected to be given by the user.
+            // E.g.: (=) @ t1 @ t2 ... instead of (=) @ type @ t1 @ t2.
+            // For the TH1 function @=, this needs to be given explicitly by the user
+            // as in (@=) @ type @ t1 @ t2. However, both @= and (=) are mapped to the same equality symbol.
+            // Hence, we cannot know at this place whether to expect a type argument or not. So we try both in this case.
+            if (convertedLeft == HOLBinaryConnective.toTerm(EQ)) {
+              // Special case 1: Equality -- Either fill implicit type argument manually or use explicit type argument
+              try {
                 val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
                 val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
                 mkTermApp(intermediate, convertedRight)
-              case _ => // Standard polymorphic case: Expect type argument
-                val convertedRight = convertTHFType0(sig)(right, typeVars)
-                convertedRight match {
-                  case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
-                  case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
-                }
+              } catch {
+                case _: SZSException =>
+                  val convertedRight = convertTHFType0(sig)(right, typeVars)
+                  convertedRight match {
+                    case Left(convertedRight0) =>
+                      mkTypeApp(convertedLeft, convertedRight0)
+                    case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                  }
+              }
+
+            } else if (convertedLeft == HOLBinaryConnective.toTerm(NEQ)) {
+              // Special case 2: Non-equality -- Fill implicit type argument manually
+              val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+              val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+              mkTermApp(intermediate, convertedRight)
+            } else {
+              convertedLeft match {
+                case leo.datastructures.Term.Symbol(id) if adHocPolymorphicArithmeticConstants.contains(id) =>
+                  // AdHoc polymorphic case for arithmetic constants, applied with @
+                  val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+                  val intermediate = mkTypeApp(convertedLeft, convertedRight.ty)
+                  mkTermApp(intermediate, convertedRight)
+                case _ => // Standard polymorphic case: Expect type argument
+                  val convertedRight = convertTHFType0(sig)(right, typeVars)
+                  convertedRight match {
+                    case Left(convertedRight0) => mkTypeApp(convertedLeft, convertedRight0)
+                    case Right(k) => throw new SZSException(SZS_InputError, s"Unexpected type argument '${k.pretty}' where proper type was expected.")
+                  }
+              }
             }
+          } else {
+            // Standard monomorphic case: Expect term argument
+            val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
+            mkTermApp(convertedLeft, convertedRight)
           }
-        } else {
-          // Standard monomorphic case: Expect term argument
-          val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
-          mkTermApp(convertedLeft, convertedRight)
-        }
 
       case BinaryFormula(connective, left, right) =>
         assert(connective != TPTP.THF.App)
@@ -249,6 +253,19 @@ object InputProcessing {
         val convertedRight = convertTHFFormula0(sig)(right, termVars, typeVars, vars)
         convertedConnective.apply(convertedLeft, convertedRight)
 
+      case FunctionTerm("$distinct", args) =>
+        import leo.modules.HOLSignature.{!===, &}
+        if (args.size >= 2) {
+          val pairwiseCombinationsOfArgs = args.map(convertTHFFormula0(sig)(_, termVars, typeVars, vars)).combinations(2)
+          val firstCombination = pairwiseCombinationsOfArgs.next()
+          val firstInequality = !===(firstCombination.head, firstCombination.tail.head)
+          pairwiseCombinationsOfArgs.foldLeft(firstInequality) { case (term, combination) =>
+            val left = combination.head
+            val right = combination.tail.head
+            val intermediateResult: Term = !===(left, right)
+            &(term, intermediateResult)
+          }
+        } else LitTrue
       case ft@FunctionTerm(f, args) =>
         if (sig.exists(f)) {
           val meta = sig(f)
@@ -401,7 +418,7 @@ object InputProcessing {
     }
   }
 
-  lazy val letInfo: Unit = {
+  private lazy val letInfo: Unit = {
     leo.Out.info(s"Let expressions in the input problem have been expanded exhaustively.")
   }
   ////// Functions related to THF let-expression expansion BEGIN
@@ -785,49 +802,72 @@ object InputProcessing {
             s"At least one of '${left.pretty}' and '${right.pretty}' were recognized as a type.")
         }
 
+      case AtomicFormula("$distinct", args) =>
+        import leo.modules.HOLSignature.{!===, &}
+        if (args.size >= 2) {
+          val pairwiseCombinationsOfArgs = args.map{ arg =>
+            val res = convertTFFTerm(sig)(arg, termVars, typeVars, vars)
+            res match {
+              case Left(termValue) => termValue
+              case Right(typeValue) => throw new SZSException(SZS_InputError, s"Type argument '${typeValue.pretty(sig)}' not allowed in $$distinct predicate.")
+            }
+          }.combinations(2)
+          val firstCombination = pairwiseCombinationsOfArgs.next()
+          val firstInequality = !===(firstCombination.head, firstCombination.tail.head)
+          pairwiseCombinationsOfArgs.foldLeft(firstInequality) { case (term, combination) =>
+            val left = combination.head
+            val right = combination.tail.head
+            val intermediateResult: Term = !===(left, right)
+            &(term, intermediateResult)
+          }
+        } else LitTrue
       case ft@AtomicFormula(f, args) =>
         val key = getOrCreateSymbolWithWarning(sig)(f, mkSimplePredicateType(args.size))
-        val func = mkAtom(key)(sig)
-        if (ft.isConstant) func
-        else {
-          if (func.ty.isPolyType) {
-            if (adHocPolymorphicArithmeticConstants.contains(key)) {
-              numberWarning
-              // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
-              // just get the type from the argument and apply it explicitly.
-              // The ad-hoc constant have at least one argument, so we can do that.
-              val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-              if (convertedArgs.nonEmpty) {
-                convertedArgs.head match {
-                  case Left(arg) =>
-                    val argType = arg.ty
-                    val intermediate = mkTypeApp(func, argType)
-                    Term.local.mkApp(intermediate, convertedArgs)
-                  case Right(_) => throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is applied to a type argument.")
-                }
-              } else throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is not applied to any argument.")
-            } else {
-              val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
-              val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-              val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
-              if (termArgs.isEmpty) {
-                val intermediate = mkTypeApp(func, typeArgs)
-                val remainingTermArgs = args.drop(expectedTypeArgumentCount)
-                if (remainingTermArgs.nonEmpty) {
-                  val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-                  val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
-                  if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
-                  else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
-                } else intermediate
+        if (sig(key).isTypeConstructor) {
+          throw new SZSException(SZS_TypeError, s"Symbol '${sig(key).name}' is used as term symbol, but it's a type (or type constructor).")
+        } else {
+          val func = mkAtom(key)(sig)
+          if (ft.isConstant) func
+          else {
+            if (func.ty.isPolyType) {
+              if (adHocPolymorphicArithmeticConstants.contains(key)) {
+                numberWarning
+                // We just assume that it's well-formed (applied to the right number of arguments etc.); so we
+                // just get the type from the argument and apply it explicitly.
+                // The ad-hoc constant have at least one argument, so we can do that.
+                val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                if (convertedArgs.nonEmpty) {
+                  convertedArgs.head match {
+                    case Left(arg) =>
+                      val argType = arg.ty
+                      val intermediate = mkTypeApp(func, argType)
+                      Term.local.mkApp(intermediate, convertedArgs)
+                    case Right(_) => throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is applied to a type argument.")
+                  }
+                } else throw new SZSException(SZS_InputError, s"Arithmetic TPTP symbol '${func.pretty(sig)}' is not applied to any argument.")
               } else {
-                throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                val expectedTypeArgumentCount = func.ty.polyPrefixArgsCount
+                val expectedTypeArgs = args.take(expectedTypeArgumentCount).map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                val (termArgs, typeArgs) = expectedTypeArgs.partitionMap(identity)
+                if (termArgs.isEmpty) {
+                  val intermediate = mkTypeApp(func, typeArgs)
+                  val remainingTermArgs = args.drop(expectedTypeArgumentCount)
+                  if (remainingTermArgs.nonEmpty) {
+                    val expectedTermArgs = remainingTermArgs.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+                    val (termArgs2, typeArgs2) = expectedTermArgs.partitionMap(identity)
+                    if (typeArgs2.isEmpty) mkTermApp(intermediate, termArgs2)
+                    else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in monomorphic body of polymorphic function application: ${typeArgs2.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                  } else intermediate
+                } else {
+                  throw new SZSException(SZS_InputError, s"Unexpected term arguments in polymorphic function application: ${termArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
+                }
               }
+            } else {
+              val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
+              val (convertedTermArgs, convertedTypeArgs) = convertedArgs.partitionMap(identity)
+              if (convertedTypeArgs.isEmpty) mkTermApp(func, convertedTermArgs)
+              else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in function application: ${convertedTypeArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
             }
-          } else {
-            val convertedArgs = args.map(convertTFFTerm(sig)(_, termVars, typeVars, vars))
-            val (convertedTermArgs, convertedTypeArgs) = convertedArgs.partitionMap(identity)
-            if (convertedTypeArgs.isEmpty) mkTermApp(func, convertedTermArgs)
-            else throw new SZSException(SZS_TypeError, s"Unexpected type arguments in function application: ${convertedTypeArgs.map(x => s"'${x.pretty(sig)}'").mkString(", ")}.")
           }
         }
 
@@ -850,7 +890,7 @@ object InputProcessing {
         }
         // (1) transform implicit variables to "lambda form":
         // transformedBindingMap is a map: atom -> (function that maps given arguments to the RHS in which the formal parameters are replaced by them.)
-        val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (typ, lhs, rhs)) =>
+        val transformedBindingMap: Map[String, Seq[TFF.Term] => TFF.Term] = consolidatedBindingMap.map { case (atom, (_, lhs, rhs)) =>
           tffLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, params)) =>
               if (params.isEmpty) {
@@ -1409,18 +1449,18 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula): Term = {
+  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula, termVars: Seq[String] = Seq.empty): Term = {
     var convertedLiterals: Seq[Term] = Vector.empty
-    var termVars: Seq[String] = List.empty // We only prepend, this is more efficient in List
+    var termVars0: Seq[String] = termVars // We only prepend, this is more efficient in List
     // The general approach is: We don't pass through all literals before processing them (in order to collect the variables)
     // as this might be inefficient in very large formulas.
-    // Instead, we keep track of all already seen variables in an explicit argument 'termVars'
+    // Instead, we keep track of all already seen variables in an explicit argument 'termVars0'
     // which is also returned by the convertCNFX functions (containing the updated list of variables).
     // As we don't want to change already converted variables, new variables are prepended (i.e., incremented de Bruijn index).
     formula.foreach { lit =>
-      val (convertedLiteral, updatedTermVars) = convertCNFLiteral(sig)(lit, termVars)
+      val (convertedLiteral, updatedTermVars) = convertCNFLiteral(sig)(lit, termVars0)
       convertedLiterals = convertedLiterals :+ convertedLiteral
-      termVars = updatedTermVars
+      termVars0 = updatedTermVars
     }
     leo.datastructures.mkDisjunction(convertedLiterals)
   }
@@ -1489,6 +1529,38 @@ object InputProcessing {
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
+  // TCF processing
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+
+  final def processAnnotatedTCF(sig: Signature)(statement: TPTP.TCFAnnotated): Option[Term] = {
+    import TPTP.TCF.{Typing, Logical}
+
+    statement.formula match {
+    case Typing(atom, typ) =>
+      processAnnotatedTFF(sig)(TPTP.TFFAnnotated(statement.name, statement.role, TPTP.TFF.Typing(atom, typ), statement.annotations))
+    case Logical(f) => Some(convertTCFFormula(sig)(f))
+    }
+  }
+
+  @inline private[this] final def convertTCFFormula(sig: Signature)(formula: TPTP.TCF.Formula): Term = {
+    val termVarsFromPrefixQuantification = formula.variables.map(_._1)
+    val typesFromPrefixQuantification = formula.variables.map { case (_, ty0) =>
+      val convertedType = ty0 match {
+        case Some(typeOrKind0) => convertTFFType(sig)(typeOrKind0)
+        case None => Left(mkSimpleFunctionType(0))
+      }
+      convertedType match {
+        case Left(t) => TermVariableMarker(t)
+        case Right(_) => throw new SZSException(SZS_InputError, s"Unrecognized type in TCF formula '${formula}'.")
+      }
+    }
+    val convertedClause = convertCNFFormula(sig)(formula.clause, termVars = termVarsFromPrefixQuantification)
+    mkPolyQuantified(HOLSignature.Forall, typesFromPrefixQuantification, convertedClause)
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   // Auxiliary methods
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
@@ -1511,13 +1583,17 @@ object InputProcessing {
     else {
       if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
       else {
-        leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
-        sig.addUninterpreted(name, ty)
+        if (Configuration.isSet("no-default-types"))
+          throw new SZSException(SZS_TypeError, s"Symbol '$name' has unknown type. Declare its type first.")
+        else {
+          leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
+          sig.addUninterpreted(name, ty)
+        }
       }
     }
   }
 
-  lazy val numberWarning: Unit = {
+  private lazy val numberWarning: Unit = {
     leo.Out.warn(s"Leo-III currently does not fully support arithmetic. " +
       s"Numbers in the problem file are recognized, but there is no guarantee for adequateness of processing them whatsoever.")
   }

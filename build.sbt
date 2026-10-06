@@ -1,36 +1,48 @@
 lazy val leo = (project in file("."))
   .settings(
-    name := "Leo III",
+    name := "Leo-III",
     description := "A Higher-Order Theorem Prover.",
-    version := "1.7.1",
+    version := "1.8.1",
     organization := "org.leo",
     scalaVersion := "2.13.18",
+    licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
 
-    test in assembly := {},
     logLevel := Level.Warn,
-    logLevel in assembly := Level.Error,
-    mainClass in (Compile, run) := Some("leo.Main"),
-    mainClass in assembly := Some("leo.Main"),
-    mainClass in (Compile, packageBin) := Some("leo.Main"),
+
+    Compile/mainClass := Some("leo.Main"),
+    assembly/mainClass := Some("leo.Main"),
+    assembly/assemblyJarName := s"leo3-${version.value}.jar",
+    assembly/logLevel := Level.Error,
+    assembly/test := {},
 
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
     ),
+    // set stack size to 4m
+    javaOptions ++= Seq(
+      "-Xss4m",
+      "-Xms512m",
+      "-Xmx2g"
+    ),
+    //resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.3",
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.19" % "test"),
+    
+    nativeImageOptions += s"-H:ReflectionConfigurationFiles=${baseDirectory.value / "contrib" / "native-image-configs" / "reflect-config.json"}",
+    nativeImageOptions += s"-H:ConfigurationFileDirectories=${baseDirectory.value / "contrib" / "native-image-configs" }",
+    nativeImageOptions +="-H:+JNI",
+    //nativeImageOptions +="--static",
+    //nativeImageOptions +="--libc=musl",
+    //nativeImageOptions +="-H:CCompilerPath=/home/lex/dev/casc/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc",
+    //nativeImageOptions +="-H:UseMuslC=/home/lex/dev/casc/x86_64-linux-musl-native",
 
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.1",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.10" % "test"),
-
-    // set stack size to 4m 
-    javaOptions += "-Xss4m",
-    parallelExecution in Test := false,
-    assemblyJarName in assembly := "leo3.jar",
-    exportJars := true
-  )
+    Test/parallelExecution := false,
+  ).enablePlugins(NativeImagePlugin)
 
 // The following are new commands to allow build with debug output
 lazy val elideLevel = settingKey[Int]("elide code below this level.")
-elideLevel in Global := 501
+Global/elideLevel := 501
 scalacOptions ++= Seq("-Xelide-below", elideLevel.value.toString)
 def compileCommand(name: String, level: Int) =
   Command.command(s"${name}Compile") { s =>

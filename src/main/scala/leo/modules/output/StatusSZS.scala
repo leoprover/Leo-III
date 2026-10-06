@@ -53,6 +53,19 @@ sealed abstract class StatusSZS extends Output with Pretty
  * taken from [[http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology]].
  */
 sealed abstract class SuccessSZS extends StatusSZS
+object SuccessSZS {
+  final def apply(input: String): Option[SuccessSZS] = input.toUpperCase match {
+    case SZS_Theorem.pretty => Some(SZS_Theorem)
+    case SZS_CounterTheorem.pretty => Some(SZS_CounterTheorem)
+    case SZS_Satisfiable.pretty => Some(SZS_Satisfiable)
+    case SZS_EquiSatisfiable.pretty => Some(SZS_EquiSatisfiable)
+    case SZS_CounterSatisfiable.pretty => Some(SZS_CounterSatisfiable)
+    case SZS_Unsatisfiable.pretty => Some(SZS_Unsatisfiable)
+    case SZS_ContradictoryAxioms.pretty => Some(SZS_ContradictoryAxioms)
+    case SZS_Success.pretty => Some(SZS_Success)
+    case _ => None
+  }
+}
 
 /**
  * All models of Ax are models of C.
@@ -248,13 +261,12 @@ case object SZS_Unknown extends NoSuccessSZS {
 /** SZS Output factory methods. */
 object StatusSZS  {
 
-  def answerLine(name : String) : Option[StatusSZS] = {
-    if(name.startsWith("% SZS status") || name.startsWith("# SZS status")){
-      apply(name.substring(13).takeWhile( _ != ' ').toString)
-    } else None
+  final def answerLine(name : String) : Option[StatusSZS] = {
+    if (name.startsWith("% SZS status")) apply(name.substring(13).takeWhile(!_.isWhitespace))
+    else None
   }
 
-  def apply(name : String) : Option[StatusSZS] = name match {
+  final def apply(name : String) : Option[StatusSZS] = name match {
     case SZS_Theorem.`apply` => Some(SZS_Theorem)
     case SZS_Satisfiable.`apply` => Some(SZS_Satisfiable)
     case SZS_CounterSatisfiable.`apply` => Some(SZS_CounterSatisfiable)

@@ -1,11 +1,11 @@
 package leo.modules
 
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, LanguageLevel, Subst, TPTP, Term}
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, LanguageLevel, TPTP, Term}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
-import leo.modules.external.TptpResult
+import leo.modules.external.TPTPProver.Result
 import leo.modules.output._
 import leo.modules.input.Input
 
@@ -29,7 +29,7 @@ package object prover {
     val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
 
     if (state.negConjecture.nonEmpty) {
-      Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
+      Out.info(s"Found a conjecture (or negated_conjecture) and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
       val relevantAxioms = if (state.negConjecture.exists(cl => Clause.asTerm(cl.cl).symbols.distinct.intersect(state.signature.allUserConstants).isEmpty)) {
         leo.Out.finest(s"trivial conjecture, lets take all axioms.")
@@ -390,7 +390,7 @@ package object prover {
     else SZS_CounterSatisfiable
   }
   final def appropriateThmStatus(state: LocalState, proof: Proof): StatusSZS = {
-    if (state.negConjecture.isEmpty) SZS_Unsatisfiable
+    if (state.conjecture == null) SZS_Unsatisfiable /* also if negated conjecture exists */
     else {
       if (conjInProof(proof)) SZS_Theorem
       else SZS_ContradictoryAxioms
@@ -398,16 +398,31 @@ package object prover {
   }
 
   final def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    import leo.modules.calculus.FlexFlexUni
     if (emptyClause == null) state.setSZSStatus(appropriateSatStatus(state))
     else {
-      state.setDerivationClause(emptyClause)
-      val proof = proofOf(emptyClause)
+      // emptyClause is not necessarily empty (as in "no literals" in sequence).
+      // it can also be "effectively empty" (only consisting of flex-flex unification literals).
+      // If so (second case), we want to add an explicit $false clause by doing the unification.
+      val derivationClause: AnnotatedClause = if (Clause.empty(emptyClause.cl)) {
+        emptyClause
+      } else {
+        val effectiveEmptyClause = emptyClause.cl
+        assert(FlexFlexUni.canApply(effectiveEmptyClause))
+        val (solvedFlexFlexClause0, subst) = FlexFlexUni.apply(effectiveEmptyClause)
+        val substAsOutput: Output = ToTHF(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
+        val solvedFlexFlexClause = AnnotatedClause(solvedFlexFlexClause0, InferredFrom(FlexFlexUni, Seq((emptyClause, substAsOutput))), ClauseAnnotation.PropNoProp)
+        val simplifiedClause = Control.simp(solvedFlexFlexClause)(state)
+        simplifiedClause
+      }
+      state.setDerivationClause(derivationClause)
+      val proof = proofOf(derivationClause)
       state.setProof(proof)
       state.setSZSStatus(appropriateThmStatus(state, proof))
     }
   }
 
-  final def endgameResult(result: TptpResult[_]): Boolean = {
+  final def endgameResult(result: Result[_]): Boolean = {
     import leo.modules.external.Capabilities
     if (result.szsStatus == SZS_Unsatisfiable)
       true
