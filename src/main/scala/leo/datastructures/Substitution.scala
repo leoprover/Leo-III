@@ -14,7 +14,7 @@ sealed abstract class Subst extends Pretty {
   /** s.comp(s') = t
     * where t = s o s' */
   def comp(other: Subst): Subst
-  def o = comp(_)
+  def o: Subst => Subst = comp(_)
 
   /** If this is an substitution for terms, apply element-wise type substitution `typeSubst` to it, error otherwise. */
   def applyTypeSubst(typeSubst: Subst): Subst
@@ -191,7 +191,7 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
   final def length = fts.length
   final def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
 
-  final def substBndIdx(i: Int) = if (fts.length >= i) fts(i-1)
+  final def substBndIdx(i: Int): Front = if (fts.length >= i) fts(i-1)
   else BoundFront(i+shift-fts.length)
   final def fronts = fts
 
@@ -250,13 +250,13 @@ case class BoundFront(n: Int) extends Front {
   final def pretty: String = s"$n"
 }
 case class TermFront(term: Term) extends Front {
-  def substitute(subst: Subst) = TermFront(term.termClosure(subst))
+  def substitute(subst: Subst): TermFront = TermFront(term.termClosure(subst))
 
   /** Pretty */
   final def pretty: String = term.pretty
 }
 case class TypeFront(typ: Type) extends Front {
-  def substitute(subst: Subst) = TypeFront(typ.closure(subst))
+  def substitute(subst: Subst): TypeFront = TypeFront(typ.closure(subst))
 
   /** Pretty */
   final def pretty: String = typ.pretty

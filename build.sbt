@@ -26,8 +26,9 @@ lazy val leo = (project in file("."))
       "-Xmx2g"
     ),
     //resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.3",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.19" % "test"),
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.5",
+    libraryDependencies += "io.github.leoprover" %% "logic-embedding-runtime" % "2.0.0",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % "test",
     
     nativeImageOptions += s"-H:ReflectionConfigurationFiles=${baseDirectory.value / "contrib" / "native-image-configs" / "reflect-config.json"}",
     nativeImageOptions += s"-H:ConfigurationFileDirectories=${baseDirectory.value / "contrib" / "native-image-configs" }",

@@ -1,6 +1,7 @@
 package leo.datastructures
 
 
+import leo.datastructures.impl.MultisetImpl
 /**
   * Multisets.
   *
@@ -75,5 +76,5 @@ object Multiset {
   def apply[A](elem: A, elems: A*): Multiset[A] = impl.MultisetImpl.apply(elem, elems:_*)
   def apply[A](coll: Iterable[A]): Multiset[A] = impl.MultisetImpl.apply(coll)
 
-  def fromMap[A](map: Map[A, Int]) = impl.MultisetImpl.fromMap(map)
+  def fromMap[A](map: Map[A, Int]): MultisetImpl[A] = impl.MultisetImpl.fromMap(map)
 }

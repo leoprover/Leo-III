@@ -1,6 +1,8 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{ClausePosition, ClausePositionSet, Position, Literal, Clause}
+import leo.datastructures.{Clause, ClausePosition, ClausePositionSet, Literal, Position}
+
+import scala.annotation.tailrec
 
 
 protected[datastructures] class ClausePositionTrieSet extends ClausePositionSet {
@@ -128,6 +130,7 @@ protected[impl] class ClausePositionTrieSetNode { self =>
     private var leftDone: Boolean = false
     private var rightDone: Boolean = false
 
+    @tailrec
     override def hasNext: Boolean = {
       if (cur == null) {
         if (queue.isEmpty) false

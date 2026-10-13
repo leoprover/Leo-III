@@ -5,6 +5,7 @@ import leo.modules._
 import leo.modules.external.{Future, TPTPProver}
 import TPTPProver.Result
 import leo.modules.prover.State.LastCallStat
+import leo.modules.indexing.ClauseFeature
 
 /**
   * Created by lex on 20.02.16.
@@ -373,7 +374,7 @@ class FVIndex {
   val maxFeatures: Int = 100
   var initialized = false
   var features: Seq[CFF] = Vector.empty
-  var index = FVIndex()
+  var index: FixedLengthTrie[ClauseFeature,AnnotatedClause] = FVIndex()
   def clauseFeatures: Seq[CFF] = features
 
   protected[modules] final def reset(): Unit = {

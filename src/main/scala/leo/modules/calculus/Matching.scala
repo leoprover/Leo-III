@@ -58,7 +58,7 @@ object HOMatching extends Matching {
              searchDepth: Int) = this(unprocessed, flexRigid, solved, solvedTy, None, searchDepth) // for in node
 
     override final def isTerminal: Boolean = searchDepth >= MAX_DEPTH
-    override def toString  = s"{${unprocessed.map(x => s"<${x._1},${x._2}>").mkString}}"
+    override def toString: String  = s"{${unprocessed.map(x => s"<${x._1},${x._2}>").mkString}}"
   }
 
 

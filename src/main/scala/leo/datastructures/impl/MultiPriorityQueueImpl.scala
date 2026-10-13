@@ -15,7 +15,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     private var elem: A = x
     def get: A = elem
     def clear(): Unit = {elem = null.asInstanceOf[A]}
-    override def equals(o: Any) = o match {
+    override def equals(o: Any): Boolean = o match {
       case x:ObjectProxy @unchecked => x.elem == elem
       case _ => false
     }

@@ -185,7 +185,7 @@ object PreFilterSet {
     */
   def isUnused(formula : AnnotatedFormula) : Boolean = unused.contains(formula.name)
 
-  def clear() = {
+  def clear(): Unit = {
     unused.clear()
     usedSymbs.clear()
     freq.clear()

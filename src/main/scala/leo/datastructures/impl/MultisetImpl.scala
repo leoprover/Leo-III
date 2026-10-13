@@ -1,14 +1,12 @@
 package leo.datastructures.impl
 
-
 import leo.datastructures.Multiset
-
 import scala.collection.GenTraversable
 
 /**
   * Created by lex on 11/9/16.
   */
-protected[impl] class MultisetImpl[A](contents: Map[A, Int]) extends Multiset[A] {
+class MultisetImpl[A](contents: Map[A, Int]) extends Multiset[A] {
 
   override def distinctIterator: Iterator[A] = contents.keysIterator
 
@@ -38,7 +36,7 @@ protected[impl] class MultisetImpl[A](contents: Map[A, Int]) extends Multiset[A]
   def distinctSize: Int = contents.keySet.size
 
   override def multiplicity(elem: A): Int = {
-    contents.applyOrElse(elem, {_:A => 0})
+    contents.applyOrElse(elem, {(_:A) => 0})
   }
 
   override def distinct: Set[A] = contents.keySet
@@ -77,7 +75,7 @@ protected[impl] class MultisetImpl[A](contents: Map[A, Int]) extends Multiset[A]
 
   override def iterator: Iterator[A] = {
     new Iterator[A] {
-      val mapIterator = contents.keysIterator
+      val mapIterator: Iterator[A] = contents.keysIterator
       var curMult: Int = -1
       var curElem: A = _
 
@@ -104,9 +102,9 @@ object MultisetImpl {
   def empty[A]: MultisetImpl[A] = new MultisetImpl(Map.empty)
   def apply[A](elem: A, elems: A*): Multiset[A] = {
     var contents: Map[A, Int] = Map((elem, 1))
-    var elemIt = elems.iterator
+    val elemIt = elems.iterator
     while (elemIt.hasNext) {
-      var e = elemIt.next()
+      val e = elemIt.next()
       if (contents.contains(e)) {
         contents = contents + ((e, contents(e)+1))
       } else {
@@ -119,7 +117,7 @@ object MultisetImpl {
     var contents: Map[A, Int] = Map()
     var curColl = coll
     while (curColl.nonEmpty) {
-      var e = curColl.head
+      val e = curColl.head
       if (contents.contains(e)) {
         contents = contents + ((e, contents(e)+1))
       } else {

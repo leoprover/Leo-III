@@ -203,13 +203,13 @@ protected[datastructures] final case class ProductTypeNode(tys: Seq[Type]) exten
   def isApplicableWith(arg: Type): Boolean = false
 
   // Queries on types
-  final lazy val typeVars = Set.concat(tys.map(_.typeVars):_*)
-  final lazy val symbols = Set.concat(tys.map(_.symbols):_*)
+  final lazy val typeVars: Set[Type] = Set.concat(tys.map(_.typeVars):_*)
+  final lazy val symbols: Set[Signature.Key] = Set.concat(tys.map(_.symbols):_*)
 
   final val funDomainType = None
-  final val codomainType = this
+  final val codomainType: ProductTypeNode = this
   final val arity = 0
-  final val funParamTypesWithResultType = Vector(this)
+  final val funParamTypesWithResultType: Vector[ProductTypeNode] = Vector(this)
   final val order = 0
   final val polyPrefixArgsCount = 0
 
@@ -379,7 +379,7 @@ protected[datastructures] case object TypeKind extends Kind {
 }
 
 protected[datastructures] case class FunKind(from: Kind, to: Kind) extends Kind {
-  final def pretty = s"${from.pretty} > ${to.pretty}"
+  final def pretty: String = s"${from.pretty} > ${to.pretty}"
 
   final val isTypeKind = false
   final val isSuperKind = false

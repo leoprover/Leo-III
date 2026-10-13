@@ -15,7 +15,7 @@ import scala.annotation.elidable
  * @note  Replaces obsolete trait formerly located at leo.modules.logger.Logging.
  */
 trait Logging {
-  protected lazy val log = {val l = Logger.getLogger(loggerName)
+  protected lazy val log: Logger = {val l = Logger.getLogger(loggerName)
     l.setLevel(defaultLogLevel)
     l.setUseParentHandlers(useParentLoggers); l}
 
