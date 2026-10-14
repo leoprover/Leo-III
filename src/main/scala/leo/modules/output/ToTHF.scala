@@ -452,9 +452,9 @@ object ToTHF {
   // Translation of THF types
   ///////////////////////////////
   final private def toTPTP(k: Kind): String = {
-    import leo.datastructures.Kind.{*,->}
+    import leo.datastructures.Kind.{TYPE,->}
     k match {
-      case * => "$tType"
+      case TYPE => "$tType"
       case k1 -> k2 => if (k1.isTypeKind)
         s"$$tType > ${toTPTP(k2)}"
       else
@@ -463,7 +463,7 @@ object ToTHF {
   }
 
   final private def typeToTHF(ty: Type)(sig: Signature): String = ty match {
-    case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
+    case PolyType(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
       s"!> [${(1 to tyAbsCount).map(i => s"T${intToName(i - 1)}: $$tType").mkString(",")}]: ${typeToTHF1(bodyTy)(sig)}"
     case _ => typeToTHF1(ty)(sig)
   }
@@ -473,7 +473,7 @@ object ToTHF {
     case BoundType(scope) => "T" + intToName(scope-1)
     case t1 -> t2 => s"(${typeToTHF1(t1)(sig)} > ${typeToTHF1(t2)(sig)})"
     case ProductType(tys) => tys.map(typeToTHF1(_)(sig)).mkString("[", ",", "]")
-    case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
+    case PolyType(_) => throw new IllegalArgumentException("Polytype should have been caught before")
   }
 
   ///////////////////////////////
@@ -558,7 +558,7 @@ object ToTHF {
   @tailrec
   private final def collectForallTys(count: Int, ty: Type): (Int, Type) = {
     ty match {
-      case ∀(t) => collectForallTys(count+1, t)
+      case PolyType(t) => collectForallTys(count+1, t)
       case _ => (count, ty)
     }
   }

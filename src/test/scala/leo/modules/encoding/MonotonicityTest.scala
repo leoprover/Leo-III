@@ -48,21 +48,20 @@ class MonotonicityTest extends LeoTestSuite {
 
   test("Algebraic Lists (Ex. 12)", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
-    import leo.datastructures.Type.∀
-    import leo.modules.HOLSignature.o
+    import leo.datastructures.Kind.TYPE
+    import leo.datastructures.Type.mkPolyType
     import leo.modules.calculus.{FullCNF => CNF, freshVarGenFromBlank => vargen}
     import leo.modules.termToClause
 
     // New types
-    val list = sig.addTypeConstructor("list", * ->: *)
+    val list = sig.addTypeConstructor("list", TYPE ->: TYPE)
 
     // Introduced symbols to signature
     val X: Type = Type.mkVarType(1)
-    sig.addUninterpreted("nil", ∀(Type.mkType(list, X)))
-    sig.addUninterpreted("cons", ∀(X ->: Type.mkType(list, X) ->: Type.mkType(list, X)))
-    sig.addUninterpreted("hd", ∀(Type.mkType(list, X) ->: X))
-    sig.addUninterpreted("tl", ∀(Type.mkType(list, X) ->: Type.mkType(list, X)))
+    sig.addUninterpreted("nil", mkPolyType(Type.mkType(list, X)))
+    sig.addUninterpreted("cons", mkPolyType(X ->: Type.mkType(list, X) ->: Type.mkType(list, X)))
+    sig.addUninterpreted("hd", mkPolyType(Type.mkType(list, X) ->: X))
+    sig.addUninterpreted("tl", mkPolyType(Type.mkType(list, X) ->: Type.mkType(list, X)))
 
     // create formulae
     val f1 = Input.readFormula("! [A: $tType, X: A, Xs: (list @ A)]: ((nil @ A) != (cons @ A @ X @ Xs))")

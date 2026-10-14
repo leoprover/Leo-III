@@ -134,8 +134,6 @@ object Type {
 
   /** Build `forall. ty` (i.e. a universally quantified type) */
   final def mkPolyType(bodyType: Type): Type = TypeImpl.mkPolyType(bodyType)
-  /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
-  final def ∀(bodyType: Type): Type = mkPolyType(bodyType)
 
   @tailrec
   final def mkNAryPolyType(n: Int, bodyType: Type): Type = n match {
@@ -147,7 +145,7 @@ object Type {
   final def mkVarType(scope: Int): Type = TypeImpl.mkVarType(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
-  final val typeKind: Kind = Kind.*
+  final val typeKind: Kind = Kind.TYPE
 
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
 
@@ -192,7 +190,7 @@ object Type {
     }
   }
 
-  object ∀ {
+  object PolyType {
     def unapply(ty: Type): Option[Type] = ty match {
       case ForallTypeNode(t) => Some(t)
       case _ => None
@@ -224,7 +222,7 @@ abstract class Kind extends Pretty {
 
   /** Returns the arity of the kind. Arity `arity(k)` of a kind `k` is defined by:
     * {{{
-    * arity(*) = 0
+    * arity(TYPE) = 0
     * arity(k1 -> k2) = 1 + arity(k2)}}} */
   def arity: Int
 
@@ -235,7 +233,7 @@ abstract class Kind extends Pretty {
 
 object Kind {
   import leo.datastructures.impl.{TypeKind, FunKind, SuperKind}
-  final val * : Kind = TypeKind
+  final val TYPE : Kind = TypeKind
   final val superKind : Kind = SuperKind
 
   /** Build kind k1 -> k2  */

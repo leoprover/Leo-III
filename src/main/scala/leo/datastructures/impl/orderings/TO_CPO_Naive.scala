@@ -83,7 +83,7 @@ object TO_CPO_Naive extends TermOrdering {
   // Comparisons of types
   ////////////////////////////////////
   final private def gt0(a: Type, b: Type): Boolean = {
-    import leo.datastructures.Type.{BaseType,->,∀}
+    import leo.datastructures.Type.{BaseType,->,PolyType}
 
     if (a == b) return false
     if (a.isBoundTypeVar) return false
@@ -115,12 +115,12 @@ object TO_CPO_Naive extends TermOrdering {
     }
     /* adaption for quantified types */
     if (a.isPolyType) {
-      val aO = ∀.unapply(a).get
+      val aO = PolyType.unapply(a).get
 
       if (ge0(aO, b)) return true
 
       if (b.isPolyType) {
-        val bO = ∀.unapply(b).get
+        val bO = PolyType.unapply(b).get
         return gt0(aO,bO)
       }
       // TODO: Are there further meaningful cases?
@@ -131,7 +131,7 @@ object TO_CPO_Naive extends TermOrdering {
   }
 
   final private def ge0(a: Type, b: Type): Boolean = {
-    import leo.datastructures.Type.{BaseType,->,∀}
+    import leo.datastructures.Type.{BaseType,->,PolyType}
 
     if (a == b) return true
     if (a.isBaseType) {
@@ -160,12 +160,12 @@ object TO_CPO_Naive extends TermOrdering {
     }
     /* adaption for quantified types */
     if (a.isPolyType) {
-      val aO = ∀.unapply(a).get
+      val aO = PolyType.unapply(a).get
 
       if (gt0(aO, b)) return true
 
       if (b.isPolyType) {
-        val bO = ∀.unapply(b).get
+        val bO = PolyType.unapply(b).get
         return gt0(aO,bO)
       }
       // TODO: Are there further meaningful cases?

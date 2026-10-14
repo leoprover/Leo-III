@@ -527,7 +527,7 @@ object EncodingAnalyzer {
 }
 
 object TypedFOLEncodingSignature {
-  import leo.datastructures.Type.{mkType, ∀, mkVarType}
+  import leo.datastructures.Type.{mkType, mkPolyType, mkVarType}
   // Hard-wired constants. Only change if you know what you're doing!
   final val o: Type = mkType(1)
   final val i: Type = mkType(2)
@@ -535,12 +535,12 @@ object TypedFOLEncodingSignature {
   private final val a: Type = mkVarType(1)
   private final val oo: Type = o ->: o
   private final val ooo: Type = o ->: o ->: o
-  private final val aao: Type = ∀(a ->: a ->: o)
-  private final val aoo: Type = ∀((a ->: o) ->: o)
-  private final val faoo: Type = ∀(o) ->: o
-  private final val faao: Type = ∀(a ->: a ->: o)
-  private final val faaa: Type = ∀(a ->: a ->: a)
-  private final val faa: Type = ∀(a ->: a)
+  private final val aao: Type = mkPolyType(a ->: a ->: o)
+  private final val aoo: Type = mkPolyType((a ->: o) ->: o)
+  private final val faoo: Type = mkPolyType(o) ->: o
+  private final val faao: Type = mkPolyType(a ->: a ->: o)
+  private final val faaa: Type = mkPolyType(a ->: a ->: a)
+  private final val faa: Type = mkPolyType(a ->: a)
 
   import leo.datastructures.Term.local._
   final val True: Term = mkAtom(6, o)
@@ -574,14 +574,14 @@ object TypedFOLEncodingSignature {
   }
 
   import leo.datastructures.Kind
-  import leo.datastructures.Kind.{superKind, *}
+  import leo.datastructures.Kind.{superKind, TYPE}
   private final val fixedTypes: Seq[(String, Kind)] = Seq(
     "$tType"  -> superKind,
-    "$o"      -> *, // 1
-    "$i"      -> *, // 2
-    "$real"   -> *, // 3
-    "$rat"    -> *, // 4
-    "$int"    -> *, // 5
+    "$o"      -> TYPE, // 1
+    "$i"      -> TYPE, // 2
+    "$real"   -> TYPE, // 3
+    "$rat"    -> TYPE, // 4
+    "$int"    -> TYPE, // 5
   )
 
   private final val fixedSymbols: Seq[(String, Type)] = Seq(
@@ -648,8 +648,8 @@ object TypedFOLEncodingSignature {
 }
 
 trait TypedFOLEncodingSignature extends Signature {
-  import leo.datastructures.Kind.*
-  import leo.datastructures.Type.{mkType, ∀}
+  import leo.datastructures.Kind.TYPE
+  import leo.datastructures.Type.{mkType, mkPolyType}
 
   // Init standard symbols
   for (ty <- TypedFOLEncodingSignature.fixedTypes) {
@@ -664,7 +664,7 @@ trait TypedFOLEncodingSignature extends Signature {
   // Definitions of auxiliary symbols for FO encoding
   /// Meta symbols
   ///// fun type constant
-  lazy val funTy_id: Signature.Key = addTypeConstructor(safeName(funTy_name), * ->: * ->: *)
+  lazy val funTy_id: Signature.Key = addTypeConstructor(safeName(funTy_name), TYPE ->: TYPE ->: TYPE)
   final def funTy(in: Type, out: Type): Type = mkType(funTy_id, Seq(in, out))
   /** Returns an FO-encoded function type. Given a non-empty sequence of types
     * `t1`,...,`tn`, this method returns the simulated function type
@@ -684,11 +684,11 @@ trait TypedFOLEncodingSignature extends Signature {
   }
 
   ///// bool type constant
-  lazy val boolTy_id: Signature.Key = addTypeConstructor(safeName(boolTy_name), *)
+  lazy val boolTy_id: Signature.Key = addTypeConstructor(safeName(boolTy_name), TYPE)
   lazy val boolTy: Type = mkType(boolTy_id)
 
   ///// hApp constant
-  private final lazy val hApp_type: Type = ∀(∀(funTy(2,1) ->: Type.mkVarType(2) ->: Type.mkVarType(1)))
+  private final lazy val hApp_type: Type = mkPolyType(mkPolyType(funTy(2,1) ->: Type.mkVarType(2) ->: Type.mkVarType(1)))
   lazy val hApp_id: Signature.Key = addUninterpreted(safeName(hApp_name), hApp_type, Signature.PropNoProp)
   import leo.datastructures.Term.local._
   lazy val hApp: Term = mkAtom(hApp_id)(this)

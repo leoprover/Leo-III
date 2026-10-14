@@ -647,7 +647,7 @@ package object datastructures {
   }
 
   final def mkPolyUnivType(count: Int, body: Type): Type = if (count <= 0) body
-  else Type.∀(mkPolyUnivType(count-1, body))
+  else Type.mkPolyType(mkPolyUnivType(count-1, body))
 
   /** For a term `t` return `(t', (ty_i)_i)` where `t'` is the subterm of `t`
     * that is acquired by stripping all prefix-lambdas (term abstraction) and

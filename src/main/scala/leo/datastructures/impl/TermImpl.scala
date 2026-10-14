@@ -160,7 +160,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
       case _ => throw NotWellTypedException("A symbol without function type is applied like a function.", this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
-      case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)
+      case tt@(PolyType(_)) => ty0(tt.instantiate(s0), tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
@@ -355,7 +355,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
-      case tt@(∀(_)) => ty0(tt.instantiate(s0), tail)
+      case tt@(PolyType(_)) => ty0(tt.instantiate(s0), tail)
       case _ => throw NotWellTypedException(this) // this should not happen if well-typed
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
@@ -539,7 +539,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
     case _ => false
   }
   import TermImpl.mkTypeAbstr
-  import Type.∀
+  import Type.PolyType
 
   final protected[impl] def markBetaNormal(): Unit = {
     this.normal = true
@@ -567,7 +567,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkTypeAbstr(body.δ_expand_upTo(symbs)(sig))
 
   // Queries on terms
-  lazy val ty: Type = ∀(body.ty)
+  lazy val ty: Type = mkPolyType(body.ty)
   lazy val fv: Set[(Int, Type)] = body.fv
   lazy val tyFV: Set[Int] = body.tyFV.map(_ - 1).filter(_ > 0)
   def vars0(depth: Int): (Multiset[Int],Set[Int]) = body.asInstanceOf[TermImpl].vars0(depth)
