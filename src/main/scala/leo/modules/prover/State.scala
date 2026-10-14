@@ -369,17 +369,17 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
 }
 
 class FVIndex {
-  import leo.modules.indexing.{CFF, FVIndex}
+  import leo.modules.indexing.{CFF}
 
   val maxFeatures: Int = 100
   var initialized = false
   var features: Seq[CFF] = Vector.empty
-  var index: FixedLengthTrie[ClauseFeature,AnnotatedClause] = FVIndex()
+  var index: FixedLengthTrie[ClauseFeature,AnnotatedClause] = leo.modules.indexing.FVIndex()
   def clauseFeatures: Seq[CFF] = features
 
   protected[modules] final def reset(): Unit = {
     initialized = false
     features = Vector.empty
-    index = FVIndex()
+    index = leo.modules.indexing.FVIndex()
   }
 }

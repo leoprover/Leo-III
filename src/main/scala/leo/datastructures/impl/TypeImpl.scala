@@ -1,6 +1,7 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
+import leo.datastructures.Type.BoundType
+import leo.datastructures.{Kind, Signature, Subst, Type, TypeFront}
 
 /* Types are immutable, and their hash codes are asked for constantly: every
  * one of them is a key in the tables that share types, in the term index, and
@@ -250,7 +251,7 @@ protected[datastructures] final case class ForallTypeNode(body: Type) extends Ty
   }
 
   // Queries on types
-  lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundTypeNode.unapply(t.asInstanceOf[BoundTypeNode]).get-1).filter(_ > 0).map(BoundTypeNode)
+  lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundType.unapply(t).get-1).filter(_ > 0).map(BoundTypeNode.apply)
   def symbols: Set[Signature.Key] = body.symbols
 
   def funDomainType: Option[Type] = None

@@ -894,12 +894,13 @@ object InputProcessing {
           tffLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, params)) =>
               if (params.isEmpty) {
-                atom -> (_ => rhs)
+                atom -> ((_:Seq[TFF.Term]) => rhs)
               } else {
                 if (params.distinct == params) {
-                  atom -> { args =>
-                    val paramToArgs: Map[String, TFF.Term] = params.zip(args).toMap
-                    tffInstantiateTerm(rhs, paramToArgs)
+                  atom -> { (args: Seq[TFF.Term]) => {
+                      val paramToArgs: Map[String, TFF.Term] = params.zip(args).toMap
+                      tffInstantiateTerm(rhs, paramToArgs)
+                    }
                   }
                 } else throw new SZSException(SZS_InputError, s"Variables in LHS of let binding '${lhs.pretty} := ${rhs.pretty}' are not distinct.")
               }

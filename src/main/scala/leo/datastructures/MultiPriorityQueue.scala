@@ -21,7 +21,7 @@ trait MultiPriorityQueue[A] extends Pretty {
       }
     }
     xs match {
-      case xs: scala.collection.LinearSeq[_] => loop(xs)
+      case xs: scala.collection.LinearSeq[A] => loop(xs)
       case xs                                => xs.iterator.foreach(insert)
     }
   }
@@ -34,7 +34,7 @@ trait MultiPriorityQueue[A] extends Pretty {
       }
     }
     xs match {
-      case xs: scala.collection.LinearSeq[_] => loop(xs)
+      case xs: scala.collection.LinearSeq[A] => loop(xs)
       case xs                                => xs.iterator.foreach(remove)
     }
   }

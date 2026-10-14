@@ -55,7 +55,8 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   }
 
   def addPriority(p: Ordering[A]): OrderingKey = {
-    val newPrioQueue = mutable.PriorityQueue.empty(toProxyOrdering(p))
+    implicit val proxyordering: Ordering[ObjectProxy] = toProxyOrdering(p)
+    val newPrioQueue = mutable.PriorityQueue.empty[ObjectProxy]
     val key = priorityQueues.size
     if (!initialized) initialized = true
     else newPrioQueue ++= priorityQueues.head
