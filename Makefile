@@ -8,7 +8,7 @@ static: TreeLimitedRunStatic leo3
 
 		
 leo3: 
-		sbt assembly
+		sbt +assembly
 		mkdir -p bin
 		cp target/scala-2.13/leo3-*.jar bin/.
 		cat ./src/main/resources/scripts/exec_dummy bin/leo3-*.jar > bin/leo3
