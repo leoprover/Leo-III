@@ -1,8 +1,5 @@
 package leo.datastructures
 
-import scala.annotation.tailrec
-import scala.collection.TraversableOnce
-
 /**
   * A multi-priority priority queue. Essentially a priority queue which operations
   * are indexed by the priority that is to be assumed to that operation.
@@ -13,30 +10,12 @@ trait MultiPriorityQueue[A] extends Pretty {
   type OrderingKey = Int
 
   def insert(x: A): Unit
-  def insert(xs: IterableOnce[A]): Unit = {
-    @tailrec def loop(xs: scala.collection.LinearSeq[A]): Unit = {
-      if (xs.nonEmpty) {
-        this `insert` xs.head
-        loop(xs.tail)
-      }
-    }
-    xs match {
-      case xs: scala.collection.LinearSeq[A] => loop(xs)
-      case xs                                => xs.iterator.foreach(insert)
-    }
+  def insert(xs: Iterable[A]): Unit = {
+    xs.foreach(insert)
   }
   def remove(x: A): Unit
-  def remove(xs: IterableOnce[A]): Unit = {
-    @tailrec def loop(xs: scala.collection.LinearSeq[A]) : Unit = {
-      if (xs.nonEmpty) {
-        this `remove` xs.head
-        loop(xs.tail)
-      }
-    }
-    xs match {
-      case xs: scala.collection.LinearSeq[A] => loop(xs)
-      case xs                                => xs.iterator.foreach(remove)
-    }
+  def remove(xs: Iterable[A]): Unit = {
+    xs.foreach(remove)
   }
   def addPriority(p: Ordering[A]): OrderingKey
   def priorityCount: Int

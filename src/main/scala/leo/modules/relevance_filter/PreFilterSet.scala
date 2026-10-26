@@ -1,6 +1,6 @@
 package leo.modules.relevance_filter
 
-import leo.datastructures.{Role_Definition}
+import leo.datastructures.Role_Definition
 import leo.datastructures.TPTP.AnnotatedFormula
 
 /**
@@ -12,7 +12,7 @@ import leo.datastructures.TPTP.AnnotatedFormula
   * @author Max Wisniewski
   */
 object PreFilterSet {
-  import scala.collection._
+  import scala.collection.mutable
 
   /**
     * Map of FormulaName to the Formula
@@ -52,13 +52,13 @@ object PreFilterSet {
     isDefinition(formula) match {
       case Some(name) =>
         // Delta search
-        var todo = (formula.symbols - name).toIterator // Cut the own name away
-        var delta_symbs : Set[String] = Set[String]() // All symbols with delta expansion
+        val todo = (formula.symbols - name).iterator // Cut the own name away
+        var delta_symbs: Set[String] = Set.empty // All symbols with delta expansion
         while(todo.hasNext) {
           val next = todo.next()
           defn.get(next) match {                      // This method requires the input to be ordered correctly
-            case Some(symbs) => delta_symbs |= symbs
-            case None => delta_symbs += next
+            case Some(symbs) => delta_symbs = delta_symbs ++ symbs
+            case None => delta_symbs = delta_symbs + next
           }
         }
         defn.put(name, delta_symbs)
@@ -136,7 +136,7 @@ object PreFilterSet {
   }
 
   def getCommonFormulas(symbs : Iterable[String]) : Iterable[AnnotatedFormula] = synchronized{
-    symbs.flatMap(getCommonFormulas(_))
+    symbs.flatMap(getCommonFormulas)
   }
 
 
@@ -164,7 +164,7 @@ object PreFilterSet {
   }
 
   private def expaned_symbols(formula : AnnotatedFormula) : Set[String] = {
-    var todo = formula.symbols.toIterator
+    val todo = formula.symbols.iterator
     var delta_symbs : Set[String] = Set[String]() // All symbols with delta expansion
     while(todo.hasNext) {
       val next = todo.next()

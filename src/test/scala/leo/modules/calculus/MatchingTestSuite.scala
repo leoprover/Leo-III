@@ -137,7 +137,7 @@ class MatchingTestSuite extends LeoTestSuite {
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, Seq(z,z)))))
-assert(isPattern(t1))
+    assert(isPattern(t1))
     assert(isPattern(t2))
     verify(vargen, t1, t2, MATCHES)
   }

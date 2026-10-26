@@ -159,12 +159,13 @@ object Normalization {
         case Role_Definition.pretty =>
           import leo.datastructures.Term.Symbol
           import leo.modules.HOLSignature.===
-          import TPTP.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated}
+          import TPTP.{THFAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
           val alteredFormula: AnnotatedFormula = formula match {
             case THFAnnotated(name, _, formula, annotations) => THFAnnotated(name, "axiom", formula, annotations)
             case TFFAnnotated(name, _, formula, annotations) => TFFAnnotated(name, "axiom", formula, annotations)
             case FOFAnnotated(name, _, formula, annotations) => FOFAnnotated(name, "axiom", formula, annotations)
             case CNFAnnotated(name, _, formula, annotations) => CNFAnnotated(name, "axiom", formula, annotations)
+            case TCFAnnotated(name, _, formula, annotations) => TCFAnnotated(name, "axiom", formula, annotations)
             case TPIAnnotated(name, _, formula, annotations) => TPIAnnotated(name, "axiom", formula, annotations)
           }
           val (_, f, _) =  Input.processFormula(alteredFormula)(using sig)

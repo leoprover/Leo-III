@@ -50,7 +50,7 @@ package object calculus {
     /** Adds `vars` to the recorded variables. Subsequent calls to
       * methods of this variable generator will consider `vars` as already
       * existent variables. */
-    def addVars(vars: Traversable[(Int, Type)]): Unit
+    def addVars(vars: Iterable[(Int, Type)]): Unit
     /** Return all already used variables within the context of this generator.
       * The "newest" variable is the head of the list.
       * @example If `f` is a FreshVarGen for clause `cl`, then
@@ -88,7 +88,7 @@ package object calculus {
       curTy
     }
 
-    override final def addVars(variables: Traversable[(Int, Type)]): Unit = {
+    override final def addVars(variables: Iterable[(Int, Type)]): Unit = {
       val newVars = (variables.toSeq ++ vars).distinct
       vars = newVars.sortWith { case (l,r) =>
         l._1 > r._1

@@ -21,7 +21,7 @@ class EncodingTest extends LeoTestSuite {
     Out.finest(f2.pretty(sig))
     assert(Term.wellTyped(f2))
 
-    val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) union leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
+    val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) concat leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
       LambdaElimStrategy_SKI, PolyNative)(using sig)
 
@@ -54,7 +54,7 @@ class EncodingTest extends LeoTestSuite {
     Out.finest(f2.pretty(sig))
     assert(Term.wellTyped(f2))
 
-    val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) union leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
+    val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) concat leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
       LambdaElimStrategy_SKI, MonoNative)(using sig)
 

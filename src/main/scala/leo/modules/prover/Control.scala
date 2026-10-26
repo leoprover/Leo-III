@@ -602,7 +602,7 @@ package inferenceControl {
 //            else ground
 //          }
 //        } else cl.maxLits
-        cl.maxLits union cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
+        cl.maxLits concat cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
       }
       private var litIndex = 0
       private var lits = cl.lits

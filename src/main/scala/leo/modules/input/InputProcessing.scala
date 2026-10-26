@@ -408,7 +408,6 @@ object InputProcessing {
         conn match {
           case unaryConnective: THF.UnaryConnective => convertTHFUnaryConnective(unaryConnective)
           case binaryConnective: THF.BinaryConnective => convertTHFBinaryConnective(binaryConnective)
-          case _ => throw new SZSException(SZS_Inappropriate, "Non-classical operators not supported.")
         }
 
       case DefinedTH1ConstantTerm(constant) => convertTH1DefinedConstant(constant)
@@ -1204,11 +1203,12 @@ object InputProcessing {
   }
 
   private final def convertTFFQuantifier(quantifier: TPTP.TFF.Quantifier): HOLUnaryConnective = {
-    import leo.modules.HOLSignature.{Forall, Exists}
+    import leo.modules.HOLSignature.{Forall, Exists, Choice}
 
     quantifier match {
       case TPTP.TFF.! => Forall
       case TPTP.TFF.? => Exists
+      case TPTP.TFF.Epsilon => Choice
     }
   }
 
@@ -1433,11 +1433,12 @@ object InputProcessing {
   }
 
   private final def convertFOFQuantifier(quantifier: TPTP.FOF.Quantifier): HOLUnaryConnective = {
-    import leo.modules.HOLSignature.{Forall, Exists}
+    import leo.modules.HOLSignature.{Forall, Exists, Choice}
 
     quantifier match {
       case TPTP.FOF.! => Forall
       case TPTP.FOF.? => Exists
+      case TPTP.FOF.Epsilon => Choice
     }
   }
 

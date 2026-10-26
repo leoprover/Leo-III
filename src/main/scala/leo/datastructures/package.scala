@@ -710,8 +710,10 @@ package object datastructures {
     if (args.isEmpty) (acc, Seq.empty)
     else {
       val hd = args.head
-      if (hd.isLeft) (acc, args.map(_.left.get))
-      else partitionArgs0(acc :+ hd.right.get, args.tail)
+      hd match {
+        case Left(_) => (acc, args.map(_.left.get))
+        case Right(te) => partitionArgs0(acc :+ te, args.tail)
+      }
     }
   }
 
@@ -720,8 +722,10 @@ package object datastructures {
     if (args.isEmpty) acc
     else {
       val hd = args.head
-      if (hd.isLeft) acc
-      else typeArgs0(acc :+ hd.right.get, args.tail)
+      hd match {
+        case Left(_) => acc
+        case Right(ty) => typeArgs0(acc :+ ty, args.tail)
+      }
     }
   }
 
@@ -729,8 +733,10 @@ package object datastructures {
     if (args.isEmpty) Seq.empty
     else {
       val hd = args.head
-      if (hd.isLeft) args.map(_.left.get)
-      else termArgs(args.tail)
+      hd match {
+        case Left(_) => args.map(_.left.get)
+        case Right(_) => termArgs(args.tail)
+      }
     }
   }
 

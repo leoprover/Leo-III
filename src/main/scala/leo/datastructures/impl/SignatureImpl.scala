@@ -64,24 +64,28 @@ class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
         val meta = apply(identifier)
         // declaration might be type constructor (with a kind) or symbol (with a type)
         // check that this is compatible to the existing entry
-        if (meta.hasType && typ.isLeft) {
-          val typ0 = typ.left.get
-          if (meta._ty == typ0) {
-            // all good, skip
-            return meta.key
-          } else throw new IllegalArgumentException(s"Type declaration of symbol $identifier is already present in" +
-            s"signature and the given type (${typ0.pretty(this)}) conflicts with the type " +
-            s"stored in the signature (${meta._ty.pretty(this)}).")
-        } else  if (meta.hasKind && typ.isRight) {
-          val kind = typ.right.get
-          if (meta._kind == kind) {
-            // all good, skip
-            return meta.key
-          }  else throw new IllegalArgumentException(s"Declaration of type constructor $identifier is already present in" +
-            s"signature, and the given kind (${kind.pretty}) conflicts with the kind " +
-            s"stored in the signature (${meta._kind.pretty}).")
-        } else throw new IllegalArgumentException(s"Declaration of symbol ${identifier} conflicts with already existing " +
-          s"symbol in signature")
+        typ match {
+          case Left(typ0) =>
+            if (meta.hasType) {
+              if (meta._ty == typ0) {
+                // all good, skip
+                return meta.key
+              } else throw new IllegalArgumentException(s"Type declaration of symbol $identifier is already present in" +
+                s"signature and the given type (${typ0.pretty(this)}) conflicts with the type " +
+                s"stored in the signature (${meta._ty.pretty(this)}).")
+            } else throw new IllegalArgumentException(s"Declaration of symbol ${identifier} conflicts with already existing " +
+              s"symbol in signature")
+          case Right(kind) =>
+            if (meta.hasKind) {
+              if (meta._kind == kind) {
+                // all good, skip
+                return meta.key
+              } else throw new IllegalArgumentException(s"Declaration of type constructor $identifier is already present in" +
+                s"signature, and the given kind (${kind.pretty}) conflicts with the kind " +
+                s"stored in the signature (${meta._kind.pretty}).")
+            } else throw new IllegalArgumentException(s"Declaration of symbol ${identifier} conflicts with already existing " +
+            s"symbol in signature")
+        }
       } else throw new IllegalArgumentException("Identifier " + identifier + " already defined in signature.")
     }
 
@@ -100,13 +104,13 @@ class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
             UninterpretedMeta(identifier, key, t, prop)
         }
       case Some(fed) => // Defined
-        if (typ.isLeft) {
-          val ty = typ.left.get
-          definedSet += key
-          DefinedMeta(identifier, key, ty, fed, prop)
-        } else {
-          // Type constructor definitions not supported
-          throw new IllegalArgumentException("Type constructor definitions not supported")
+        typ match {
+          case Left(ty) =>
+            definedSet += key
+            DefinedMeta(identifier, key, ty, fed, prop)
+          case Right(value) =>
+            // Type constructor definitions not supported
+            throw new IllegalArgumentException("Type constructor definitions not supported")
         }
     }
     metaMap += ((key, meta))
