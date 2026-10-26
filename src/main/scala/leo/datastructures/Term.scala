@@ -224,7 +224,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object Bound { def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
+  object Bound { def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
 
   /**
    * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
@@ -235,11 +235,11 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
+  object Symbol { def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
-  final object Integer { def unapply(t: Term): Option[Int0] = TermImpl.integerMatcher(t) }
-  final object Rational { def unapply(t: Term): Option[Rat] = TermImpl.rationalMatcher(t) }
-  final object Real { def unapply(t: Term): Option[Real] = TermImpl.realMatcher(t) }
+  object Integer { def unapply(t: Term): Option[Int0] = TermImpl.integerMatcher(t) }
+  object Rational { def unapply(t: Term): Option[Rat] = TermImpl.rationalMatcher(t) }
+  object Real { def unapply(t: Term): Option[Real] = TermImpl.realMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -253,7 +253,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object ∙ { def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
+  object ∙ { def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
 
   /**
    * Pattern for matching a term application (i.e. terms of form `(h ∙ S)`), where
@@ -267,10 +267,10 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object TermApp {
+  object TermApp {
     def unapply(t: Term): Option[(Term, Seq[Term])] = t match {
       case h ∙ sp => if (sp.forall(_.isLeft)) {
-                        Some(h, sp.map(_.left.get))
+                        Some(h, sp.map(_.swap.toOption.get))
                       } else None
       case _ => None
     }
@@ -288,10 +288,10 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object TypeApp {
+   object TypeApp {
     def unapply(t: Term): Option[(Term, Seq[Type])] = t match {
       case h ∙ sp => if (sp.forall(_.isRight)) {
-        Some(h, sp.map(_.right.get))
+        Some(h, sp.map(_.toOption.get))
       } else None
       case _ => None
     }
@@ -307,7 +307,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object :::> { def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
+  object :::> { def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
 
   /**
    * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
@@ -318,5 +318,5 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  final object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
+  object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
 }

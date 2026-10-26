@@ -70,12 +70,12 @@ object Subst {
   final def shift(n: Int): Subst = SubstImpl.shift(n)
 
   final def singleton(what: Int, by: Term): Subst = {
-    val subst: Vector[Front] = Range(1, what).map(BoundFront).toVector
+    val subst: Vector[Front] = Range(1, what).map(BoundFront.apply).toVector
     new SubstImpl(what,subst :+ TermFront(by))
   }
 
   final def singleton(what: Int, by: Type): Subst = {
-    val subst: Vector[Front] = Range(1, what).map(BoundFront).toVector
+    val subst: Vector[Front] = Range(1, what).map(BoundFront.apply).toVector
     new SubstImpl(what,subst :+ TypeFront(by))
   }
 

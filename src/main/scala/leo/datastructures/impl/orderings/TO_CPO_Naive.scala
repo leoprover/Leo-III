@@ -466,13 +466,14 @@ object TO_CPO_Naive extends TermOrdering {
     filterTermArgs(args.drop(forTy.polyPrefixArgsCount))
   }
 
- final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
+  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
     if (args.isEmpty) Vector.empty
     else {
       val hd = args.head
-      if (hd.isLeft) {
-        hd.left.get +: filterTermArgs(args.tail)
-      } else filterTermArgs(args.tail)
+      hd match {
+        case Left(term0) => term0 +: filterTermArgs(args.tail)
+        case Right(ty0) => filterTermArgs(args.tail)
+      }
     }
   }
 }

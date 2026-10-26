@@ -92,7 +92,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def processAnnotatedTHF(sig: Signature)(statement: TPTP.THFAnnotated): Option[Term] = {
-    import TPTP.THF.{Logical, Typing}
+    import TPTP.THF.{Logical, Typing, Sequent}
 
     statement.formula match {
       case Typing(atom, typ) =>
@@ -126,6 +126,7 @@ object InputProcessing {
         }
 
       case Logical(formula) => Some(convertTHFFormula(sig)(formula))
+      case Sequent(_, _) => throw new SZSException(SZS_Inappropriate, "Sequents not supported.")
     }
   }
 
@@ -155,7 +156,7 @@ object InputProcessing {
     import TPTP.THF.{
       FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
       Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm,
-      DefinedTH1ConstantTerm
+      DefinedTH1ConstantTerm, NonclassicalPolyaryFormula
     }
 
     formula match {
@@ -415,6 +416,9 @@ object InputProcessing {
       case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(using sig)
 
       case NumberTerm(number) => convertNumber(number)
+
+      case NonclassicalPolyaryFormula(_, _) => throw new SZSException(SZS_Inappropriate, "Nonclassical formulas not" +
+        "directly supported, consider invoking the logic embedding tool first.")
     }
   }
 
@@ -491,7 +495,7 @@ object InputProcessing {
 
   ////// Little workaround to have a corresponding HOLUnaryConnective for the equality as polymorphic prefix symbol
   // Though I don't understand why it's called unary ...
-  private final object ===== extends HOLUnaryConnective {
+  private object ===== extends HOLUnaryConnective {
     import leo.modules.HOLSignature.{=== => HOLEQ}
 
     val key: Signature.Key = HOLEQ.key // Dont care, we dont want to use unapply
@@ -520,7 +524,7 @@ object InputProcessing {
     }
   }
 
-  private final object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
+  private object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
     // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature.Key = Integer.MIN_VALUE
     def ty: Type = null
@@ -541,7 +545,7 @@ object InputProcessing {
   }
 
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinaryConnective
-  private final object @@@ extends HOLBinaryConnective {
+  private object @@@ extends HOLBinaryConnective {
     val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
     def ty: Type = null
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
@@ -694,7 +698,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = {
-    import TPTP.TFF.{Typing, Logical}
+    import TPTP.TFF.{Typing, Logical, Sequent}
 
     statement.formula match {
       case Typing(atom, typ) =>
@@ -714,6 +718,7 @@ object InputProcessing {
             Some(res)
         }
       case Logical(f) => Some(convertTFFFormula(sig)(f))
+      case Sequent(_, _) => throw new SZSException(SZS_Inappropriate, "Sequents not supported.")
     }
   }
 
