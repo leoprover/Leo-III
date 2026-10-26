@@ -1,6 +1,3 @@
-val scala2 = "2.13.18"
-val scala3 = "3.9.0"
-
 lazy val leo = (project in file("."))
   .settings(
     name := "Leo-III",
@@ -9,8 +6,7 @@ lazy val leo = (project in file("."))
     organization := "org.leo",
     licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
 
-    crossScalaVersions := Seq(scala2) ++ Seq(scala3),
-    scalaVersion := crossScalaVersions.value.head,
+    scalaVersion := "3.9.0",
 
     logLevel := Level.Warn,
 
@@ -22,7 +18,7 @@ lazy val leo = (project in file("."))
 
     scalacOptions ++= Seq(
       "-deprecation",
-      "-feature",
+      "-feature"
     ),
     // set stack size to 4m
     javaOptions ++= Seq(
