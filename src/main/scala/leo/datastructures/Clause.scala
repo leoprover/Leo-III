@@ -40,14 +40,14 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
 
   // Operations on clauses
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause(lits.map(_.substitute(termSubst, typeSubst)))
-  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause(lits.map(_.substituteOrdered(termSubst, typeSubst)(sig)))
+  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause(lits.map(_.substituteOrdered(termSubst, typeSubst)(using sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause(lits.map(f), Derived)
   @inline final def replace(what: Term, by: Term): Clause = Clause(lits.map(_.replaceAll(what, by)))
 
-  final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
-  final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
+  final def pretty: String = s"[${lits.map(_.pretty).mkString(" , ")}]"
+  final def pretty(sig: Signature): String = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
 
   /** Conquence `cong(c1,c2)` on two clauses is more semantical that equals: Two clauses `c1` and `c2` are congruence
     * if `c1` contains all literals of `c2` set-wise and vice-versa, i.e. we have that

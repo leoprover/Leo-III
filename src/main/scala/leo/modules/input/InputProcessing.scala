@@ -50,7 +50,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
-  @inline private[this] final def processRole(role: String): Role = Role(role)
+  @inline private final def processRole(role: String): Role = Role(role)
 
   @inline final def processAll(sig: Signature)(statements: Seq[TPTP.AnnotatedFormula]): Seq[Result] = statements.map(process(sig))
 
@@ -92,7 +92,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def processAnnotatedTHF(sig: Signature)(statement: TPTP.THFAnnotated): Option[Term] = {
-    import TPTP.THF.{Logical, Typing}
+    import TPTP.THF.{Logical, Typing, Sequent}
 
     statement.formula match {
       case Typing(atom, typ) =>
@@ -126,10 +126,11 @@ object InputProcessing {
         }
 
       case Logical(formula) => Some(convertTHFFormula(sig)(formula))
+      case Sequent(_, _) => throw new SZSException(SZS_Inappropriate, "Sequents not supported.")
     }
   }
 
-  @inline private[this] final def processTHFDef(sig: Signature)(formula: TPTP.THF.Formula): Option[(String, Term)] = {
+  @inline private final def processTHFDef(sig: Signature)(formula: TPTP.THF.Formula): Option[(String, Term)] = {
     import TPTP.THF.{BinaryFormula, Eq, FunctionTerm}
 
     formula match {
@@ -148,14 +149,14 @@ object InputProcessing {
     convertTHFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
   }
 
-  private[this] final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
+  private final def convertTHFFormula0(sig: Signature)(formula: TPTP.THF.Formula,
                                                              termVars: Seq[String],
                                                              typeVars: Seq[String],
                                                              vars: Map[String, VariableMarker]): Term = {
     import TPTP.THF.{
       FunctionTerm, QuantifiedFormula, Variable, UnaryFormula, BinaryFormula,
       Tuple, ConditionalTerm, LetTerm, ConnectiveTerm, DistinctObject, NumberTerm,
-      DefinedTH1ConstantTerm
+      DefinedTH1ConstantTerm, NonclassicalPolyaryFormula
     }
 
     formula match {
@@ -270,9 +271,9 @@ object InputProcessing {
         if (sig.exists(f)) {
           val meta = sig(f)
           if (ft.isConstant) {
-            mkAtom(meta.key)(sig)
+            mkAtom(meta.key)(using sig)
           } else {
-            val func = mkAtom(meta.key)(sig)
+            val func = mkAtom(meta.key)(using sig)
             if (func.ty.isPolyType) {
               if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
                 numberWarning
@@ -412,9 +413,12 @@ object InputProcessing {
 
       case DefinedTH1ConstantTerm(constant) => convertTH1DefinedConstant(constant)
 
-      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
+      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(using sig)
 
       case NumberTerm(number) => convertNumber(number)
+
+      case NonclassicalPolyaryFormula(_, _) => throw new SZSException(SZS_Inappropriate, "Nonclassical formulas not" +
+        "directly supported, consider invoking the logic embedding tool first.")
     }
   }
 
@@ -422,7 +426,7 @@ object InputProcessing {
     leo.Out.info(s"Let expressions in the input problem have been expanded exhaustively.")
   }
   ////// Functions related to THF let-expression expansion BEGIN
-  @tailrec private[this] def thfLetGetHeadsymbolFromSimpleTerm(formula: TPTP.THF.Formula): Option[String] = {
+  @tailrec private def thfLetGetHeadsymbolFromSimpleTerm(formula: TPTP.THF.Formula): Option[String] = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, _) => Some(f)
@@ -430,7 +434,7 @@ object InputProcessing {
       case _ => None
     }
   }
-  private[this] def thfLetstripVariablesFromSimpleTerm(formula: TPTP.THF.Formula): Option[(String, Seq[String])] = {
+  private def thfLetstripVariablesFromSimpleTerm(formula: TPTP.THF.Formula): Option[(String, Seq[String])] = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, Seq()) => Some((f, Seq.empty))
@@ -439,7 +443,7 @@ object InputProcessing {
       case _ => None
     }
   }
-  private[this] def thfLetgetFirstNParamTypes(typ: TPTP.THF.Type, n: Int): Option[Seq[TPTP.THF.Type]] = {
+  private def thfLetgetFirstNParamTypes(typ: TPTP.THF.Type, n: Int): Option[Seq[TPTP.THF.Type]] = {
     import leo.datastructures.TPTP.THF
     if (n == 0) Some(Seq.empty)
     else typ match {
@@ -448,7 +452,7 @@ object InputProcessing {
       case _ => None
     }
   }
-  private[this] def thfLetreplaceAll0(replacements: Map[String, TPTP.THF.Formula], formula: TPTP.THF.Formula): TPTP.THF.Formula = {
+  private def thfLetreplaceAll0(replacements: Map[String, TPTP.THF.Formula], formula: TPTP.THF.Formula): TPTP.THF.Formula = {
     import leo.datastructures.TPTP.THF
     formula match {
       case THF.FunctionTerm(f, args) =>
@@ -491,7 +495,7 @@ object InputProcessing {
 
   ////// Little workaround to have a corresponding HOLUnaryConnective for the equality as polymorphic prefix symbol
   // Though I don't understand why it's called unary ...
-  private final object ===== extends HOLUnaryConnective {
+  private object ===== extends HOLUnaryConnective {
     import leo.modules.HOLSignature.{=== => HOLEQ}
 
     val key: Signature.Key = HOLEQ.key // Dont care, we dont want to use unapply
@@ -500,7 +504,7 @@ object InputProcessing {
   }
   //////
 
-  private[this] final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
+  private final def convertTHFUnaryConnective(connective: TPTP.THF.UnaryConnective): HOLUnaryConnective = {
     import leo.modules.HOLSignature.{Not => not}
 
     connective match {
@@ -508,7 +512,7 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertTH1DefinedConstant(constant: TPTP.THF.DefinedTH1Constant): HOLUnaryConnective = {
+  private final def convertTH1DefinedConstant(constant: TPTP.THF.DefinedTH1Constant): HOLUnaryConnective = {
     import leo.modules.HOLSignature.{Forall => forall, Exists => exists, Choice => choice, Description => desc}
 
     constant match {
@@ -520,14 +524,14 @@ object InputProcessing {
     }
   }
 
-  private final object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
+  private object HOLLambda extends HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
     // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature.Key = Integer.MIN_VALUE
     def ty: Type = null
     override def apply(arg: Term): Term = arg
   }
 
-  private[this] final def processTHFQuantifier(quantifier: TPTP.THF.Quantifier): HOLUnaryConnective = {
+  private final def processTHFQuantifier(quantifier: TPTP.THF.Quantifier): HOLUnaryConnective = {
     import leo.modules.HOLSignature.{Forall, Exists, Choice, Description}
 
     quantifier match {
@@ -541,14 +545,14 @@ object InputProcessing {
   }
 
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinaryConnective
-  private final object @@@ extends HOLBinaryConnective {
+  private object @@@ extends HOLBinaryConnective {
     val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
     def ty: Type = null
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
   //////
 
-  private[this] final def convertTHFBinaryConnective(connective: TPTP.THF.BinaryConnective): HOLBinaryConnective = {
+  private final def convertTHFBinaryConnective(connective: TPTP.THF.BinaryConnective): HOLBinaryConnective = {
     import leo.modules.HOLSignature.{Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, ===, !===}
 
     connective match {
@@ -572,7 +576,7 @@ object InputProcessing {
   // Type processing
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] final def convertTHFType(sig: Signature)(typ: TPTP.THF.Type): TypeOrKind = {
+  private final def convertTHFType(sig: Signature)(typ: TPTP.THF.Type): TypeOrKind = {
     import TPTP.THF.QuantifiedFormula
 
     typ match {
@@ -608,7 +612,7 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertTHFType0(sig: Signature)(typ: TPTP.THF.Type, vars: Seq[String]): TypeOrKind = {
+  private final def convertTHFType0(sig: Signature)(typ: TPTP.THF.Type, vars: Seq[String]): TypeOrKind = {
     import TPTP.THF.{FunctionTerm, QuantifiedFormula, Variable, BinaryFormula, Tuple}
 
     typ match {
@@ -670,13 +674,13 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def collectVarsUnderTHFQuantifier(quantifier: TPTP.THF.Quantifier,
+  @inline private final def collectVarsUnderTHFQuantifier(quantifier: TPTP.THF.Quantifier,
                                                                 expression: TPTP.THF.Formula): (Seq[TPTP.THF.TypedVariable], TPTP.THF.Formula) = {
     collectVarsUnderTHFQuantifier0(quantifier, expression, Vector.empty)
   }
 
   @tailrec
-  private[this] final def collectVarsUnderTHFQuantifier0(quantifier: TPTP.THF.Quantifier,
+  private final def collectVarsUnderTHFQuantifier0(quantifier: TPTP.THF.Quantifier,
                                                          expression: TPTP.THF.Formula,
                                                          variables: Seq[TPTP.THF.TypedVariable]): (Seq[TPTP.THF.TypedVariable], TPTP.THF.Formula) = {
     import TPTP.THF.QuantifiedFormula
@@ -694,7 +698,7 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
 
   final def processAnnotatedTFF(sig: Signature)(statement: TPTP.TFFAnnotated): Option[Term] = {
-    import TPTP.TFF.{Typing, Logical}
+    import TPTP.TFF.{Typing, Logical, Sequent}
 
     statement.formula match {
       case Typing(atom, typ) =>
@@ -714,10 +718,11 @@ object InputProcessing {
             Some(res)
         }
       case Logical(f) => Some(convertTFFFormula(sig)(f))
+      case Sequent(_, _) => throw new SZSException(SZS_Inappropriate, "Sequents not supported.")
     }
   }
 
-  @inline private[this] final def processTFFDef(sig: Signature)(formula: TPTP.TFF.Formula): Option[(String, Term)] = {
+  @inline private final def processTFFDef(sig: Signature)(formula: TPTP.TFF.Formula): Option[(String, Term)] = {
     // TODO: Implement definition processing
     formula match {
       case _ => None
@@ -728,10 +733,10 @@ object InputProcessing {
   // Term processing
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] final def convertTFFFormula(sig: Signature)(formula: TPTP.TFF.Formula): Term =
+  private final def convertTFFFormula(sig: Signature)(formula: TPTP.TFF.Formula): Term =
     convertTFFFormula0(sig)(formula, Vector.empty, Vector.empty, Map.empty)
 
-  private[this] final def convertTFFFormula0(sig: Signature)(formula: TPTP.TFF.Formula,
+  private final def convertTFFFormula0(sig: Signature)(formula: TPTP.TFF.Formula,
                                                              termVars: Seq[String],
                                                              typeVars: Seq[String],
                                                              vars: Map[String, VariableMarker]): Term = {
@@ -826,7 +831,7 @@ object InputProcessing {
         if (sig(key).isTypeConstructor) {
           throw new SZSException(SZS_TypeError, s"Symbol '${sig(key).name}' is used as term symbol, but it's a type (or type constructor).")
         } else {
-          val func = mkAtom(key)(sig)
+          val func = mkAtom(key)(using sig)
           if (ft.isConstant) func
           else {
             if (func.ty.isPolyType) {
@@ -894,12 +899,13 @@ object InputProcessing {
           tffLetstripVariablesFromSimpleTerm(lhs) match {
             case Some((_, params)) =>
               if (params.isEmpty) {
-                atom -> (_ => rhs)
+                atom -> ((_:Seq[TFF.Term]) => rhs)
               } else {
                 if (params.distinct == params) {
-                  atom -> { args =>
-                    val paramToArgs: Map[String, TFF.Term] = params.zip(args).toMap
-                    tffInstantiateTerm(rhs, paramToArgs)
+                  atom -> { (args: Seq[TFF.Term]) => {
+                      val paramToArgs: Map[String, TFF.Term] = params.zip(args).toMap
+                      tffInstantiateTerm(rhs, paramToArgs)
+                    }
                   }
                 } else throw new SZSException(SZS_InputError, s"Variables in LHS of let binding '${lhs.pretty} := ${rhs.pretty}' are not distinct.")
               }
@@ -957,7 +963,7 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertTFFTerm(sig: Signature)(term: TPTP.TFF.Term,
+  private final def convertTFFTerm(sig: Signature)(term: TPTP.TFF.Term,
                                                          termVars: Seq[String],
                                                          typeVars: Seq[String],
                                                          vars: Map[String, VariableMarker]): TermOrType = {
@@ -977,9 +983,9 @@ object InputProcessing {
           Right(result)
         } else {
           assert(meta.isTermSymbol)
-          val result = if (args.isEmpty) mkAtom(meta.key)(sig)
+          val result = if (args.isEmpty) mkAtom(meta.key)(using sig)
           else {
-            val func = mkAtom(meta.key)(sig)
+            val func = mkAtom(meta.key)(using sig)
             if (func.ty.isPolyType) {
               if (adHocPolymorphicArithmeticConstants.contains(meta.key)) {
                 numberWarning
@@ -1031,7 +1037,7 @@ object InputProcessing {
           }
         } else throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term.")
 
-      case DistinctObject(name) => Left(mkAtom(getOrCreateSymbol(sig)(name, i))(sig))
+      case DistinctObject(name) => Left(mkAtom(getOrCreateSymbol(sig)(name, i))(using sig))
 
       case NumberTerm(number) => Left(convertNumber(number))
 
@@ -1044,14 +1050,14 @@ object InputProcessing {
   }
 
   ////// Functions related to TFF let-expression expansion BEGIN
-  private[this] def tffLetGetHeadsymbolFromSimpleTerm(formula: TPTP.TFF.Term): Option[String] = {
+  private def tffLetGetHeadsymbolFromSimpleTerm(formula: TPTP.TFF.Term): Option[String] = {
     import leo.datastructures.TPTP.TFF
     formula match {
       case TFF.AtomicTerm(f, _) => Some(f)
       case _ => None
     }
   }
-  private[this] def tffLetstripVariablesFromSimpleTerm(formula: TPTP.TFF.Term): Option[(String, Seq[String])] = {
+  private def tffLetstripVariablesFromSimpleTerm(formula: TPTP.TFF.Term): Option[(String, Seq[String])] = {
     import leo.datastructures.TPTP.TFF
     formula match {
       case TFF.AtomicTerm(f, args) =>
@@ -1064,7 +1070,7 @@ object InputProcessing {
       case _ => None
     }
   }
-  private[this] def tffInstantiateTerm(term: TPTP.TFF.Term, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Term = {
+  private def tffInstantiateTerm(term: TPTP.TFF.Term, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Term = {
     import leo.datastructures.TPTP.TFF
     term match {
       case TFF.AtomicTerm(f, args) =>
@@ -1081,7 +1087,7 @@ object InputProcessing {
       case _ => term
     }
   }
-  private[this] def tffInstantiateFormula(formula: TPTP.TFF.Formula, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Formula = {
+  private def tffInstantiateFormula(formula: TPTP.TFF.Formula, instances: Map[String, TPTP.TFF.Term]): TPTP.TFF.Formula = {
     import leo.datastructures.TPTP.TFF
     formula match {
       case TFF.AtomicFormula(f, args) =>
@@ -1127,7 +1133,7 @@ object InputProcessing {
       case _ => formula
     }
   }
-  private[this] def tffLetReplaceTermAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], term: TPTP.TFF.Term): TPTP.TFF.Term = {
+  private def tffLetReplaceTermAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], term: TPTP.TFF.Term): TPTP.TFF.Term = {
     import leo.datastructures.TPTP.TFF
     term match {
       case TFF.AtomicTerm(f, args) => replacements.get(f) match {
@@ -1140,7 +1146,7 @@ object InputProcessing {
       case _ => term
     }
   }
-  private[this] def tffLetReplaceFormulaAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
+  private def tffLetReplaceFormulaAll(replacements: Map[String, Seq[TPTP.TFF.Term] => TPTP.TFF.Term], formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
     import leo.datastructures.TPTP.TFF
     formula match {
       case TFF.AtomicFormula(f, args) => replacements.get(f) match {
@@ -1182,7 +1188,7 @@ object InputProcessing {
   ////// Functions related to TFF let-expression expansion END
 
 
-  private[this] final def convertTFFBinaryConnective(connective: TPTP.TFF.BinaryConnective): HOLBinaryConnective = {
+  private final def convertTFFBinaryConnective(connective: TPTP.TFF.BinaryConnective): HOLBinaryConnective = {
     import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     connective match {
@@ -1197,7 +1203,7 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertTFFQuantifier(quantifier: TPTP.TFF.Quantifier): HOLUnaryConnective = {
+  private final def convertTFFQuantifier(quantifier: TPTP.TFF.Quantifier): HOLUnaryConnective = {
     import leo.modules.HOLSignature.{Forall, Exists}
 
     quantifier match {
@@ -1210,7 +1216,7 @@ object InputProcessing {
   // Type processing
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] final def convertTFFType(sig: Signature)(typ: TPTP.TFF.Type): TypeOrKind = {
+  private final def convertTFFType(sig: Signature)(typ: TPTP.TFF.Type): TypeOrKind = {
     import TPTP.TFF.QuantifiedType
 
     typ match {
@@ -1243,7 +1249,7 @@ object InputProcessing {
   }
 
 
-  private[this] final def convertTFFType0(sig: Signature)(typ: TPTP.TFF.Type,
+  private final def convertTFFType0(sig: Signature)(typ: TPTP.TFF.Type,
                                                          typeVars: Seq[String]): TypeOrKind = {
     import TPTP.TFF.{AtomicType, MappingType, QuantifiedType, TypeVariable, TupleType}
 
@@ -1303,12 +1309,12 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def collectVarsUnderTFFTypeForall(typ: TPTP.TFF.Type): (Seq[TPTP.TFF.TypedVariable], TPTP.TFF.Type) = {
+  @inline private final def collectVarsUnderTFFTypeForall(typ: TPTP.TFF.Type): (Seq[TPTP.TFF.TypedVariable], TPTP.TFF.Type) = {
     collectVarsUnderTFFTypeForall0(typ, Vector.empty)
   }
 
   @tailrec
-  private[this] final def collectVarsUnderTFFTypeForall0(typ: TPTP.TFF.Type,
+  private final def collectVarsUnderTFFTypeForall0(typ: TPTP.TFF.Type,
                                                          variables: Seq[TPTP.TFF.TypedVariable]): (Seq[TPTP.TFF.TypedVariable], TPTP.TFF.Type) = {
     import TPTP.TFF.QuantifiedType
 
@@ -1339,7 +1345,7 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def processFOFDef(sig: Signature)(formula: TPTP.FOF.Formula): Option[(String, Term)] = {
+  @inline private final def processFOFDef(sig: Signature)(formula: TPTP.FOF.Formula): Option[(String, Term)] = {
     // TODO: Implement definition processing
     formula match {
       case _ => None
@@ -1350,10 +1356,10 @@ object InputProcessing {
   // Term processing
   ////////////////////////////////////////////////////////////////////////
 
-  @inline private[this] final def convertFOFFormula(sig: Signature)(formula: TPTP.FOF.Formula): Term =
+  @inline private final def convertFOFFormula(sig: Signature)(formula: TPTP.FOF.Formula): Term =
     convertFOFFormula0(sig)(formula, Vector.empty)
 
-  private[this] final def convertFOFFormula0(sig: Signature)(formula: TPTP.FOF.Formula,
+  private final def convertFOFFormula0(sig: Signature)(formula: TPTP.FOF.Formula,
                                                                      termVars: Seq[String]): Term = {
     import TPTP.FOF.{AtomicFormula, QuantifiedFormula, UnaryFormula, BinaryFormula, Equality, Inequality}
     import leo.modules.HOLSignature.{===, !===, Not}
@@ -1388,30 +1394,30 @@ object InputProcessing {
         !===(convertedLeft, convertedRight)
 
       case AtomicFormula(f, args) =>
-        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimplePredicateType(args.size)))(sig)
+        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimplePredicateType(args.size)))(using sig)
         val convertedArgs = args.map(convertFOFTerm(sig)(_, termVars))
         mkTermApp(convertedF, convertedArgs)
     }
   }
 
-  private[this] final def convertFOFTerm(sig: Signature)(term: TPTP.FOF.Term, termVars: Seq[String]): Term = {
+  private final def convertFOFTerm(sig: Signature)(term: TPTP.FOF.Term, termVars: Seq[String]): Term = {
     import TPTP.FOF.{AtomicTerm, Variable, DistinctObject, NumberTerm}
 
     term match {
       case AtomicTerm(f, args) =>
-        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(sig)
+        val convertedF = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(using sig)
         val convertedArgs = args.map(convertFOFTerm(sig)(_, termVars))
         mkTermApp(convertedF, convertedArgs)
       case Variable(name) =>
         val index = getDeBruijnIndexOf(termVars)(name)
         if (index == -1) throw new SZSException(SZS_InputError, s"Unbound variable '$name' in term expression.")
         else mkBound(i, index)
-      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(sig)
+      case DistinctObject(name) => mkAtom(getOrCreateSymbol(sig)(name, i))(using sig)
       case NumberTerm(value) => convertNumber(value)
     }
   }
 
-  private[this] final def convertFOFBinaryConnective(connective: TPTP.FOF.BinaryConnective): HOLBinaryConnective = {
+  private final def convertFOFBinaryConnective(connective: TPTP.FOF.BinaryConnective): HOLBinaryConnective = {
     import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     connective match {
@@ -1426,7 +1432,7 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertFOFQuantifier(quantifier: TPTP.FOF.Quantifier): HOLUnaryConnective = {
+  private final def convertFOFQuantifier(quantifier: TPTP.FOF.Quantifier): HOLUnaryConnective = {
     import leo.modules.HOLSignature.{Forall, Exists}
 
     quantifier match {
@@ -1449,7 +1455,7 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula, termVars: Seq[String] = Seq.empty): Term = {
+  @inline private final def convertCNFFormula(sig: Signature)(formula: TPTP.CNF.Formula, termVars: Seq[String] = Seq.empty): Term = {
     var convertedLiterals: Seq[Term] = Vector.empty
     var termVars0: Seq[String] = termVars // We only prepend, this is more efficient in List
     // The general approach is: We don't pass through all literals before processing them (in order to collect the variables)
@@ -1465,7 +1471,7 @@ object InputProcessing {
     leo.datastructures.mkDisjunction(convertedLiterals)
   }
 
-  private[this] final def convertCNFLiteral(sig: Signature)(literal: TPTP.CNF.Literal,
+  private final def convertCNFLiteral(sig: Signature)(literal: TPTP.CNF.Literal,
                                                             termVars: Seq[String]): (Term, Seq[String]) = {
     import TPTP.CNF.{PositiveAtomic, NegativeAtomic, Equality, Inequality}
     import leo.modules.HOLSignature.{===, !===, Not}
@@ -1486,9 +1492,9 @@ object InputProcessing {
     }
   }
 
-  private[this] final def convertCNFAtomicFormula(sig: Signature)(term: TPTP.CNF.AtomicFormula,
+  private final def convertCNFAtomicFormula(sig: Signature)(term: TPTP.CNF.AtomicFormula,
                                                                   termVars: Seq[String]): (Term, Seq[String]) = {
-    val convertedFunc = mkAtom(getOrCreateSymbol(sig)(term.f, mkSimplePredicateType(term.args.size)))(sig)
+    val convertedFunc = mkAtom(getOrCreateSymbol(sig)(term.f, mkSimplePredicateType(term.args.size)))(using sig)
     var convertedArgs: Seq[Term] = Vector.empty
     var termVars0 = termVars
     term.args.foreach { t =>
@@ -1499,13 +1505,13 @@ object InputProcessing {
     (mkTermApp(convertedFunc, convertedArgs), termVars0)
   }
 
-  private[this] final def convertCNFTerm(sig: Signature)(term: TPTP.CNF.Term,
+  private final def convertCNFTerm(sig: Signature)(term: TPTP.CNF.Term,
                                                                  termVars: Seq[String]): (Term, Seq[String]) = {
     import TPTP.CNF.{AtomicTerm, Variable, DistinctObject}
 
     term match {
       case AtomicTerm(f, args) =>
-        val convertedFunc = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(sig)
+        val convertedFunc = mkAtom(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size)))(using sig)
         var convertedArgs: Seq[Term] = Vector.empty
         var termVars0 = termVars
         args.foreach { t =>
@@ -1523,7 +1529,7 @@ object InputProcessing {
         } else mkBound(i, index)
         (result, updatedTermVars)
       case DistinctObject(name) =>
-        (mkAtom(getOrCreateSymbol(sig)(name, i))(sig), termVars)
+        (mkAtom(getOrCreateSymbol(sig)(name, i))(using sig), termVars)
     }
   }
 
@@ -1543,7 +1549,7 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def convertTCFFormula(sig: Signature)(formula: TPTP.TCF.Formula): Term = {
+  @inline private final def convertTCFFormula(sig: Signature)(formula: TPTP.TCF.Formula): Term = {
     val termVarsFromPrefixQuantification = formula.variables.map(_._1)
     val typesFromPrefixQuantification = formula.variables.map { case (_, ty0) =>
       val convertedType = ty0 match {
@@ -1565,11 +1571,11 @@ object InputProcessing {
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
-  private[this] sealed abstract class VariableMarker
-  private[this] case class TermVariableMarker(typ: Type) extends VariableMarker
-  private[this] case object TypeVariableMarker extends VariableMarker
+  private sealed abstract class VariableMarker
+  private case class TermVariableMarker(typ: Type) extends VariableMarker
+  private case object TypeVariableMarker extends VariableMarker
 
-  @inline private[this] final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, force: Boolean = false): Signature.Key = {
+  @inline private final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, force: Boolean = false): Signature.Key = {
     if (sig.exists(name)) sig(name).key
     else {
       if (name.startsWith("$") && !force) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
@@ -1578,7 +1584,7 @@ object InputProcessing {
   }
 
   /** Analogous to [[getOrCreateSymbol]] only that a warning is issued additionally (used for TFF). */
-  @inline private[this] final def getOrCreateSymbolWithWarning(sig: Signature)(name: String, ty: Type): Signature.Key = {
+  @inline private final def getOrCreateSymbolWithWarning(sig: Signature)(name: String, ty: Type): Signature.Key = {
     if (sig.exists(name)) sig(name).key
     else {
       if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
@@ -1597,7 +1603,7 @@ object InputProcessing {
     leo.Out.warn(s"Leo-III currently does not fully support arithmetic. " +
       s"Numbers in the problem file are recognized, but there is no guarantee for adequateness of processing them whatsoever.")
   }
-  @inline private[this] final def convertNumber(number: TPTP.Number): Term = {
+  @inline private final def convertNumber(number: TPTP.Number): Term = {
     numberWarning
     number match {
       case TPTP.Integer(value) => mkInteger(value)
@@ -1606,17 +1612,17 @@ object InputProcessing {
     }
   }
 
-  @inline private[this] final def mkSimplePredicateType(n: Int): Type = {
+  @inline private final def mkSimplePredicateType(n: Int): Type = {
     val from = Seq.fill(n)(i)
     mkFunType(from, o)
   }
 
-  @inline private[this] final def mkSimpleFunctionType(n: Int): Type = {
+  @inline private final def mkSimpleFunctionType(n: Int): Type = {
     val from = Seq.fill(n)(i)
     mkFunType(from, i)
   }
 
-  @inline private[this] final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
+  @inline private final def getDeBruijnIndexOf[A](vars: Seq[A])(variable: A): Int = {
     val idx = vars.lastIndexOf(variable)
     if (idx == -1) -1
     else vars.length - idx

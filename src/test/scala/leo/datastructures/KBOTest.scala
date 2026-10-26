@@ -29,38 +29,38 @@ object KBOTest {
     val ordering = new KBOTermOrdering(simpleweight,Precedence.apply().arity_UnaryFirst)
 
     def compare(s: String, t: String): Unit = {
-      println(s"compare($s,$t)",Orderings.pretty(ordering.compare(Input.readFormula(s), Input.readFormula(t))))
+      print(s"compare($s,$t)"); println(Orderings.pretty(ordering.compare(Input.readFormula(s), Input.readFormula(t))))
     }
     def compareTerms(s: Term, t: Term): Unit = {
-      println(s"compare(${s.pretty(sig)},${t.pretty(sig)})",Orderings.pretty(ordering.compare(s,t)))
+      print(s"compare(${s.pretty(sig)},${t.pretty(sig)})"); println(Orderings.pretty(ordering.compare(s,t)))
     }
 
-    println("f1", ordering.termWeight(Input.readFormula("f1")))
-    println("c", ordering.termWeight(Input.readFormula("c")))
-    println("f1 @ c", ordering.termWeight(Input.readFormula("f1 @ c")))
+    print("f1"); println(ordering.termWeight(Input.readFormula("f1")))
+    print("c"); println(ordering.termWeight(Input.readFormula("c")))
+    print("f1 @ c"); println(ordering.termWeight(Input.readFormula("f1 @ c")))
 
-    println("f2", ordering.termWeight(Input.readFormula("f2")))
-    println("c", ordering.termWeight(Input.readFormula("c")))
-    println("f2 @ c", ordering.termWeight(Input.readFormula("f2 @ c")))
-    println("f2 @ c @ c", ordering.termWeight(Input.readFormula("f2 @ c @ c")))
+    print("f2"); println(ordering.termWeight(Input.readFormula("f2")))
+    print("c"); println(ordering.termWeight(Input.readFormula("c")))
+    print("f2 @ c"); println(ordering.termWeight(Input.readFormula("f2 @ c")))
+    print("f2 @ c @ c"); println(ordering.termWeight(Input.readFormula("f2 @ c @ c")))
 
 
-    println("f3", ordering.termWeight(Input.readFormula("f3")))
-    println("f1", ordering.termWeight(Input.readFormula("f1")))
-    println("f3 @ f1", ordering.termWeight(Input.readFormula("f3 @ f1")))
+    print("f3"); println(ordering.termWeight(Input.readFormula("f3")))
+    print("f1"); println(ordering.termWeight(Input.readFormula("f1")))
+    print("f3 @ f1"); println(ordering.termWeight(Input.readFormula("f3 @ f1")))
 
-    println("f5", ordering.termWeight(Input.readFormula("f5")))
-    println("f1", ordering.termWeight(Input.readFormula("f1")))
-    println("f5 @ f1", ordering.termWeight(Input.readFormula("f5 @ f1")))
-    println("f5 @ f1 @ f1", ordering.termWeight(Input.readFormula("f5 @ f1 @ f1")))
+    print("f5"); println(ordering.termWeight(Input.readFormula("f5")))
+    print("f1"); println(ordering.termWeight(Input.readFormula("f1")))
+    print("f5 @ f1"); println(ordering.termWeight(Input.readFormula("f5 @ f1")))
+    print("f5 @ f1 @ f1"); println(ordering.termWeight(Input.readFormula("f5 @ f1 @ f1")))
 
-    println("f4", ordering.termWeight(Input.readFormula("f4")))
-    println("f2", ordering.termWeight(Input.readFormula("f2")))
-    println("f4 @ f2", ordering.termWeight(Input.readFormula("f4 @ f2")))
+    print("f4"); println(ordering.termWeight(Input.readFormula("f4")))
+    print("f2"); println(ordering.termWeight(Input.readFormula("f2")))
+    print("f4 @ f2"); println(ordering.termWeight(Input.readFormula("f4 @ f2")))
 
-    println("f7", ordering.termWeight(Input.readFormula("f7")))
-    println("f3", ordering.termWeight(Input.readFormula("f3")))
-    println("f7 @ f3", ordering.termWeight(Input.readFormula("f7 @ f3")))
+    print("f7"); println(ordering.termWeight(Input.readFormula("f7")))
+    print("f3"); println(ordering.termWeight(Input.readFormula("f3")))
+    print("f7 @ f3"); println(ordering.termWeight(Input.readFormula("f7 @ f3")))
 
     println(Orderings.pretty(ordering.compare(Input.readFormula("f7 @ f3"), Input.readFormula("f4 @ f2"))))
     println(Orderings.pretty(ordering.compare(Input.readFormula("f7 @ f3"), Input.readFormula("f7 @ f3"))))
@@ -84,8 +84,8 @@ object KBOTest {
     assert(wellTyped(eq1._1)); assert(wellTyped(eq1._2))
     assert(wellTyped(eq2._1), "eq21"); assert(wellTyped(eq2._2), "eq22")
     println(ordering.termWeight(eq1._1))
-    println(s"headVars ${eq1._1.pretty(sig)}, ${eq1._2.pretty(sig)}:", eq1._1.headVars, eq1._2.headVars)
-    println(s"headVars ${eq2._1.pretty(sig)}, ${eq2._2.pretty(sig)}:", eq2._1.headVars, eq2._2.headVars)
+    println(s"headVars ${eq1._1.pretty(sig)}, ${eq1._2.pretty(sig)}: ${eq1._1.headVars}, ${eq1._2.headVars}")
+    println(s"headVars ${eq2._1.pretty(sig)}, ${eq2._2.pretty(sig)}: ${eq2._1.headVars}, ${eq2._2.headVars}")
     println(ordering.termWeight(eq1._2))
     compareTerms(eq1._1, eq1._2)
     compareTerms(eq2._1, eq2._2)

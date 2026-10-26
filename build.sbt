@@ -4,8 +4,9 @@ lazy val leo = (project in file("."))
     description := "A Higher-Order Theorem Prover.",
     version := "1.8.1",
     organization := "org.leo",
-    scalaVersion := "2.13.18",
     licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
+
+    scalaVersion := "3.9.0",
 
     logLevel := Level.Warn,
 
@@ -17,7 +18,7 @@ lazy val leo = (project in file("."))
 
     scalacOptions ++= Seq(
       "-deprecation",
-      "-feature",
+      "-feature"
     ),
     // set stack size to 4m
     javaOptions ++= Seq(
@@ -26,8 +27,9 @@ lazy val leo = (project in file("."))
       "-Xmx2g"
     ),
     //resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.3",
-    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.2.19" % "test"),
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.5",
+    libraryDependencies += "io.github.leoprover" %% "logic-embedding-runtime" % "2.0.0",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % "test",
     
     nativeImageOptions += s"-H:ReflectionConfigurationFiles=${baseDirectory.value / "contrib" / "native-image-configs" / "reflect-config.json"}",
     nativeImageOptions += s"-H:ConfigurationFileDirectories=${baseDirectory.value / "contrib" / "native-image-configs" }",
@@ -40,24 +42,3 @@ lazy val leo = (project in file("."))
     Test/parallelExecution := false,
   ).enablePlugins(NativeImagePlugin)
 
-// The following are new commands to allow build with debug output
-lazy val elideLevel = settingKey[Int]("elide code below this level.")
-Global/elideLevel := 501
-scalacOptions ++= Seq("-Xelide-below", elideLevel.value.toString)
-def compileCommand(name: String, level: Int) =
-  Command.command(s"${name}Compile") { s =>
-    s"set elideLevel in Global := $level" ::
-      "compile" ::
-      s"set elideLevel in Global := 501" ::
-      s
-  }
-commands += compileCommand("debug", 0)
-def assemblyCommand(name: String, level: Int) =
-  Command.command(s"${name}Assembly") { s =>
-    s"set elideLevel in Global := $level" ::
-      "assembly" ::
-      s"set elideLevel in Global := 501" ::
-      s
-  }
-commands += assemblyCommand("debug", 0)
-//commands += compileCommand("prod", 1000)

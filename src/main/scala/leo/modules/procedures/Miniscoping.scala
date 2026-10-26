@@ -38,7 +38,7 @@ object Miniscoping extends Function1[Term, Term] {
     * @param sig the signature
     * @return a miniscoped term
     */
-  private[this] final def apply0(t : Term, pol : Boolean, quants : QUANT_LIST): Term = {
+  private final def apply0(t : Term, pol : Boolean, quants : QUANT_LIST): Term = {
     t match {
       case Exists(ty :::> body) => apply0(body, pol, quants :+ (!pol, ty))
       case Forall(ty :::> body) => apply0(body, pol, quants :+ (pol, ty))
@@ -72,7 +72,7 @@ object Miniscoping extends Function1[Term, Term] {
     * @param and if(true) op = AND else op = OR
     * @return
     */
-  private[this] final def pushQuants(left : Term, right : Term, quants : QUANT_LIST, pol : Boolean, and : Boolean) : (QUANT_ITERATOR, QUANT_LIST, Subst, QUANT_LIST, Subst) = {
+  private final def pushQuants(left : Term, right : Term, quants : QUANT_LIST, pol : Boolean, and : Boolean) : (QUANT_ITERATOR, QUANT_LIST, Subst, QUANT_LIST, Subst) = {
     val it = quants.reverseIterator
     var leftQ : QUANT_LIST = Vector() // Quantifiers pushed left
     var leftSubst : Seq[Int] = Seq()  // Substitution (reversed) removed Quants left
@@ -100,7 +100,7 @@ object Miniscoping extends Function1[Term, Term] {
     return (it, leftQ, revListToSubst(leftSubst, leftQ.size), rightQ, revListToSubst(rightSubst, rightQ.size))
   }
 
-  @inline private[this] final def revListToSubst(preSubst : Seq[Int], shift : Int) = {
+  @inline private final def revListToSubst(preSubst : Seq[Int], shift : Int) = {
     var s : Subst = Subst.shift(shift)
     val it = preSubst.iterator
     while(it.hasNext){
@@ -109,7 +109,7 @@ object Miniscoping extends Function1[Term, Term] {
     s
   }
 
-  @inline private[this] final def testPush(left : Term, right : Term, bound : Int, quant : Boolean, and : Boolean) : PUSH_TYPE = {
+  @inline private final def testPush(left : Term, right : Term, bound : Int, quant : Boolean, and : Boolean) : PUSH_TYPE = {
     var result = 0
     if (left.looseBounds.contains(bound)) result |= 1
     if (right.looseBounds.contains(bound)) result |= 2
@@ -122,7 +122,7 @@ object Miniscoping extends Function1[Term, Term] {
   /**
     * @param quants Reverse Iterator of the quantifier prefix
     */
-  private[this] final def prependQuantList(t : Term, pol : Boolean, quants : QUANT_ITERATOR) : Term = {
+  private final def prependQuantList(t : Term, pol : Boolean, quants : QUANT_ITERATOR) : Term = {
     var itTerm : Term = t
     while(quants.hasNext){
       val (q, ty) = quants.next()
@@ -131,7 +131,7 @@ object Miniscoping extends Function1[Term, Term] {
     itTerm
   }
 
-  private[this] final def quantToTerm(quant : Boolean, pol : Boolean) : HOLUnaryConnective = {
+  private final def quantToTerm(quant : Boolean, pol : Boolean) : HOLUnaryConnective = {
     val realQuant = if(pol) quant else !quant
     if(realQuant) Forall else Exists
   }

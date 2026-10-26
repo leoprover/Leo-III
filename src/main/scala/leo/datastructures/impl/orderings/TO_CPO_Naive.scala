@@ -49,16 +49,16 @@ object TO_CPO_Naive extends TermOrdering {
   @inline final def gteq(s: Term, t: Term, depth: Int)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, depth)(sig)
 
   // Defined by gt/ge
-  @inline final def lt(s: Term, t: Term)(implicit sig: Signature): Boolean = gt(t,s)(sig)
-  @inline final def lteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(t,s)(sig)
+  @inline final def lt(s: Term, t: Term)(implicit sig: Signature): Boolean = gt(t,s)(using sig)
+  @inline final def lteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(t,s)(using sig)
 
   @inline final def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result = {
     if (s == t) CMP_EQ
-    else if (gt(s,t)(sig)) CMP_GT
-    else if (lt(s,t)(sig)) CMP_LT
+    else if (gt(s,t)(using sig)) CMP_GT
+    else if (lt(s,t)(using sig)) CMP_LT
     else CMP_NC
   }
-  @inline final def canCompare(s: Term, t: Term)(implicit sig: Signature): Boolean = compare(s,t)(sig) != CMP_NC
+  @inline final def canCompare(s: Term, t: Term)(implicit sig: Signature): Boolean = compare(s,t)(using sig) != CMP_NC
 
   /* Common comparison-related operations */
 
@@ -72,7 +72,7 @@ object TO_CPO_Naive extends TermOrdering {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature.Key, t: Signature.Key)(sig: Signature): CMP_Result = Configuration.PRECEDENCE.compare(s,t)(sig)
+  final private def precedence(s: Signature.Key, t: Signature.Key)(sig: Signature): CMP_Result = Configuration.PRECEDENCE.compare(s,t)(using sig)
 
   // Well-founded ordering of base types (sort)
   final private def gt_baseType(bt1: Signature.Key, bt2: Signature.Key): Boolean = bt1 > bt2
@@ -83,7 +83,7 @@ object TO_CPO_Naive extends TermOrdering {
   // Comparisons of types
   ////////////////////////////////////
   final private def gt0(a: Type, b: Type): Boolean = {
-    import leo.datastructures.Type.{BaseType,->,∀}
+    import leo.datastructures.Type.{BaseType,->,PolyType}
 
     if (a == b) return false
     if (a.isBoundTypeVar) return false
@@ -115,12 +115,12 @@ object TO_CPO_Naive extends TermOrdering {
     }
     /* adaption for quantified types */
     if (a.isPolyType) {
-      val aO = ∀.unapply(a).get
+      val aO = PolyType.unapply(a).get
 
       if (ge0(aO, b)) return true
 
       if (b.isPolyType) {
-        val bO = ∀.unapply(b).get
+        val bO = PolyType.unapply(b).get
         return gt0(aO,bO)
       }
       // TODO: Are there further meaningful cases?
@@ -131,7 +131,7 @@ object TO_CPO_Naive extends TermOrdering {
   }
 
   final private def ge0(a: Type, b: Type): Boolean = {
-    import leo.datastructures.Type.{BaseType,->,∀}
+    import leo.datastructures.Type.{BaseType,->,PolyType}
 
     if (a == b) return true
     if (a.isBaseType) {
@@ -160,12 +160,12 @@ object TO_CPO_Naive extends TermOrdering {
     }
     /* adaption for quantified types */
     if (a.isPolyType) {
-      val aO = ∀.unapply(a).get
+      val aO = PolyType.unapply(a).get
 
       if (gt0(aO, b)) return true
 
       if (b.isPolyType) {
-        val bO = ∀.unapply(b).get
+        val bO = PolyType.unapply(b).get
         return gt0(aO,bO)
       }
       // TODO: Are there further meaningful cases?
@@ -215,7 +215,7 @@ object TO_CPO_Naive extends TermOrdering {
       if (s.head == t.head) {
         gt0Lex(a,s.tail,t.tail,depth)(sig)
       } else {
-        gt(s.head,t.head)(sig) && t.tail.forall(gt0(a,_,depth)(sig))
+        gt(s.head,t.head)(using sig) && t.tail.forall(gt0(a,_,depth)(sig))
       }
     } else false
   }
@@ -249,7 +249,7 @@ object TO_CPO_Naive extends TermOrdering {
       var keepT: Seq[Term] = Vector.empty
       while (tIt.hasNext) {
         val tn = tIt.next()
-        if (!gt(sn, tn)(sig)) {
+        if (!gt(sn, tn)(using sig)) {
           keepT = keepT :+ tn
         }
       }
@@ -265,8 +265,8 @@ object TO_CPO_Naive extends TermOrdering {
      the prover with it, far past its time limit (GoedelVariantHOML2/L: 248 s at
      -t 10).  The answers are kept for the duration of one outermost comparison:
      the same answers as before, so the same search, computed once each. */
-  private[this] var memoDepth: Int = 0
-  private[this] var memo: java.util.HashMap[(Term, Term, Int), java.lang.Boolean] = null
+  private var memoDepth: Int = 0
+  private var memo: java.util.HashMap[(Term, Term, Int), java.lang.Boolean] = null
 
   final private def gt0(s: Term, t: Term, depth: Int)(sig: Signature): Boolean = {
     if (memoDepth == 0) memo = new java.util.HashMap[(Term, Term, Int), java.lang.Boolean]()
@@ -293,7 +293,7 @@ object TO_CPO_Naive extends TermOrdering {
     /* adaption for type abstractions*/
     if (s.isTypeAbs) {
       val sO = TypeLambda.unapply(s).get
-      if (gteq(sO,t,depth)(sig)) return true
+      if (gteq(sO,t,depth)(using sig)) return true
       if (t.isTypeAbs) {
         val tO = TypeLambda.unapply(t).get
         return gt0(sO,tO,depth)(sig)
@@ -309,7 +309,7 @@ object TO_CPO_Naive extends TermOrdering {
     if (s.isTermAbs) {
       val (sInTy, sO) = :::>.unapply(s).get
 
-      if (gteq(sO,t,depth)(sig)) return true
+      if (gteq(sO,t,depth)(using sig)) return true
       if (t.isTermAbs) {
         val (tInTy, tO) = :::>.unapply(t).get
 
@@ -431,18 +431,18 @@ object TO_CPO_Naive extends TermOrdering {
             if (s2 == t2) {
               if (gt0(fargList.last, gargList.last,depth)(sig)) return true
             }
-            if ((gt(s2,t2,depth)(sig) || gteq(fargList.last,t2,depth)(sig) || gt(s,t2)(sig))
-              && (gt(s2,gargList.last,depth)(sig) || gteq(fargList.last,gargList.last,depth)(sig) || gt(s,gargList.last)(sig))) return true
+            if ((gt(s2,t2,depth)(using sig) || gteq(fargList.last,t2,depth)(using sig) || gt(s,t2)(using sig))
+              && (gt(s2,gargList.last,depth)(using sig) || gteq(fargList.last,gargList.last,depth)(using sig) || gt(s,gargList.last)(using sig))) return true
           }
         }
         /* case 1: f(t) >= v */
         if (f.isConstant) {
 //          println("f.isConstant (case 1)")
-          if (fargList.exists(gteq(_, t)(sig))) return true
+          if (fargList.exists(gteq(_, t)(using sig))) return true
         }
         /* case 7: @(s,t) > v */
         if (ge0(mkApp(f,args.init),t,depth)(sig)) return true
-        if (gteq(fargList.last,t,depth)(sig)) return true
+        if (gteq(fargList.last,t,depth)(using sig)) return true
         false
       } else false
     }
@@ -466,13 +466,14 @@ object TO_CPO_Naive extends TermOrdering {
     filterTermArgs(args.drop(forTy.polyPrefixArgsCount))
   }
 
- final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
+  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
     if (args.isEmpty) Vector.empty
     else {
       val hd = args.head
-      if (hd.isLeft) {
-        hd.left.get +: filterTermArgs(args.tail)
-      } else filterTermArgs(args.tail)
+      hd match {
+        case Left(term0) => term0 +: filterTermArgs(args.tail)
+        case Right(ty0) => filterTermArgs(args.tail)
+      }
     }
   }
 }

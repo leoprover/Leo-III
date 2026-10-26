@@ -23,19 +23,19 @@ class EncodingTest extends LeoTestSuite {
 
     val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) union leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
-      LambdaElimStrategy_SKI, PolyNative)(sig)
+      LambdaElimStrategy_SKI, PolyNative)(using sig)
 
     Out.finest(signatureAsString(encodedSig))
 
     println(leo.modules.output.ToTFF(encodedSig))
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodedSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodedSig))
       i_prob += 1
     }
     var i_aux = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"aux_$i_aux")(encodedSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"aux_$i_aux")(using encodedSig))
       i_aux += 1
     }
     encodedProblem.foreach { prob => Clause.wellTyped(prob)}
@@ -56,18 +56,18 @@ class EncodingTest extends LeoTestSuite {
 
     val problem: Problem = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) union leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
-      LambdaElimStrategy_SKI, MonoNative)(sig)
+      LambdaElimStrategy_SKI, MonoNative)(using sig)
 
     Out.finest(signatureAsString(encodedSig))
     println(leo.modules.output.ToTFF(encodedSig))
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodedSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodedSig))
       i_prob += 1
     }
     var i_aux = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"aux_$i_aux")(encodedSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"aux_$i_aux")(using encodedSig))
       i_aux += 1
     }
     encodedProblem.foreach { prob => Clause.wellTyped(prob)}

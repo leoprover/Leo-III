@@ -156,7 +156,7 @@ package object calculus {
   }
 
   def normalizeFVs(fvs0: Seq[Int]): Option[Subst] = {
-    val fvs = fvs0.distinct.sorted(Ordering.Int.reverse)
+    val fvs = fvs0.distinct.sorted(using Ordering.Int.reverse)
     if (fvs.nonEmpty && fvs.size != fvs.head) {
       Out.finest(s"FV Optimization needed")
       Out.finest(s"Old: \t${fvs.mkString("-")}")
@@ -168,7 +168,7 @@ package object calculus {
   }
 
   def normalizeTyFVs(tyFvs0: Seq[Int]): Option[Subst] = {
-    val tyFvs = tyFvs0.distinct.sorted(Ordering.Int.reverse)
+    val tyFvs = tyFvs0.distinct.sorted(using Ordering.Int.reverse)
     if (tyFvs.nonEmpty && tyFvs.size != tyFvs.head) {
       Out.finest(s"Ty FV Optimization needed")
       Out.finest(s"Old: \t${tyFvs.mkString("-")}")
@@ -259,8 +259,8 @@ package object calculus {
 
   final def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
-  final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.*
-  else Kind.mkFunKind(Kind.*, mkPolyKindAbstraction(count-1))
+  final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.TYPE
+  else Kind.mkFunKind(Kind.TYPE, mkPolyKindAbstraction(count-1))
 
   /** Checks whether the terms `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the terms are not unifiable, otherwise they may be. */
@@ -307,10 +307,10 @@ package object calculus {
       case (BaseType(id1), BaseType(id2)) => id1 == id2
       case (a -> b, c -> d) => mayUnify(a,c) && mayUnify(b,d)
       case (ProductType(tys1), ProductType(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayUnify(pair._1, pair._2))
-      case (∀(a), ∀(b)) => mayUnify(a,b)
-      case (BoundType(_), ∀(_)) => false
+      case (PolyType(a), PolyType(b)) => mayUnify(a,b)
+      case (BoundType(_), PolyType(_)) => false
       case (BoundType(_), _) => true
-      case (∀(_), BoundType(_)) => false
+      case (PolyType(_), BoundType(_)) => false
       case (_, BoundType(_)) => true
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayUnify(ts._1, ts._2))
       case _ => false
@@ -361,7 +361,7 @@ package object calculus {
       case (BaseType(id1), BaseType(id2)) => id1 == id2
       case (a -> b, c -> d) => mayMatch(a,c) && mayMatch(b,d)
       case (ProductType(tys1), ProductType(tys2)) => tys1.size == tys2.size && tys1.zip(tys2).forall(pair => mayMatch(pair._1, pair._2))
-      case (∀(a), ∀(b)) => mayMatch(a,b)
+      case (PolyType(a), PolyType(b)) => mayMatch(a,b)
       case (BoundType(_), _) => true
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayMatch(ts._1, ts._2))
       case _ => false

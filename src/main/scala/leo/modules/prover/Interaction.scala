@@ -124,7 +124,7 @@ object Interaction {
     try {
       val n = in.drop(5).toLong
       val cl = clauseCache(n).get.get
-      println(ToTHF.withAnnotation(cl)(state.signature))
+      println(ToTHF.withAnnotation(cl)(using state.signature))
     } catch {
       case _: Exception => println("Invalid input, try again")
     }
@@ -135,7 +135,7 @@ object Interaction {
       val n = in.drop(8).toLong
       val cl = clauseCache(n).get.get
       val parents = leo.modules.proofOf(cl)
-      val parentsAsTPTP = parents.map(ToTHF.withAnnotation(_)(state.signature))
+      val parentsAsTPTP = parents.map(ToTHF.withAnnotation(_)(using state.signature))
       println(parentsAsTPTP.mkString("\n"))
     } catch {
       case _: Exception => println("Invalid input, try again")

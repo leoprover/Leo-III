@@ -8,10 +8,10 @@ import leo.modules.output.{SZS_Success, SuccessSZS, ToTHF, unescapeTPTPName}
 
 
 final case class ExternalProof(derivation: Seq[AnnotatedClause], sig: Signature) extends Pretty {
-  private[this] lazy val bottomClause: Option[AnnotatedClause] = derivation.find { cl =>
+  private lazy val bottomClause: Option[AnnotatedClause] = derivation.find { cl =>
     effectivelyEmpty(cl.cl) || Clause.asTerm(cl.cl) == leo.modules.HOLSignature.LitFalse()
   }
-  private[this] lazy val leafClauses: Seq[AnnotatedClause] = {
+  private lazy val leafClauses: Seq[AnnotatedClause] = {
     derivation.filter { cl =>
       cl.annotation match {
         case ClauseAnnotation.FromFile(_, _) => true
@@ -23,7 +23,7 @@ final case class ExternalProof(derivation: Seq[AnnotatedClause], sig: Signature)
   def leaves: Seq[AnnotatedClause] = leafClauses
   def bottom: Option[AnnotatedClause] = bottomClause
 
-  override def pretty: String = derivation.map(ToTHF.withAnnotation(_)(sig)).mkString("\n")
+  override def pretty: String = derivation.map(ToTHF.withAnnotation(_)(using sig)).mkString("\n")
 }
 object ExternalProof {
   final def fromTSTPLines(lines: Seq[String]): ExternalProof = {
@@ -32,18 +32,18 @@ object ExternalProof {
     val sig: Signature = Signature.freshWithHOL()
     val linesAsTPTP = Input.parseProblem(lines.mkString(""))(stats = None)
     val annotatedClauses = linesAsTPTP.map { annotated =>
-      val (name, term, role) = Input.processFormula(annotated)(sig)
+      val (name, term, role) = Input.processFormula(annotated)(using sig)
 //            println(s"name=$name,term=${term.pretty(sig)},role=$role,annotation=${annotated.annotations}")
       val tptpAnnotation: ClauseAnnotation = convertTPTPAnnotation(annotated.annotations, nameToClause)
       val r = AnnotatedClause.apply(termToClause(term), role, tptpAnnotation, ClauseAnnotation.PropNoProp)
       nameToClause = nameToClause + (name -> r)
-      println(ToTHF.withAnnotation(r)(sig))
+      println(ToTHF.withAnnotation(r)(using sig))
       r
     }
 
     new ExternalProof(annotatedClauses, sig)
   }
-  private[this] final def convertTPTPAnnotation(annotation: TPTP.Annotations, clauseMap: Map[String, AnnotatedClause]): ClauseAnnotation = {
+  private final def convertTPTPAnnotation(annotation: TPTP.Annotations, clauseMap: Map[String, AnnotatedClause]): ClauseAnnotation = {
     annotation match {
       case Some((step, _)) => step.data match {
         case Seq(TPTP.MetaFunctionData("file",

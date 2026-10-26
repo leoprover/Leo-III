@@ -5,6 +5,7 @@ import leo.modules._
 import leo.modules.external.{Future, TPTPProver}
 import TPTPProver.Result
 import leo.modules.prover.State.LastCallStat
+import leo.modules.indexing.ClauseFeature
 
 /**
   * Created by lex on 20.02.16.
@@ -104,7 +105,7 @@ object State {
     private var lastLoopCount0: Long = 0
     private var lastProcessedSize0: Int = 0
     private var lastTime0: Long = 0
-    private var lastProblem0: Set[T] = _
+    private var lastProblem0: Set[T] = scala.compiletime.uninitialized
 
     def lastLoopCount: Long = lastLoopCount0
     def lastProcessedSize: Int = lastProcessedSize0
@@ -146,13 +147,13 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   // Further utility
   /////////////////////
-  private var proof0: Proof = _
+  private var proof0: Proof = scala.compiletime.uninitialized
   /////////////////////
   // Handling of external calls
   /////////////////////
   private var openExtCalls0: Map[TPTPProver[T], Set[Future[Result[T]]]] = Map.empty
   private var queuedTranslations : Int = 0
-  private var extCallStat: LastCallStat[T] = _
+  private var extCallStat: LastCallStat[T] = scala.compiletime.uninitialized
   private var queuedExtCalls0: Map[TPTPProver[T], Vector[Set[T]]] = Map.empty
 
   /////////// Methods ///////////////
@@ -201,7 +202,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
      once more for every clause an inference produces; each call copied the set.
      The copy is kept until the set changes.  It is the same immutable set a fresh
      copy would be, so it iterates in the same order. */
-  private[this] var processedSnapshot: Set[T] = null
+  private var processedSnapshot: Set[T] = null
   final def processed: Set[T] = {
     if (processedSnapshot == null) processedSnapshot = currentProcessed.toSet
     processedSnapshot
@@ -368,17 +369,17 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
 }
 
 class FVIndex {
-  import leo.modules.indexing.{CFF, FVIndex}
+  import leo.modules.indexing.{CFF}
 
   val maxFeatures: Int = 100
   var initialized = false
   var features: Seq[CFF] = Vector.empty
-  var index = FVIndex()
+  var index: FixedLengthTrie[ClauseFeature,AnnotatedClause] = leo.modules.indexing.FVIndex()
   def clauseFeatures: Seq[CFF] = features
 
   protected[modules] final def reset(): Unit = {
     initialized = false
     features = Vector.empty
-    index = FVIndex()
+    index = leo.modules.indexing.FVIndex()
   }
 }

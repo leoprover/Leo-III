@@ -1,13 +1,15 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{ClausePosition, ClausePositionSet, Position, Literal, Clause}
+import leo.datastructures.{Clause, ClausePosition, ClausePositionSet, Literal, Position}
+
+import scala.annotation.tailrec
 
 
 protected[datastructures] class ClausePositionTrieSet extends ClausePositionSet {
   import scala.collection.mutable
   type Key = Int
 
-  protected var clause0: Clause = _
+  protected var clause0: Clause = scala.compiletime.uninitialized
   protected final val subtries: mutable.HashMap[Key, ClausePositionTrieSetNode] = mutable.HashMap.empty
 
   def clause: Clause = clause0
@@ -42,7 +44,7 @@ protected[datastructures] class ClausePositionTrieSet extends ClausePositionSet 
 
   def bfsIterator: Iterator[ClausePosition] = new Iterator[ClausePosition] {
     private var todo: Set[ClausePositionTrieSetNode] = subtries.values.toSet
-    private var cur: Iterator[ClausePosition] = _
+    private var cur: Iterator[ClausePosition] = scala.compiletime.uninitialized
 
     override def hasNext: Boolean = {
       if (cur == null) {
@@ -76,8 +78,8 @@ protected[impl] class ClausePositionTrieSetNode { self =>
 
   protected final val subtries: mutable.HashMap[Key, ClausePositionTrieSetNode] = mutable.HashMap.empty
 
-  private var leftValue: ClausePosition = _
-  private var rightValue: ClausePosition = _
+  private var leftValue: ClausePosition = scala.compiletime.uninitialized
+  private var rightValue: ClausePosition = scala.compiletime.uninitialized
 
   def insert(side: Literal.Side, termPos: Position, clPos: ClausePosition): Unit = {
     if (termPos == Position.root) {
@@ -124,10 +126,11 @@ protected[impl] class ClausePositionTrieSetNode { self =>
 
   def bfsIterator: Iterator[ClausePosition] = new Iterator[ClausePosition] {
     private final val queue: mutable.Queue[ClausePositionTrieSetNode] = mutable.Queue(self)
-    private var cur: ClausePositionTrieSetNode = _
+    private var cur: ClausePositionTrieSetNode = scala.compiletime.uninitialized
     private var leftDone: Boolean = false
     private var rightDone: Boolean = false
 
+    @tailrec
     override def hasNext: Boolean = {
       if (cur == null) {
         if (queue.isEmpty) false

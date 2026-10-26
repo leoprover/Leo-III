@@ -13,9 +13,9 @@ import leo.modules.procedures.Simplification
 class SimplificationTestSuite extends LeoTestSuite {
   implicit val s: Signature = getFreshSignature
 
-  val p = mkAtom(s.addUninterpreted("p", o))
-  val q = mkAtom(s.addUninterpreted("q", o))
-  val r = mkAtom(s.addUninterpreted("r", o))
+  val p: Term = mkAtom(s.addUninterpreted("p", o))
+  val q: Term = mkAtom(s.addUninterpreted("q", o))
+  val r: Term = mkAtom(s.addUninterpreted("r", o))
 
   val toSimpl : Map[Term,Term] = Map[Term, Term](
     (Not(LitTrue()),LitFalse()),

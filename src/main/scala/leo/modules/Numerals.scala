@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures.Term.{intToBoundVar, intsToBoundVar, Λ, λ, mkTermApp => ap, mkTypeApp => tyAp}
-import leo.datastructures.Type.{typeVarToType, ∀}
+import leo.datastructures.Type.{typeVarToType, mkPolyType}
 import leo.datastructures.{Term, Signature, Type}
 
 import scala.language.implicitConversions
@@ -19,11 +19,11 @@ object Numerals {
   val zero: Church = Λ(λ(1 ->: 1,1)((1,1)))
 
   /** The successor function for church numerals */
-  val succ: Term = λ(∀((1 ->: 1) ->: 1 ->: 1))(
+  val succ: Term = λ(mkPolyType((1 ->: 1) ->: 1 ->: 1))(
                           Λ(
                             λ(1 ->:1, 1)(
                               ap(
-                                ap(tyAp((3,∀((1 ->: 1) ->: 1 ->: 1)),1),
+                                ap(tyAp((3,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1),
                                    (2, 1 ->: 1)
                                 ),
                                 ap((2, 1 ->: 1),
@@ -37,17 +37,17 @@ object Numerals {
   def succOf(n: Church): Church = ap(succ, n).betaNormalize
 
   /** The add function for church numerals */
-  val add: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val add: Term = λ(mkPolyType((1 ->: 1) ->: 1 ->: 1),mkPolyType((1 ->: 1) ->: 1 ->: 1))(
                     Λ(
                       λ(1 ->: 1, 1)(
                         ap(
                           ap(
-                            tyAp((4,∀((1 ->: 1) ->: 1 ->: 1)),1),
+                            tyAp((4,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1),
                             (2,1 ->: 1)
                           ),
                           ap(
                             ap(
-                              tyAp((3,∀((1 ->: 1) ->: 1 ->: 1)),1),
+                              tyAp((3,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1),
                               (2,1 ->: 1)
                             ),
                             (1,1)
@@ -61,13 +61,13 @@ object Numerals {
   def add(n: Church, m: Church): Church = ap(ap(add, n), m).betaNormalize
 
   /** The multiplication function for church numerals */
-  val mult: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val mult: Term = λ(mkPolyType((1 ->: 1) ->: 1 ->: 1),mkPolyType((1 ->: 1) ->: 1 ->: 1))(
     Λ(
       λ(1 ->: 1)(
           ap(
-            tyAp((3,∀((1 ->: 1) ->: 1 ->: 1)),1),
+            tyAp((3,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1),
             ap(
-              tyAp((2,∀((1 ->: 1) ->: 1 ->: 1)),1),
+              tyAp((2,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1),
               (1,1 ->: 1)
             )
           )
@@ -79,11 +79,11 @@ object Numerals {
   def mult(n: Church, m: Church): Church = ap(ap(mult,n),m).betaNormalize
 
   /** The multiplication function for church numerals */
-  val power: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val power: Term = λ(mkPolyType((1 ->: 1) ->: 1 ->: 1),mkPolyType((1 ->: 1) ->: 1 ->: 1))(
     Λ(
         ap(
-          tyAp((1,∀((1 ->: 1) ->: 1 ->: 1)),(1 ->: 1)),
-          tyAp((2,∀((1 ->: 1) ->: 1 ->: 1)),1)
+          tyAp((1,mkPolyType((1 ->: 1) ->: 1 ->: 1)),(1 ->: 1)),
+          tyAp((2,mkPolyType((1 ->: 1) ->: 1 ->: 1)),1)
         )
     )
   )

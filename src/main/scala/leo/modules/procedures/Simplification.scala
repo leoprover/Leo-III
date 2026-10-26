@@ -68,7 +68,7 @@ object Simplification extends Function1[Term, Term] {
 
   // TODO: Check if the four simplifications are really "extensional" and not just straight-forward
   // Boolean (with equality) identities
-  private[this] final def apply0(term: Term, extensional: Boolean): Term = {
+  private final def apply0(term: Term, extensional: Boolean): Term = {
     import leo.datastructures.Term.{:::>, TypeLambda, Bound, Symbol, ∙, Rational, Real}
     import leo.modules.HOLSignature.{Exists, Forall, TyForall, &, |||, LitTrue, LitFalse, ===, !===, Not, Impl, <=>,
       HOLDifference, HOLUnaryMinus, HOLSum, HOLLess, HOLLessEq, HOLGreaterEq, HOLGreater}
@@ -83,8 +83,8 @@ object Simplification extends Function1[Term, Term] {
       case Symbol(_) => term
       case ty :::> body => mkTermAbs(ty, apply0(body, extensional))
       case TypeLambda(body) => mkTypeAbs(apply0(body, extensional))
-      case Rational(n, d) => (mkRational _).tupled(normalizeRat(n, d))
-      case Real(w,d,e) => (mkReal _).tupled(normalizeReal(w,d,e))
+      case Rational(n, d) => (mkRational).tupled(normalizeRat(n, d))
+      case Real(w,d,e) => (mkReal).tupled(normalizeReal(w,d,e))
       case f ∙ args if f.isConstant && args.length <= 3 =>
         (f: @unchecked) match {
           case Symbol(id) =>
@@ -276,7 +276,7 @@ object Simplification extends Function1[Term, Term] {
     }
   }
 
-  @tailrec private[this] final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
+  @tailrec private final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
   final def normalizeRat(n: BigInt, d: BigInt): Rat = {
     val sign: BigInt = d.sign
     val greatestCommonDivisor: BigInt = gcd(n ,d).abs * sign

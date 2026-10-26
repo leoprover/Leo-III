@@ -1,11 +1,11 @@
 package leo.modules.input
 
 abstract class ProblemStatistics {
-  private[this] var includes0: Int = 0
-  private[this] var immediateFormulas0: Int = 0
-  private[this] var includedFormulas0: Int = 0
-  private[this] var localAxioms0: Int = 0
-  private[this] var includedAxioms0: Int = 0
+  private var includes0: Int = 0
+  private var immediateFormulas0: Int = 0
+  private var includedFormulas0: Int = 0
+  private var localAxioms0: Int = 0
+  private var includedAxioms0: Int = 0
 
   final def includes: Int = includes0
   final def registerIncludes(n: Int): Unit = includes0 += n

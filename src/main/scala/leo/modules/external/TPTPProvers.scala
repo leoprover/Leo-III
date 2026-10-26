@@ -62,7 +62,7 @@ object TPTPProvers {
     if (!Files.exists(LIMITEDRUN)) {
       val filePermissionAttribute = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr--"))
       val file = Files.createFile(LIMITEDRUN, filePermissionAttribute)
-      val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(Codec.ISO8859)
+      val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(using Codec.ISO8859)
       Files.write(file, limitedRunScript.mkString.getBytes(StandardCharsets.ISO_8859_1))
       file.toFile.setExecutable(true)
       assert(Files.exists(LIMITEDRUN), "LIMITEDRUN not created")

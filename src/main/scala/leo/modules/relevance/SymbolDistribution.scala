@@ -4,7 +4,7 @@ import leo.datastructures.TPTP.AnnotatedFormula
 
 final class SymbolDistribution {
   import scala.collection.mutable
-  private[this] val termSymbolFrequency: mutable.Map[String, Int] = mutable.Map.empty.withDefaultValue(0)
+  private val termSymbolFrequency: mutable.Map[String, Int] = mutable.Map.empty.withDefaultValue(0)
 
   def add(formula: AnnotatedFormula): Unit = {
     val symbolsInFormula = formula.symbols

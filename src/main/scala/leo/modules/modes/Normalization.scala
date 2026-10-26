@@ -35,7 +35,7 @@ object Normalization {
       sig.addDefinition(id, newDef)
     }
     val newConjecture = if (conjecture != null) {
-      val (newConj, additionalAxioms) = processConjecture(conjecture)(sig)
+      val (newConj, additionalAxioms) = processConjecture(conjecture)(using sig)
       axioms = axioms union additionalAxioms
       newConj
     } else null
@@ -44,7 +44,7 @@ object Normalization {
     val axiomsIt = axioms.iterator
     while (axiomsIt.hasNext) {
       val ax = axiomsIt.next()
-      resultClauses = resultClauses union process(ax)(s)
+      resultClauses = resultClauses union process(ax)(using s)
     }
     val finalAxResult = exhaustive(resultClauses)
 
@@ -155,7 +155,7 @@ object Normalization {
     while (inputIt.hasNext) {
       val formula = inputIt.next()
       formula.role match {
-        case Role_Type.pretty => Input.processFormula(formula)(sig)
+        case Role_Type.pretty => Input.processFormula(formula)(using sig)
         case Role_Definition.pretty =>
           import leo.datastructures.Term.Symbol
           import leo.modules.HOLSignature.===
@@ -167,18 +167,18 @@ object Normalization {
             case CNFAnnotated(name, _, formula, annotations) => CNFAnnotated(name, "axiom", formula, annotations)
             case TPIAnnotated(name, _, formula, annotations) => TPIAnnotated(name, "axiom", formula, annotations)
           }
-          val (_, f, _) =  Input.processFormula(alteredFormula)(sig)
+          val (_, f, _) =  Input.processFormula(alteredFormula)(using sig)
           f match {
             case ===(Symbol(id), definition) => definitions = definitions + ((id, definition))
             case _ => axioms = axioms + f
           }
         case Role_Conjecture.pretty =>
           if (conj == null) {
-            val (_,f,_) = Input.processFormula(formula)(sig)
+            val (_,f,_) = Input.processFormula(formula)(using sig)
             conj = f
           } else throw new SZSException(SZS_UsageError, "Only one conjecture allowed per problem.")
         case _ =>
-          val (_,f,_) = Input.processFormula(formula)(sig)
+          val (_,f,_) = Input.processFormula(formula)(using sig)
           axioms = axioms + f
       }
     }

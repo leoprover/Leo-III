@@ -120,7 +120,7 @@ object SineSelector {
   }
 
   @inline
-  private[this] final def addTrigger(symbol: String, formula: AnnotatedFormula, store: mutable.Map[String, Seq[AnnotatedFormula]]): Unit = {
+  private final def addTrigger(symbol: String, formula: AnnotatedFormula, store: mutable.Map[String, Seq[AnnotatedFormula]]): Unit = {
     val maybeValue = store.get(symbol)
     if (maybeValue.isDefined) store += (symbol -> (formula +: maybeValue.get))
     else store += (symbol -> Vector(formula))

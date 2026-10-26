@@ -11,7 +11,7 @@ import Numerals.fromInt
  * Created by lex on 11.06.14.
  */
 class ExecutionTest extends LeoTestSuite {
-  implicit val sig = Signature.freshWithHOL()
+  implicit val sig: Signature = Signature.freshWithHOL()
 
   Numerals(sig) // include numerals in signature
 

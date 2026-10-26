@@ -1,6 +1,7 @@
 package leo.modules.encoding
 
 import leo.datastructures.{Signature, Term, Type}
+import Type.mkPolyType
 import leo.Out
 
 
@@ -57,7 +58,7 @@ protected[encoding] abstract class LambdaElimination(sig: TypedFOLEncodingSignat
 
 protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
   import leo.datastructures.Term.local._
-  import leo.datastructures.Type.{∀, mkVarType}
+  import leo.datastructures.Type.{PolyType, mkVarType}
   import sig.{mkhApp,funTy}
 
   private var usedSymbols: Set[Signature.Key] = Set.empty
@@ -74,15 +75,15 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** The name of combinator I.
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_I]] */
   final val combinator_I_name: String = "comb_I"
-  /** Combinator I's type:  `∀a. fun(a,a)`
+  /** Combinator I's type:  `mkPolyTypea. fun(a,a)`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_I]] */
-  final lazy val combinator_I_type: Type = ∀(funTy(Xty,Xty))
+  final lazy val combinator_I_type: Type = mkPolyType(funTy(Xty,Xty))
   private final lazy val combinator_I_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_I_name), combinator_I_type)}
   /** Curry I combinator given by `I x = x`. */
   final lazy val combinator_I: Term = {
     val id = combinator_I_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def I(ty: Type): Term = mkTypeApp(combinator_I, ty)
 
@@ -92,16 +93,16 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** The name of combinator K.
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
   final val combinator_K_name: String = "comb_K"
-  /** Combinator K's type: `∀a.∀b. fun(a,fun(b,a))`
+  /** Combinator K's type: `mkPolyTypea.mkPolyTypeb. fun(a,fun(b,a))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
-  final lazy val combinator_K_type: Type = ∀(∀(funTy(Yty,funTy(Xty, Yty))))
+  final lazy val combinator_K_type: Type = mkPolyType(mkPolyType(funTy(Yty,funTy(Xty, Yty))))
   private final lazy val combinator_K_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_K_name), combinator_K_type)}
   /** Curry K combinator given by `K x y = x`, where
-    * `K : ∀a.∀b. fun(a,fun(b,a))` */
+    * `K : mkPolyTypea.mkPolyTypeb. fun(a,fun(b,a))` */
   final lazy val combinator_K: Term = {
     val id = combinator_K_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def K(ty1: Type, ty2: Type, arg: Term): Term = {
     Out.finest("application of K")
@@ -119,15 +120,15 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** The name of combinator S.
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
   final val combinator_S_name: String = "comb_S"
-  /** Combinator S's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
+  /** Combinator S's type:  `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_S]] */
-  final lazy val combinator_S_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(funTy(Zty, Yty),funTy(Zty, Xty))))))
+  final lazy val combinator_S_type: Type = mkPolyType(mkPolyType(mkPolyType(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(funTy(Zty, Yty),funTy(Zty, Xty))))))
   private final lazy val combinator_S_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_S_name),combinator_S_type)}
   /** Curry S combinator given by `S x y z = x z (y z)`. */
   final lazy val combinator_S: Term = {
     val id = combinator_S_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def S(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     mkhApp(mkTypeApp(combinator_S, Seq(ty1, ty2, ty3)), Seq(arg1, arg2))
@@ -139,16 +140,16 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** The name of combinator B.
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_B]] */
   final val combinator_B_name: String = "comb_B"
-  /** Combinator B's type:  `∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
+  /** Combinator B's type:  `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_B]] */
-  final lazy val combinator_B_type: Type = ∀(∀(∀(funTy(funTy(Yty,Xty),funTy(funTy(Zty,Yty),funTy(Zty,Xty))))))
+  final lazy val combinator_B_type: Type = mkPolyType(mkPolyType(mkPolyType(funTy(funTy(Yty,Xty),funTy(funTy(Zty,Yty),funTy(Zty,Xty))))))
   private final lazy val combinator_B_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_B_name),combinator_B_type)}
   /** Curry B combinator given by `B x y z = x (y z)` where
-    * `B: ∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`. */
+    * `B: mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`. */
   final lazy val combinator_B: Term = {
     val id = combinator_B_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
@@ -161,15 +162,15 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** The name of combinator C.
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_C]] */
   final val combinator_C_name: String = "comb_C"
-  /** Combinator C's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
+  /** Combinator C's type:  `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_C]] */
-  final lazy val combinator_C_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(Yty, funTy(Zty, Xty))))))
+  final lazy val combinator_C_type: Type = mkPolyType(mkPolyType(mkPolyType(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(Yty, funTy(Zty, Xty))))))
   private final lazy val combinator_C_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_C_name),combinator_C_type)}
   /** Curry C combinator given by `C x y z = x z y`. */
   final lazy val combinator_C: Term = {
     val id = combinator_C_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def C(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     mkhApp(mkTypeApp(combinator_C, Seq(ty1, ty2, ty3)),Seq(arg1,arg2))
@@ -242,7 +243,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
               allButLastArg.lift(-1)
             } else {
               Out.finest("[S] B")
-//              `∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
+//              `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
               val translatedTy = foTransformType0(absType, true)(holSignature, sig)
               val translatedAllButLastArg = allButLastArg.lift(-1)
               val translatedTermLastArg = eliminateLambdaNewShallow(absType, termLastArg)(holSignature)
@@ -251,7 +252,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           } else if (!free(termLastArg,1)) {
             // C
             Out.finest("[S] C")
-            // `∀a.∀b.∀c. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
+            // `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
             val translatedTermLastArg = termLastArg.lift(-1)
@@ -259,7 +260,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           } else { // occurs in both free
             // S
             Out.finest(s"[S] S")
-//            `∀a.∀b.∀c. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
+//            `mkPolyTypea.mkPolyTypeb.mkPolyTypec. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
             val translatedTermLastArg = eliminateLambdaNewShallow(absType,termLastArg)(holSignature)
@@ -435,7 +436,7 @@ protected[encoding] class LambdaElim_LambdaLifting(sig: TypedFOLEncodingSignatur
           val newFunTy0 = Type.mkFunType(directAppliedTys, indirectArgsToGoalTy)
           val newFunTy = mkPolyUnivType(ftyVars.size,newFunTy0)
           Out.finest(s"newFunTy: ${newFunTy.pretty(sig)}")
-          val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(sig)
+          val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(using sig)
           addNewFunDef(newFun, body, translatedFv, ftyVars, transformedAbsTypes)(holSignature)
           val result0 = Term.local.mkTypeApp(newFun, ftyVars)
           val result = Term.local.mkTermApp(result0, translatedFv)

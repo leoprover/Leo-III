@@ -28,9 +28,9 @@ class MultiSetTestSuite extends LeoTestSuite {
     println(ms1.toString)
     println(ms1.intersect(ms1).toString)
     assert(ms1.intersect(ms1) == ms1)
-    val ms2 = ms1 sum ms1
+    val ms2 = ms1 `sum` ms1
     println(ms2.toString)
-    assert(ms1 subset ms2)
+    assert(ms1 `subset` ms2)
     assert(ms2.forall(elem => ms2.multiplicity(elem) == 2*ms1.multiplicity(elem)))
   }
 

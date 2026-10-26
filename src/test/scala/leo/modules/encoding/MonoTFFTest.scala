@@ -38,16 +38,16 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(using encodingSig))
       i_def += 1
     }
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodingSig))
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(using encodingSig)
 
     Out.finest("########")
     Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
@@ -60,7 +60,7 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest("########")
 
     println(leo.modules.output.ToTFF(monoSig))
-    println(monoProblem.map(leo.modules.output.ToTFF(_, Role_Plain, "a")(monoSig)).mkString("\n"))
+    println(monoProblem.map(leo.modules.output.ToTFF(_, Role_Plain, "a")(using monoSig)).mkString("\n"))
 
   }
 
@@ -100,16 +100,16 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(using encodingSig))
       i_def += 1
     }
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodingSig))
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(using encodingSig)
 
     Out.finest("########")
     Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
@@ -133,7 +133,7 @@ class MonoTFFTest extends LeoTestSuite {
     println(leo.modules.output.ToTFF(monoSig))
 
     monoProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(monoSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(using monoSig))
       i_prob += 1
     }
 
@@ -163,16 +163,16 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(using encodingSig))
       i_def += 1
     }
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodingSig))
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(using encodingSig)
 
     Out.finest("########")
     Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
@@ -196,7 +196,7 @@ class MonoTFFTest extends LeoTestSuite {
     println(leo.modules.output.ToTFF(monoSig))
 
     monoProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(monoSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(using monoSig))
       i_prob += 1
     }
 
@@ -210,7 +210,7 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(sig)).toSet
+    val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(using sig)).toSet
 
     Out.finest(cnf.map(_.pretty(sig)).mkString("\n"))
 
@@ -226,16 +226,16 @@ class MonoTFFTest extends LeoTestSuite {
     Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
-      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(using encodingSig))
       i_def += 1
     }
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(using encodingSig))
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(using encodingSig)
 
     Out.finest("########")
     Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
@@ -259,7 +259,7 @@ class MonoTFFTest extends LeoTestSuite {
     println(leo.modules.output.ToTFF(monoSig))
 
     monoProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(monoSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(using monoSig))
       i_prob += 1
     }
 

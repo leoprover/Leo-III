@@ -271,11 +271,11 @@ object Monomorphization {
   private final def apply0(lit: Literal, newSig: Signature, instanceInfo: InstanceInfo)(sig: Signature): Literal = {
     leo.Out.finest(s"[Monomorphization] Translate literal ${lit.pretty(sig)}")
     if (lit.equational) {
-      val newLeft = apply0(lit.left, newSig, instanceInfo)(sig)
-      val newRight = apply0(lit.right, newSig, instanceInfo)(sig)
+      val newLeft = apply0(lit.left, newSig, instanceInfo)(using sig)
+      val newRight = apply0(lit.right, newSig, instanceInfo)(using sig)
       Literal.mkLit(newLeft, newRight, lit.polarity)
     } else {
-      Literal.mkLit(apply0(lit.left, newSig, instanceInfo)(sig), lit.polarity)
+      Literal.mkLit(apply0(lit.left, newSig, instanceInfo)(using sig), lit.polarity)
     }
   }
 
@@ -289,7 +289,7 @@ object Monomorphization {
           val (tyArgs, termArgs) = partitionArgs(args)
           if (sig(id).isFixedSymbol) {
             val name = sig(id).name
-            val newF = mkAtom(newSig(name).key)(newSig)
+            val newF = mkAtom(newSig(name).key)(using newSig)
             val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
             val newFTyApplied = mkTypeApp(newF, tyArgs.map(ty => convertType(ty, sig, newSig)))
             mkTermApp(newFTyApplied, newArgs)
@@ -297,8 +297,8 @@ object Monomorphization {
             val monoType = f.ty.instantiate(tyArgs)
             val name = monoInstanceName(id, tyArgs)(sig)
             updateInstanceInfo(instanceInfo, id, tyArgs)
-            val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(newSig)
-            else mkAtom(newSig.addUninterpreted(name, convertType(monoType, sig, newSig)))(newSig)
+            val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(using newSig)
+            else mkAtom(newSig.addUninterpreted(name, convertType(monoType, sig, newSig)))(using newSig)
             val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
             mkTermApp(newF, newArgs)
           }
@@ -306,8 +306,8 @@ object Monomorphization {
         } else {
           assert(args.forall(_.isLeft), s"not all arguments of ${f.pretty(sig)} (type: ${f.ty.pretty(sig)}) terms in: ${t.pretty(sig)}")
           val name = escape(sig(id).name)
-          val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(newSig)
-          else mkAtom(newSig.addUninterpreted(name, convertType(sig(id)._ty, sig, newSig)))(newSig)
+          val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(using newSig)
+          else mkAtom(newSig.addUninterpreted(name, convertType(sig(id)._ty, sig, newSig)))(using newSig)
           val newArgs = args.map(arg => apply0(arg.left.get, newSig, instanceInfo))
           mkTermApp(newF, newArgs)
         }
@@ -321,7 +321,7 @@ object Monomorphization {
       }
       case ty :::> body =>
         val convertedType = convertType(ty, sig, newSig)
-        λ(convertedType)(apply0(body, newSig, instanceInfo)(sig))
+        λ(convertedType)(apply0(body, newSig, instanceInfo)(using sig))
       case _ => throw new IllegalArgumentException(s"${t.pretty(sig)} was given")
     }
   }

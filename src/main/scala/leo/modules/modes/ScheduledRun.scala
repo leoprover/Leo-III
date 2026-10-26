@@ -20,7 +20,7 @@ object ScheduledRun {
     val state: State[AnnotatedClause] = State.fresh(sig)
     var curState: State[AnnotatedClause] = null
     try {
-      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
+      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(using state)
       // Split input in conjecture/definitions/axioms etc.
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
@@ -51,9 +51,9 @@ object ScheduledRun {
         localState.setRunStrategy(currentStrategy)
         localState.setTimeout(currentTimeout)
         val localStartTime = System.currentTimeMillis()
-        done = SeqLoop.run(remainingInput, localStartTime)(localState)
+        done = SeqLoop.run(remainingInput, localStartTime)(using localState)
         if (!done) Out.info(s"Failed: ${currentStrategy.pretty}")
-        if (!done && schedule.hasNext) Control.resetIndexes(localState)
+        if (!done && schedule.hasNext) Control.resetIndexes(using localState)
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {

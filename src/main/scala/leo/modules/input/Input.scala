@@ -284,7 +284,7 @@ object Input {
     *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def readProblem(file: String, assumeProcessed: Set[Path] = Set())(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
-    processProblem(parseProblemFile(file,assumeProcessed)())(sig)
+    processProblem(parseProblemFile(file,assumeProcessed)())(using sig)
   }
 
   /**
@@ -301,7 +301,7 @@ object Input {
     *         `(Id, Clause($true), Role)` with its respective identifier and role.
     */
   def readAnnotated(formula: String)(implicit sig: Signature): (FormulaId, Term, Role) = {
-    processFormula(parseAnnotated(formula))(sig)
+    processFormula(parseAnnotated(formula))(using sig)
   }
 
   /**

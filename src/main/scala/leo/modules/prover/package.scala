@@ -34,7 +34,7 @@ package object prover {
       val relevantAxioms = if (state.negConjecture.exists(cl => Clause.asTerm(cl.cl).symbols.distinct.intersect(state.signature.allUserConstants).isEmpty)) {
         leo.Out.finest(s"trivial conjecture, lets take all axioms.")
         effectiveInput
-      } else Control.getRelevantAxioms(effectiveInput, conjs)(state.signature)
+      } else Control.getRelevantAxioms(effectiveInput, conjs)(using state.signature)
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${state.filteredAxioms.size} axioms).")
@@ -82,10 +82,10 @@ package object prover {
         else if (cmp < 0) state.setLanguageLevel(Lang_Mixed(state.languageLevel.flatten))
       }
       formula.role match {
-        case Role_Type.pretty => Input.processFormula(formula)(state.signature)
+        case Role_Type.pretty => Input.processFormula(formula)(using state.signature)
         case Role_Definition.pretty =>
-          Control.relevanceFilterAdd(formula)(state.signature)
-          val res = Input.processFormula(formula)(state.signature)
+          Control.relevanceFilterAdd(formula)(using state.signature)
+          val res = Input.processFormula(formula)(using state.signature)
           if (res._3 != Role_Definition) {
             // If it is not a definition, then it was not recognized to be one.
             // So we are treating it like an axiom and add it to the result.
@@ -98,8 +98,8 @@ package object prover {
               /* skip */
             } else {
               // Convert and negate and add conjecture
-              Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Input.processFormula(formula)(state.signature)
+              Control.relevanceFilterAdd(formula)(using state.signature)
+              val translated = Input.processFormula(formula)(using state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
               state.setConjecture(conjectureClause)
               val negConjectureClause = AnnotatedClause(termToClause(translated._2, polarity = false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
@@ -113,8 +113,8 @@ package object prover {
               Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
               /* skip */
             } else {
-              Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Input.processFormula(formula)(state.signature)
+              Control.relevanceFilterAdd(formula)(using state.signature)
+              val translated = Input.processFormula(formula)(using state.signature)
               val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
               state.addNegConjecture(negConjectureClause)
               conj = conj :+ formula
@@ -123,7 +123,7 @@ package object prover {
         case Role_Unknown.pretty =>
           throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")
         case _ =>
-          Control.relevanceFilterAdd(formula)(state.signature)
+          Control.relevanceFilterAdd(formula)(using state.signature)
           result = result :+ formula
       }
     }
@@ -140,7 +140,7 @@ package object prover {
     val selectedAxioms = if (state.negConjecture.nonEmpty) {
       Out.info(s"Found a conjecture and ${axioms.size} axioms. Running axiom selection (using ${state.getAxiomFilterConfig.toString}) ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
-      val (relevantAxioms, removedAxioms) = Control.getRelevantAxiomsNew(axioms, definitions, conjectures)(state)
+      val (relevantAxioms, removedAxioms) = Control.getRelevantAxiomsNew(axioms, definitions, conjectures)(using state)
       state.setFilteredAxioms(removedAxioms)
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${removedAxioms.size} axioms).")
@@ -179,10 +179,10 @@ package object prover {
         else if (cmp < 0) state.setLanguageLevel(Lang_Mixed(state.languageLevel.flatten))
       }
       annotatedFormula.role match {
-        case "type" => Input.processFormula(annotatedFormula)(state.signature)
+        case "type" => Input.processFormula(annotatedFormula)(using state.signature)
         case "definition" =>
           import leo.datastructures.Role_Definition
-          val res = Input.processFormula(annotatedFormula)(state.signature)
+          val res = Input.processFormula(annotatedFormula)(using state.signature)
           if (res._3 != Role_Definition) {
             // If it is not a definition, then it was not recognized to be one.
             // So we are treating it like an axiom and add it to the result.
@@ -211,7 +211,7 @@ package object prover {
             } else {
               // Convert and negate and add conjecture
               dist.add(annotatedFormula)
-              val translated = Input.processFormula(annotatedFormula)(state.signature)
+              val translated = Input.processFormula(annotatedFormula)(using state.signature)
               val conjectureClause = AnnotatedClause(
                 termToClause(translated._2),
                 leo.datastructures.Role_Conjecture,
@@ -236,7 +236,7 @@ package object prover {
               /* skip */
             } else {
               dist.add(annotatedFormula)
-              val translated = Input.processFormula(annotatedFormula)(state.signature)
+              val translated = Input.processFormula(annotatedFormula)(using state.signature)
               val negConjectureClause = AnnotatedClause(
                 termToClause(translated._2),
                 leo.datastructures.Role_NegConjecture,
@@ -306,7 +306,7 @@ package object prover {
       def candidates(ty: Type): Seq[Term] =
         if (!setsOfProperties(ty)) Seq.empty
         else {
-          val cs = sig.uninterpretedSymbolsOfType(ty).filter(occurring.contains).toSeq.sorted.map(k => Term.mkAtom(k)(sig))
+          val cs = sig.uninterpretedSymbolsOfType(ty).filter(occurring.contains).toSeq.sorted.map(k => Term.mkAtom(k)(using sig))
           if (cs.isEmpty) Seq.empty else cs ++ emptySet(ty)
         }
       def insts(t: Term): Seq[Term] = t match {
@@ -335,7 +335,7 @@ package object prover {
 
   final private def processInput(input: TPTP.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {
     import leo.datastructures.ClauseAnnotation.FromFile
-    val formula = Input.processFormula(input)(state.signature)
+    val formula = Input.processFormula(input)(using state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
 
@@ -410,9 +410,9 @@ package object prover {
         val effectiveEmptyClause = emptyClause.cl
         assert(FlexFlexUni.canApply(effectiveEmptyClause))
         val (solvedFlexFlexClause0, subst) = FlexFlexUni.apply(effectiveEmptyClause)
-        val substAsOutput: Output = ToTHF(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(state.signature)
+        val substAsOutput: Output = ToTHF(subst, Subst.id, effectiveEmptyClause.implicitlyBound, effectiveEmptyClause.typeVars)(using state.signature)
         val solvedFlexFlexClause = AnnotatedClause(solvedFlexFlexClause0, InferredFrom(FlexFlexUni, Seq((emptyClause, substAsOutput))), ClauseAnnotation.PropNoProp)
-        val simplifiedClause = Control.simp(solvedFlexFlexClause)(state)
+        val simplifiedClause = Control.simp(solvedFlexFlexClause)(using state)
         simplifiedClause
       }
       state.setDerivationClause(derivationClause)
@@ -422,7 +422,7 @@ package object prover {
     }
   }
 
-  final def endgameResult(result: Result[_]): Boolean = {
+  final def endgameResult(result: Result[?]): Boolean = {
     import leo.modules.external.Capabilities
     if (result.szsStatus == SZS_Unsatisfiable)
       true

@@ -35,7 +35,7 @@ package object external {
 
     val P: Term = Term.mkBound(ty0, 1)
     val X: Term = Term.mkBound(ty00, 2)
-    val eps: Term = Term.mkAtom(symbol)(sig)
+    val eps: Term = Term.mkAtom(symbol)(using sig)
     val negLit = Literal.mkLit(
       Term.mkTermApp(P, X)
       , false)
@@ -52,7 +52,7 @@ package object external {
       val symb = userSymbols.next()
       if (isPropSet(Signature.PropChoice, sig(symb).flag)) {
         // include choice axiom for symb
-        result += acInstance(symb)(sig)
+        result += acInstance(symb)(using sig)
       } // ... more to come
     }
     result

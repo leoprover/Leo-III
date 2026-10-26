@@ -8,11 +8,11 @@ import leo.datastructures.Trie
 protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datastructures.Trie[K,V] {
   import scala.collection.immutable.HashMap
 
-  protected[this] var subTrieMap: Map[K, HashMapTrieImpl[K,V]] = HashMap[K, HashMapTrieImpl[K,V]]()
+  protected var subTrieMap: Map[K, HashMapTrieImpl[K,V]] = HashMap[K, HashMapTrieImpl[K,V]]()
 
-  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K,V]
-  protected[this] def addValue(entry: V): Unit
-  protected[this] def removeValue(entry: V): Unit
+  protected def apply(keyLength: Int): HashMapTrieImpl[K,V]
+  protected def addValue(entry: V): Unit
+  protected def removeValue(entry: V): Unit
 
   def insert(key: Seq[K], entry: V): Unit = {
     if (key.isEmpty) {
@@ -73,13 +73,13 @@ protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datast
 
 protected[datastructures] class DefaultHashMapTrieImpl[K,V] extends HashMapTrieImpl[K,V] {
   import scala.collection.immutable.HashSet
-  protected[this] var values: Set[V] = HashSet[V]()
+  protected var values: Set[V] = HashSet[V]()
 
-  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = new DefaultHashMapTrieImpl[K,V]
-  protected[this] def addValue(entry: V): Unit = {
+  protected def apply(keyLength: Int): HashMapTrieImpl[K, V] = new DefaultHashMapTrieImpl[K,V]
+  protected def addValue(entry: V): Unit = {
     values = values + entry
   }
-  protected[this] def removeValue(entry: V): Unit = {
+  protected def removeValue(entry: V): Unit = {
     values = values - entry
   }
   def valueSet: Set[V] = values
@@ -89,25 +89,25 @@ protected[datastructures] class DefaultHashMapTrieImpl[K,V] extends HashMapTrieI
 
 
 protected[datastructures] class FixedLengthHashMapTrieImpl[K,V] extends HashMapTrieImpl[K,V] with leo.datastructures.FixedLengthTrie[K,V] {
-  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = {
+  protected def apply(keyLength: Int): HashMapTrieImpl[K, V] = {
     if (keyLength == 0) Leaf
     else new FixedLengthHashMapTrieImpl[K,V]
   }
 
-  protected[this] def addValue(entry: V): Unit = throw new IllegalArgumentException
-  protected[this] def removeValue(entry: V): Unit = throw new IllegalArgumentException
+  protected def addValue(entry: V): Unit = throw new IllegalArgumentException
+  protected def removeValue(entry: V): Unit = throw new IllegalArgumentException
   def valueSet: Set[V] = Set.empty
 
 
 
   private object Leaf extends FixedLengthHashMapTrieImpl[K,V] {
     import scala.collection.immutable.HashSet
-    protected[this] var values: Set[V] = HashSet[V]()
+    protected var values: Set[V] = HashSet[V]()
 //    override var subTrieMap = null
 
-    override protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = throw new IllegalArgumentException
-    override protected[this] def addValue(entry: V): Unit = {values = values + entry}
-    override protected[this] def removeValue(entry: V): Unit = {
+    override protected def apply(keyLength: Int): HashMapTrieImpl[K, V] = throw new IllegalArgumentException
+    override protected def addValue(entry: V): Unit = {values = values + entry}
+    override protected def removeValue(entry: V): Unit = {
       values = values - entry
     }
 

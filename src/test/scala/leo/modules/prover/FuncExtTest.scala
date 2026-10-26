@@ -21,7 +21,7 @@ class FuncExtTest extends LeoTestSuite {
 
     val cl = Clause(Seq(l1,l2,l3))
     val ac: AnnotatedClause = AnnotatedClause(cl, NoAnnotation)
-    val results = Control.funcExtNew(ac)(state)
+    val results = Control.funcExtNew(ac)(using state)
 
     println(results.map(_.pretty(sig)).mkString("\n\t"))
   }
@@ -40,7 +40,7 @@ class FuncExtTest extends LeoTestSuite {
 
     val cl = Clause(Seq(l1,l2,l3))
     val ac: AnnotatedClause = AnnotatedClause(cl, NoAnnotation)
-    val results = Control.funcExtNew(ac)(state)
+    val results = Control.funcExtNew(ac)(using state)
 
     println(results.map(_.pretty(sig)).mkString("\n\t"))
   }
@@ -59,7 +59,7 @@ class FuncExtTest extends LeoTestSuite {
 
     val cl = Clause(Seq(l1,l2,l3))
     val ac: AnnotatedClause = AnnotatedClause(cl, NoAnnotation)
-    val results = Control.funcExtNew(ac)(state)
+    val results = Control.funcExtNew(ac)(using state)
 
     println(results.map(_.pretty(sig)).mkString("\n\t"))
   }

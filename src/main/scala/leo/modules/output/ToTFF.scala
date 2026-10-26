@@ -8,7 +8,7 @@ import scala.annotation.tailrec
   * Created by lex on 03.09.16.
   */
 object ToTFF {
-  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = apply(cl.cl, cl.role, cl.id.toString)(sig)
+  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = apply(cl.cl, cl.role, cl.id.toString)(using sig)
 
   final def apply(cl: Clause, role: Role, name: String)(implicit sig: Signature): String = {
     val res = apply0(cl.implicitlyBound, cl.typeVars, cl.lits)(sig)
@@ -66,11 +66,11 @@ object ToTFF {
 
     val interpretedSymbols = sig.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
-    val forall = Term.mkAtom(sig("!").key)(sig)
-    val exists = Term.mkAtom(sig("?").key)(sig)
-    val tyforall = Term.mkAtom(sig("!>").key)(sig)
-    val equality = Term.mkAtom(sig("=").key)(sig)
-    val neg_equality = Term.mkAtom(sig("!=").key)(sig)
+    val forall = Term.mkAtom(sig("!").key)(using sig)
+    val exists = Term.mkAtom(sig("?").key)(using sig)
+    val tyforall = Term.mkAtom(sig("!>").key)(using sig)
+    val equality = Term.mkAtom(sig("=").key)(using sig)
+    val neg_equality = Term.mkAtom(sig("!=").key)(using sig)
 
     t match {
       case `forall` ∙ _ =>
@@ -151,9 +151,9 @@ object ToTFF {
   }
 
   final private def kindToTFF(k: Kind): String = {
-    import leo.datastructures.Kind.{*,->,superKind}
+    import leo.datastructures.Kind.{TYPE,->,superKind}
     k match {
-      case `*` => "$tType"
+      case TYPE => "$tType"
       case `superKind` => "#"
       case _ -> _ =>  funKindFOStyle(k)
     }
@@ -161,7 +161,7 @@ object ToTFF {
   final private def funKindFOStyle(k: Kind): String = funKindFOStyle0(k, Seq.empty)
   @tailrec
   final private def funKindFOStyle0(k: Kind, acc: Seq[Kind]): String = {
-    import leo.datastructures.Kind.{*,->,superKind}
+    import leo.datastructures.Kind.{TYPE,->,superKind}
     k match {
       case k1 -> k2 =>  funKindFOStyle0(k2, acc :+ k1)
       case _ => s"(${acc.map(kindToTFF).mkString(" * ")}) > ${kindToTFF(k)}"
@@ -169,9 +169,9 @@ object ToTFF {
   }
 
   final private def typeToTFF(ty: Type)(sig: Signature): String = {
-    import leo.datastructures.Type.∀
+    import leo.datastructures.Type.PolyType
     ty match {
-      case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
+      case PolyType(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
         s"!> [${(1 to tyAbsCount).map(i => s"T${intToName(i - 1)}: $$tType").mkString(",")}]: ${typeToTFF0(bodyTy)(sig)}"
       case _ => typeToTFF0(ty)(sig)
     }
@@ -202,7 +202,7 @@ object ToTFF {
         sb.append(typeToTFF0(outType)(sig))
         sb.toString
       case ProductType(tys) => tys.map(typeToTFF0(_)(sig)).mkString("[", ",", "]")
-      case ∀(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")
+      case PolyType(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")
     }
   }
 
@@ -272,9 +272,9 @@ object ToTFF {
   // Type quantification collection
   @tailrec
   private final def collectForallTys(count: Int, ty: Type): (Int, Type) = {
-    import leo.datastructures.Type.∀
+    import leo.datastructures.Type.PolyType
     ty match {
-      case ∀(t) => collectForallTys(count+1, t)
+      case PolyType(t) => collectForallTys(count+1, t)
       case _ => (count, ty)
     }
   }

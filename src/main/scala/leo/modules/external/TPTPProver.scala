@@ -42,7 +42,7 @@ trait TPTPProver[C <: ClauseProxy] extends HasCapabilities { self =>
            timeout : Int,
           extraArgs: Seq[String] = Seq.empty): Future[Result[C]] = {
     leo.Out.debug(s"Calling prover $name")
-    val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
+    val translatedProblem = translateProblem(concreteProblem, callLanguage)(using sig)
     if (Configuration.isSet("atpdebug")) {
       leo.Out.output(s"produced problem: #original facts ${problemOrigin.size}, #facts sent: ${concreteProblem.size}")
     }
@@ -69,8 +69,8 @@ trait TPTPProver[C <: ClauseProxy] extends HasCapabilities { self =>
   protected[external] def translateProblem(problem : Set[Clause], language: Capabilities.Language)(implicit sig : Signature) : String = {
     if (!capabilities.contains(language)) throw new IllegalArgumentException(s"Prover $name does not support the given language.")
     else {
-      if (language == Capabilities.THF) createTHFProblem(problem)(sig)
-      else if (language == Capabilities.TFF) createTFFProblem(problem)(sig)
+      if (language == Capabilities.THF) createTHFProblem(problem)(using sig)
+      else if (language == Capabilities.TFF) createTFFProblem(problem)(using sig)
       else if (language == Capabilities.FOF) throw new NotImplementedError("FOF export not yet implemented")
       else if (language == Capabilities.CNF) throw new NotImplementedError("CNF export not yet implemented")
       else throw new IllegalArgumentException("unexpected TPTP output format")
@@ -108,7 +108,7 @@ trait TPTPProver[C <: ClauseProxy] extends HasCapabilities { self =>
     if (Configuration.isSet("atpdebug")) {
       leo.Out.output(s"Call constructed: ${callCmd.mkString(" ")}")
     }
-    val extProcess = new ProcessBuilder(callCmd:_*)
+    val extProcess = new ProcessBuilder(callCmd*)
     /* wrap it as future result */
     new TPTPResultFuture(extProcess, originalProblem, timeout)
   }
@@ -140,8 +140,8 @@ trait TPTPProver[C <: ClauseProxy] extends HasCapabilities { self =>
 
 
     /* internal definitions */
-    private[this] var result: Result[C] = _
-    private[this] var terminated: Boolean = false
+    private var result: Result[C] = scala.compiletime.uninitialized
+    private var terminated: Boolean = false
 
     /* start the computation */
     private val process0: Process = process.start()

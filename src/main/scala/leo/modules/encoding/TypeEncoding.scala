@@ -44,7 +44,7 @@ trait TypeEncoder {
 protected[encoding] object MonoNativeEncoder extends TypeEncoder {
   final def apply(problem: Problem, auxiliaryFormulae: AuxiliaryFormulae)
            (implicit sig: Signature): EncodingResult = {
-    Encoding.mono(problem union auxiliaryFormulae)(sig)
+    Encoding.mono(problem union auxiliaryFormulae)(using sig)
   }
 }
 

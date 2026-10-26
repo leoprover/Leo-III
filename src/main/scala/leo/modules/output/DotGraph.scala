@@ -104,7 +104,7 @@ object DotGraph {
   /** Create a new DotGraph containing the term `t` */
   def apply(t: Term)(implicit sig: Signature): DotGraph = {
     val g = new DotGraph
-    g.insertTerm(t)(sig)
+    g.insertTerm(t)(using sig)
     g
   }
 

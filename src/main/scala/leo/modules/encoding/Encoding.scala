@@ -29,7 +29,7 @@ object Encoding {
     * @see [[leo.modules.encoding.Monomorphization]] */
   final def mono(problem: Problem)
                             (implicit sig: Signature): EncodingResult = {
-    val monoResult = Monomorphization(problem)(sig)
+    val monoResult = Monomorphization(problem)(using sig)
     (monoResult._1, Set.empty, monoResult._2)
   }
 
@@ -42,14 +42,14 @@ object Encoding {
                      les: LambdaElimStrategy, typeEncoding: TypeEncoding)
                     (implicit sig: Signature): EncodingResult = {
     val (problem0, sig0) = applyPreplay(problem, preplay, sig)
-    val (polyProblem, polyAux, polySig) = TypedFOLEncoding.apply(problem0, les)(sig0)
+    val (polyProblem, polyAux, polySig) = TypedFOLEncoding.apply(problem0, les)(using sig0)
     val encoder = typeEncoding()
-    encoder(polyProblem, polyAux)(polySig)
+    encoder(polyProblem, polyAux)(using polySig)
   }
 
   @inline private final def applyPreplay(problem: Problem, preplay: EncodingPreplay, sig: Signature): (Problem, Signature) = {
     if (preplay == EP_None) (problem, sig)
-    else if (preplay == EP_Monomorphization) Monomorphization(problem)(sig)
+    else if (preplay == EP_Monomorphization) Monomorphization(problem)(using sig)
     else throw new IllegalArgumentException
   }
 }

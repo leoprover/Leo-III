@@ -1,6 +1,7 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
+import leo.datastructures.Type.BoundType
+import leo.datastructures.{Kind, Signature, Subst, Type, TypeFront}
 
 /* Types are immutable, and their hash codes are asked for constantly: every
  * one of them is a key in the tables that share types, in the term index, and
@@ -203,13 +204,13 @@ protected[datastructures] final case class ProductTypeNode(tys: Seq[Type]) exten
   def isApplicableWith(arg: Type): Boolean = false
 
   // Queries on types
-  final lazy val typeVars = Set.concat(tys.map(_.typeVars):_*)
-  final lazy val symbols = Set.concat(tys.map(_.symbols):_*)
+  final lazy val typeVars: Set[Type] = Set.concat(tys.map(_.typeVars)*)
+  final lazy val symbols: Set[Signature.Key] = Set.concat(tys.map(_.symbols)*)
 
   final val funDomainType = None
-  final val codomainType = this
+  final val codomainType: ProductTypeNode = this
   final val arity = 0
-  final val funParamTypesWithResultType = Vector(this)
+  final val funParamTypesWithResultType: Vector[ProductTypeNode] = Vector(this)
   final val order = 0
   final val polyPrefixArgsCount = 0
 
@@ -250,7 +251,7 @@ protected[datastructures] final case class ForallTypeNode(body: Type) extends Ty
   }
 
   // Queries on types
-  lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundTypeNode.unapply(t.asInstanceOf[BoundTypeNode]).get-1).filter(_ > 0).map(BoundTypeNode)
+  lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundType.unapply(t).get-1).filter(_ > 0).map(BoundTypeNode.apply)
   def symbols: Set[Signature.Key] = body.symbols
 
   def funDomainType: Option[Type] = None
@@ -379,7 +380,7 @@ protected[datastructures] case object TypeKind extends Kind {
 }
 
 protected[datastructures] case class FunKind(from: Kind, to: Kind) extends Kind {
-  final def pretty = s"${from.pretty} > ${to.pretty}"
+  final def pretty: String = s"${from.pretty} > ${to.pretty}"
 
   final val isTypeKind = false
   final val isSuperKind = false
