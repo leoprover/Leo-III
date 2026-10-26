@@ -51,14 +51,14 @@ object FuncExt extends CalculusRule {
       val appliedRight = Term.mkTermApp(lit.right, newVars).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(using sig)
     } else {
-      val skTerms = funArgTys.map(skTerm(_, vargen.existingVars, vargen.existingTyVars)(sig))
+      val skTerms = funArgTys.map(skTerm(_, vargen.existingVars, vargen.existingTyVars)(using sig))
       val appliedLeft = Term.mkTermApp(lit.left, skTerms).betaNormalize
       val appliedRight = Term.mkTermApp(lit.right, skTerms).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(using sig)
     }
   }
 
@@ -73,14 +73,14 @@ object FuncExt extends CalculusRule {
       val appliedRight = Term.mkTermApp(lit.right, newVar).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(using sig)
     } else {
-      val newSkArg = skTerm(argType, vargen.existingVars, vargen.existingTyVars)(sig)
+      val newSkArg = skTerm(argType, vargen.existingVars, vargen.existingTyVars)(using sig)
       val appliedLeft = Term.mkTermApp(lit.left, newSkArg).betaNormalize
       val appliedRight = Term.mkTermApp(lit.right, newSkArg).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(using sig)
     }
   }
 
@@ -95,9 +95,9 @@ object FuncExt extends CalculusRule {
       val appliedRight = Term.mkTermApp(lit.right, newVars).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(using sig)
     } else {
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)(sig)) //initFV: We only use the
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)(using sig)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
@@ -105,13 +105,13 @@ object FuncExt extends CalculusRule {
       val appliedRight = Term.mkTermApp(lit.right, skTerms).betaNormalize
       assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
       assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
-      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(using sig)
     }
   }
 
   final def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     val initFV = vargen.existingVars
-    lits.map(apply(_,vargen, initFV)(sig))
+    lits.map(apply(_,vargen, initFV)(using sig))
   }
 }
 
@@ -247,7 +247,7 @@ object PreUni extends AnyUni {
     val result = HuetsPreUnification.unifyAll(vargen, uniLits, uniDepth).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
-      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig)) // FIXME this one is slow
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(using sig)) // FIXME this one is slow
       val resultClause = Clause(updatedOtherLits ++ newLiteralsFromFlexFlex)
       (resultClause, subst)
     }
@@ -273,7 +273,7 @@ object PatternUni extends AnyUni {
       val subst = result.head._1
       Out.trace(s"Pattern unification successful: ${subst._1.pretty}")
       Out.trace(s"ty subst: ${subst._2.pretty}")
-      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(using sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))
     }
@@ -506,7 +506,7 @@ object PrimSubst extends CalculusRule {
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
       val subst = Subst.singleton(hd.fv.head._1, binding)
-      (cl.substituteOrdered(subst)(sig),subst)
+      (cl.substituteOrdered(subst)(using sig),subst)
     }
   }
 }
@@ -558,10 +558,10 @@ object OrderedEqFac extends CalculusRule {
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * that is later eliminated using Simp. */
     val lits_without_maxLit = cl.lits.updated(maxLitIndex, Literal.mkLit(LitTrue(),false))
-    val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
-    val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
+    val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(using sig)
+    val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(using sig)
 
-    val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(sig):+ unification_task1 :+ unification_task2
+    val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(using sig):+ unification_task1 :+ unification_task2
     Clause(newlitsSimp)
   }
 
@@ -625,7 +625,7 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"otherSide (rewrittenIntolit right): ${otherSide.pretty(sig)}")
     Out.finest(s"rewrittenIntoLit left: ${findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize.pretty(sig)}")
     /* Replace subterm (and shift accordingly) */
-    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize,otherSide,intoLiteral.polarity)(sig)
+    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize,otherSide,intoLiteral.polarity)(using sig)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
     val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit).map(l =>
       Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
@@ -633,12 +633,12 @@ object OrderedParamod extends CalculusRule {
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${Clause.maxImplicitlyBound(withClause)}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
-    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
+    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(using sig)
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
     val withoutUniLit = withLits_without_withLiteral ++ rewrittenIntoLits
     val result_preSimp = Clause(withoutUniLit :+ unificationLit)
-    val newlits_simp = Simp.shallowSimp(withoutUniLit)(sig)  :+ unificationLit
+    val newlits_simp = Simp.shallowSimp(withoutUniLit)(using sig)  :+ unificationLit
     val result = Clause(newlits_simp)
     Out.finest(s"result: ${result.pretty(sig)}")
     (result,result_preSimp)

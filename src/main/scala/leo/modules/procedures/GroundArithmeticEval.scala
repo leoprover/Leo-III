@@ -48,7 +48,7 @@ object GroundArithmeticEval {
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
                   case (Integer(n1), Integer(n2)) => booleanToTerm(evalLessInt(n1, n2) || n1 == n2)
-                  case (Rational(n1), Rational(n2)) => booleanToTerm(evalLessRat(n1, n2)  || (normalizeRat _ tupled n1) == (normalizeRat _ tupled n2))
+                  case (Rational(n1), Rational(n2)) => booleanToTerm(evalLessRat(n1, n2)  || (normalizeRat tupled n1) == (normalizeRat tupled n2))
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLGreater.key =>
@@ -66,7 +66,7 @@ object GroundArithmeticEval {
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
                   case (Integer(n1), Integer(n2)) => booleanToTerm(evalGreaterInt(n1, n2) || n1 == n2)
-                  case (Rational(n1), Rational(n2)) => booleanToTerm(evalGreaterRat(n1, n2)  || (normalizeRat _ tupled n1) == (normalizeRat _ tupled n2))
+                  case (Rational(n1), Rational(n2)) => booleanToTerm(evalGreaterRat(n1, n2)  || (normalizeRat tupled n1) == (normalizeRat tupled n2))
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLSum.key =>
@@ -75,7 +75,7 @@ object GroundArithmeticEval {
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
                   case (Integer(n1), Integer(n2)) => mkInteger(sumInt(n1, n2))
-                  case (Rational(n1), Rational(n2)) => mkRational _ tupled sumRat(n1, n2)
+                  case (Rational(n1), Rational(n2)) => mkRational tupled sumRat(n1, n2)
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLDifference.key =>
@@ -84,7 +84,7 @@ object GroundArithmeticEval {
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
                   case (Integer(n1), Integer(n2)) => mkInteger(diffInt(n1, n2))
-                  case (Rational(n1), Rational(n2)) => mkRational _ tupled diffRat(n1, n2)
+                  case (Rational(n1), Rational(n2)) => mkRational tupled diffRat(n1, n2)
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLProduct.key =>
@@ -93,7 +93,7 @@ object GroundArithmeticEval {
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
                   case (Integer(n1), Integer(n2)) => mkInteger(prodInt(n1, n2))
-                  case (Rational(n1), Rational(n2)) => mkRational _ tupled prodRat(n1, n2)
+                  case (Rational(n1), Rational(n2)) => mkRational tupled prodRat(n1, n2)
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLQuotient.key =>
@@ -101,8 +101,8 @@ object GroundArithmeticEval {
                 val simpLeft = apply(left)
                 val simpRight = apply(right)
                 (simpLeft, simpRight) match {
-                  case (Integer(n1), Integer(n2)) => mkRational _ tupled quotInt(n1, n2)
-                  case (Rational(n1), Rational(n2)) => mkRational _ tupled quotRat(n1, n2)
+                  case (Integer(n1), Integer(n2)) => mkRational tupled quotInt(n1, n2)
+                  case (Rational(n1), Rational(n2)) => mkRational tupled quotRat(n1, n2)
                   case _ => mkTermApp(mkTypeApp(f, simpLeft.ty), Seq(simpLeft, simpRight))
                 }
               case HOLUnaryMinus.key =>
@@ -110,7 +110,7 @@ object GroundArithmeticEval {
                 val simpBody = apply(body)
                 simpBody match {
                   case Integer(n) => mkInteger(-n)
-                  case Rational(n) => mkRational _ tupled normalizeRat(-n._1, n._2)
+                  case Rational(n) => mkRational tupled normalizeRat(-n._1, n._2)
                   case _ => mkTermApp(mkTypeApp(f, simpBody.ty), Seq(simpBody))
                 }
               case _ => mkApp(f, args.map(applyTermOrType))
@@ -123,42 +123,42 @@ object GroundArithmeticEval {
     }
   }
 
-  @inline private[this] final def booleanToTerm(b: Boolean): Term = if (b) LitTrue else LitFalse
-  private[this] final def evalLessInt(n1: Int0, n2: Int0): Boolean = n1 < n2
-  private[this] final def evalLessRat(n1: Rat, n2: Rat): Boolean = {
+  @inline private final def booleanToTerm(b: Boolean): Term = if (b) LitTrue else LitFalse
+  private final def evalLessInt(n1: Int0, n2: Int0): Boolean = n1 < n2
+  private final def evalLessRat(n1: Rat, n2: Rat): Boolean = {
     val (num1, denom1) = n1
     val (num2, denom2) = n2
     num1*denom2 < num2*denom1
   }
 
-  private[this] final def evalGreaterInt(n1: Int0, n2: Int0): Boolean = evalLessInt(n2, n1)
-  private[this] final def evalGreaterRat(n1: Rat, n2: Rat): Boolean = evalLessRat(n2, n1)
+  private final def evalGreaterInt(n1: Int0, n2: Int0): Boolean = evalLessInt(n2, n1)
+  private final def evalGreaterRat(n1: Rat, n2: Rat): Boolean = evalLessRat(n2, n1)
 
-  private[this] final def sumInt(n1: Int0, n2: Int0): Int0 = n1 + n2
-  private[this] final def sumRat(n1: Rat, n2: Rat): Rat = {
+  private final def sumInt(n1: Int0, n2: Int0): Int0 = n1 + n2
+  private final def sumRat(n1: Rat, n2: Rat): Rat = {
     val (num1, denom1) = n1
     val (num2, denom2) = n2
     // a/b + c/d =  a*d/b*d + c*b / d*b
     normalizeRat(num1*denom2 + num2*denom1, denom1 * denom2)
   }
 
-  private[this] final def diffInt(n1: Int0, n2: Int0): Int0 = sumInt(n1, -n2)
-  private[this] final def diffRat(n1: Rat, n2: Rat): Rat = sumRat(n1, (-n2._1, n2._2))
+  private final def diffInt(n1: Int0, n2: Int0): Int0 = sumInt(n1, -n2)
+  private final def diffRat(n1: Rat, n2: Rat): Rat = sumRat(n1, (-n2._1, n2._2))
 
-  private[this] final def prodInt(n1: Int0, n2: Int0): Int0 = n1 * n2
-  private[this] final def prodRat(n1: Rat, n2: Rat): Rat = {
+  private final def prodInt(n1: Int0, n2: Int0): Int0 = n1 * n2
+  private final def prodRat(n1: Rat, n2: Rat): Rat = {
     val (num1, denom1) = n1
     val (num2, denom2) = n2
     // a/b * c/d =  a*c/b*d
     normalizeRat(num1*num2, denom1*denom2)
   }
 
-  private[this] final val bigZero: BigInt = BigInt(0)
-  private[this] final def quotInt(n1: Int0, n2: Int0): Rat = n2 match {
+  private final val bigZero: BigInt = BigInt(0)
+  private final def quotInt(n1: Int0, n2: Int0): Rat = n2 match {
     case `bigZero` => throw new SZSException(SZS_InputError, s"Division by zero in expression '$$quotient($n1, $n2)'.")
     case _ => normalizeRat(n1, n2)
   }
-  private[this] final def quotRat(n1: Rat, n2: Rat): Rat = n2._1 match {
+  private final def quotRat(n1: Rat, n2: Rat): Rat = n2._1 match {
     case `bigZero` => throw new SZSException(SZS_InputError, s"Division by zero in expression '$$quotient(${prettyRat(n1)}, ${prettyRat(n2)})'.")
     case _ => prodRat(n1, (n2._2, n2._1))
   }

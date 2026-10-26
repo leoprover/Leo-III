@@ -105,7 +105,7 @@ object State {
     private var lastLoopCount0: Long = 0
     private var lastProcessedSize0: Int = 0
     private var lastTime0: Long = 0
-    private var lastProblem0: Set[T] = _
+    private var lastProblem0: Set[T] = scala.compiletime.uninitialized
 
     def lastLoopCount: Long = lastLoopCount0
     def lastProcessedSize: Int = lastProcessedSize0
@@ -147,13 +147,13 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   // Further utility
   /////////////////////
-  private var proof0: Proof = _
+  private var proof0: Proof = scala.compiletime.uninitialized
   /////////////////////
   // Handling of external calls
   /////////////////////
   private var openExtCalls0: Map[TPTPProver[T], Set[Future[Result[T]]]] = Map.empty
   private var queuedTranslations : Int = 0
-  private var extCallStat: LastCallStat[T] = _
+  private var extCallStat: LastCallStat[T] = scala.compiletime.uninitialized
   private var queuedExtCalls0: Map[TPTPProver[T], Vector[Set[T]]] = Map.empty
 
   /////////// Methods ///////////////
@@ -202,7 +202,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
      once more for every clause an inference produces; each call copied the set.
      The copy is kept until the set changes.  It is the same immutable set a fresh
      copy would be, so it iterates in the same order. */
-  private[this] var processedSnapshot: Set[T] = null
+  private var processedSnapshot: Set[T] = null
   final def processed: Set[T] = {
     if (processedSnapshot == null) processedSnapshot = currentProcessed.toSet
     processedSnapshot

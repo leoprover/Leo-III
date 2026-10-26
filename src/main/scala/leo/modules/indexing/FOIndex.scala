@@ -7,7 +7,7 @@ class FOIndex {
 
   private final val clauses: mutable.Set[ClauseProxy] = mutable.Set()
 
-  final def insert(cl: ClauseProxy)(implicit sig: Signature): Boolean = if (FOIndex.typedFirstOrder(cl)(sig)) {clauses.+=(cl); true} else false
+  final def insert(cl: ClauseProxy)(implicit sig: Signature): Boolean = if (FOIndex.typedFirstOrder(cl)(using sig)) {clauses.+=(cl); true} else false
   final def remove(cl: ClauseProxy): Boolean = clauses.remove(cl)
   final def contains(cl: ClauseProxy): Boolean = clauses.contains(cl)
 

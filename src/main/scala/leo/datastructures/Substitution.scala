@@ -117,12 +117,12 @@ object Subst {
   }
 
   final def fromShiftingSeq(seq: Seq[(Int, Int)]): Subst = {
-    val map : Map[Int, Int] = Map.apply(seq:_*)
+    val map : Map[Int, Int] = Map.apply(seq*)
     fromMaps(Map(), map)
   }
 
   final def fromSeq(seq: Seq[(Int, Term)]): Subst = {
-    val map : Map[Int, Term] = Map.apply(seq:_*)
+    val map : Map[Int, Term] = Map.apply(seq*)
     fromMap(map)
   }
 }

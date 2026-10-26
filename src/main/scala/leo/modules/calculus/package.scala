@@ -156,7 +156,7 @@ package object calculus {
   }
 
   def normalizeFVs(fvs0: Seq[Int]): Option[Subst] = {
-    val fvs = fvs0.distinct.sorted(Ordering.Int.reverse)
+    val fvs = fvs0.distinct.sorted(using Ordering.Int.reverse)
     if (fvs.nonEmpty && fvs.size != fvs.head) {
       Out.finest(s"FV Optimization needed")
       Out.finest(s"Old: \t${fvs.mkString("-")}")
@@ -168,7 +168,7 @@ package object calculus {
   }
 
   def normalizeTyFVs(tyFvs0: Seq[Int]): Option[Subst] = {
-    val tyFvs = tyFvs0.distinct.sorted(Ordering.Int.reverse)
+    val tyFvs = tyFvs0.distinct.sorted(using Ordering.Int.reverse)
     if (tyFvs.nonEmpty && tyFvs.size != tyFvs.head) {
       Out.finest(s"Ty FV Optimization needed")
       Out.finest(s"Old: \t${tyFvs.mkString("-")}")

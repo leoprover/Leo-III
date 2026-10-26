@@ -55,14 +55,14 @@ import leo.datastructures._
   /** Those literals in `lits` that are negative. */
   @inline val negLits: Seq[Literal] = lits.filter(!_.polarity)
 
-  private[this] var maxLits0: Seq[Literal] = _
+  private var maxLits0: Seq[Literal] = scala.compiletime.uninitialized
   /** Those literals in `lits` that are maximal wrt to the underlying clause.
     * IMPORTANT: This method caches the result after the first call. So if you
     * need maximal literals wrt multiple signatures use [[leo.datastructures.Literal.maxOf()]]
     * instead. */
   def maxLits(implicit sig: Signature): Seq[Literal] = {
     if (maxLits0 == null) {
-      maxLits0 =  Literal.maxOf(lits)(sig)
+      maxLits0 =  Literal.maxOf(lits)(using sig)
       maxLits0
     } else maxLits0
   }

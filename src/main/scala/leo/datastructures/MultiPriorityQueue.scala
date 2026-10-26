@@ -16,7 +16,7 @@ trait MultiPriorityQueue[A] extends Pretty {
   def insert(xs: IterableOnce[A]): Unit = {
     @tailrec def loop(xs: scala.collection.LinearSeq[A]): Unit = {
       if (xs.nonEmpty) {
-        this insert xs.head
+        this `insert` xs.head
         loop(xs.tail)
       }
     }
@@ -29,7 +29,7 @@ trait MultiPriorityQueue[A] extends Pretty {
   def remove(xs: IterableOnce[A]): Unit = {
     @tailrec def loop(xs: scala.collection.LinearSeq[A]) : Unit = {
       if (xs.nonEmpty) {
-        this remove xs.head
+        this `remove` xs.head
         loop(xs.tail)
       }
     }

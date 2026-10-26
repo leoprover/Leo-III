@@ -96,19 +96,19 @@ package object datastructures {
 
 
     /** Returns true if `this` is less than `that` */
-    def <  (that: A): Boolean = (this compare that) <  0
+    def <  (that: A): Boolean = (this `compare` that) <  0
 
     /** Returns true if `this` is greater than `that`. */
-    def >  (that: A): Boolean = (this compare that) >  0
+    def >  (that: A): Boolean = (this `compare` that) >  0
 
     /** Returns true if `this` is less than or equivalent to `that`. */
-    def <= (that: A): Boolean = (this compare that) <= 0
+    def <= (that: A): Boolean = (this `compare` that) <= 0
 
     /** Returns true if `this` is greater than or equivalent to `that`.  */
-    def >= (that: A): Boolean = (this compare that) >= 0
+    def >= (that: A): Boolean = (this `compare` that) >= 0
 
     /** Returns true if `this` is equivalent to `that`.  */
-    def ~  (that: A): Boolean = (this compare that) == 0
+    def ~  (that: A): Boolean = (this `compare` that) == 0
   }
 
   trait TermOrdering {
@@ -228,10 +228,10 @@ package object datastructures {
   trait Precedence {
     type Const = Signature.Key
     def compare(x: Const, y: Const)(implicit sig: Signature): CMP_Result
-    def gt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT
-    def ge(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT || compare(x,y)(sig) == CMP_EQ
-    def lt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_LT
-    def le(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_LT || compare(x,y)(sig) == CMP_EQ
+    def gt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(using sig) == CMP_GT
+    def ge(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(using sig) == CMP_GT || compare(x,y)(using sig) == CMP_EQ
+    def lt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(using sig) == CMP_LT
+    def le(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(using sig) == CMP_LT || compare(x,y)(using sig) == CMP_EQ
 
     protected final def intToCMPRes(x: Int, y: Int): CMP_Result = {
       if (x > y) CMP_GT

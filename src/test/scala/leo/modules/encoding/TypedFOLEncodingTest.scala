@@ -57,7 +57,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
-    println(ToTFF(termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 1", Checked) {
@@ -111,7 +111,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
     println(translateResult.ty.pretty(foSig))
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 2", Checked) {
@@ -170,7 +170,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 3", Checked) {
@@ -238,7 +238,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
 
@@ -312,7 +312,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 5", Checked) {
@@ -361,7 +361,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 6", Checked) {
@@ -410,7 +410,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 7", Checked) {
@@ -469,7 +469,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 8", Checked) {
@@ -534,7 +534,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 9", Checked) {
@@ -596,7 +596,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 10", Checked) {
@@ -657,7 +657,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 11", Checked) {
@@ -722,7 +722,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 12", Checked) {
@@ -787,7 +787,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 13", Checked) {
@@ -857,7 +857,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 14", Checked) {
@@ -934,7 +934,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 15", Checked) {
@@ -990,7 +990,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Type encoder Test 16", Checked) {
@@ -1057,7 +1057,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(Term.wellTyped(translateResult))
 
     proxyAxiomCheck(foSig)
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 17", Checked) {
@@ -1094,7 +1094,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 18 SKI", Checked) {
@@ -1131,7 +1131,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
   test("Problem encoder Test 18 Lifting", Checked) {
     implicit val sig: Signature = getFreshSignature
@@ -1166,9 +1166,9 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 19 SKI", Checked) {
@@ -1208,7 +1208,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 19 Lifting", Checked) {
@@ -1247,9 +1247,9 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 20 SKI", Checked) {
@@ -1294,7 +1294,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
 
@@ -1339,9 +1339,9 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 21 SKI", Checked) {
@@ -1381,7 +1381,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 21 Lifting", Checked) {
@@ -1420,9 +1420,9 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 22 SKI", Checked) {
@@ -1462,7 +1462,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 22 Lifting", Checked) {
@@ -1500,10 +1500,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 23 SKI", Checked) {
@@ -1543,7 +1543,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 23 Lifting", Checked) {
@@ -1581,10 +1581,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 24 SKI", Checked) {
@@ -1625,7 +1625,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 24 Lifting", Checked) {
@@ -1664,10 +1664,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 25 SKI", Checked) {
@@ -1708,7 +1708,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 25 Lifting", Checked) {
@@ -1747,10 +1747,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
 
@@ -1783,7 +1783,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 27", Checked) {
@@ -1796,7 +1796,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     val c = sig.addUninterpreted("c", i)
 
     // create formulae
-    val f1 = Term.mkTermApp(Term.mkAtom(p)(sig), Term.mkTermApp(X, Term.mkAtom(c)(sig)))
+    val f1 = Term.mkTermApp(Term.mkAtom(p)(using sig), Term.mkTermApp(X, Term.mkAtom(c)(using sig)))
 
     assert(Term.wellTyped(f1))
 
@@ -1815,7 +1815,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 28 Lifting", Checked) {
@@ -1859,10 +1859,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   test("Problem encoder Test 29 Lifting", Checked) {
@@ -1906,10 +1906,10 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
-      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(using foSig))
       assert(Term.wellTyped(a))
     }
-    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(using foSig))
   }
 
   private final def printTable(table: EncodingAnalyzer.ArityTable)(implicit sig: Signature): Unit = {

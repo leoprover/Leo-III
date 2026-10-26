@@ -18,43 +18,43 @@ object Control {
   type LocalFVState = FVState[AnnotatedClause]
 
   // Generating inferences
-  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(state)
-  @inline final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factorNew(cl)(state)
-  @inline final def boolext(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.BoolExtControl(cl)(state)
-  @inline final def primsubst(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(state)
-  @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(state)
+  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(using state)
+  @inline final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factorNew(cl)(using state)
+  @inline final def boolext(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.BoolExtControl(cl)(using state)
+  @inline final def primsubst(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(using state)
+  @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(using state)
   @deprecated("Usage of this method is deprecated due to completeness considerations, use funcExtNew instead.", "Leo-III 1.2")
-  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.FuncExtControl(cl)(sig)
-  @inline final def funcExtNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FuncExtControl.applyNew(cl)(state)
-  @inline final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.detUniInferences(cl)(state)
+  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.FuncExtControl(cl)(using sig)
+  @inline final def funcExtNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FuncExtControl.applyNew(cl)(using state)
+  @inline final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.detUniInferences(cl)(using state)
   @inline final def generalUnify(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.generalUnify(cl)(state)
   // simplification inferences / preprocessing
-  @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
-  @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
-  @inline final def exhaustiveCnfSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.CNFControl.exhaustiveCnfSimpSet(cls)(state)
-  @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
-  @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
+  @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(using state)
+  @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(using state)
+  @inline final def exhaustiveCnfSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.CNFControl.exhaustiveCnfSimpSet(cls)(using state)
+  @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(using sig)
+  @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(using sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
-  @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
-  @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(state)
+  @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(using sig)
+  @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(using state)
   @deprecated("Usage is deprecated. It is unknown what this exactly does.", "Leo-III 1.2")
-  @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
-  @inline final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.cheapSimp(cl)(state)
-  @inline final def cheapSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.cheapSimpSet(cls)(state)
-  @inline final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(state)
-  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(state)
-  @inline final def rewritable(clauses: Set[AnnotatedClause], newClause: AnnotatedClause)(implicit state: State[AnnotatedClause]): (Set[AnnotatedClause],Set[AnnotatedClause]) = inferenceControl.SimplificationControl.rewritable(clauses, newClause)(state)
+  @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(using sig)
+  @inline final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.cheapSimp(cl)(using state)
+  @inline final def cheapSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.cheapSimpSet(cls)(using state)
+  @inline final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(using state)
+  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(using state)
+  @inline final def rewritable(clauses: Set[AnnotatedClause], newClause: AnnotatedClause)(implicit state: State[AnnotatedClause]): (Set[AnnotatedClause],Set[AnnotatedClause]) = inferenceControl.SimplificationControl.rewritable(clauses, newClause)(using state)
   @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
-  @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
+  @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(using sig)
   @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
-  @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
+  @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(using sig)
   @inline final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = inferenceControl.SimplificationControl.detectUnit(cl)
   @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use simp instead as it includes simplify-reflect.", "Leo-III 1.2")
-  @inline final def rewriteSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl)(state)
-  @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
-  @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
-  @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(sig)
-  @inline final def detectInjectivity(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.SimplificationControl.detectInjectivity(cl)(state)
+  @inline final def rewriteSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl)(using state)
+  @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(using sig)
+  @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(using state)
+  @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(using sig)
+  @inline final def detectInjectivity(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.SimplificationControl.detectInjectivity(cl)(using state)
 
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
@@ -71,7 +71,7 @@ object Control {
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
 
   // Indexing
-  @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(state)
+  @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(using state)
   @inline final def insertIndexed(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.insertIndexed(cl)
   @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit state: LocalFVState): Unit = cls.foreach(insertIndexed)
   @inline final def removeFromIndex(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
@@ -87,10 +87,10 @@ object Control {
   @inline final def relevanceFilterAdd(formula: AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
 
   // External prover call
-  @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
+  @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(using state)
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TPTPProver.Result[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
-  @inline final def despairSubmit(startTime: Long, timeout: Float)(implicit state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.despairSubmit(startTime, timeout)(state)
+  @inline final def despairSubmit(startTime: Long, timeout: Float)(implicit state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.despairSubmit(startTime, timeout)(using state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 
   // Limited resource scheduling
@@ -148,7 +148,7 @@ package inferenceControl {
 
     private final def cnf1(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
       Out.trace(s"Standard CNF of ${cl.pretty(sig)}")
-      val cnfresult0 = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig)
+      val cnfresult0 = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(using sig)
       if (CnfConj.canApply(cnfresult0)) {
         // conjunction of all derived clauses
         val (conjCl, cnfresult) = CnfConj(cnfresult0)
@@ -174,7 +174,7 @@ package inferenceControl {
 
     private final def cnf2(cl: AnnotatedClause, s: GeneralState[AnnotatedClause]): Set[AnnotatedClause] = {
       Out.trace(s"Rename CNF of ${cl.pretty(s.signature)}")
-      val cnfresult0 = RenameCNF.apply(leo.modules.calculus.freshVarGen(cl.cl), s.renamingCash, cl.cl)(s.signature)
+      val cnfresult0 = RenameCNF.apply(leo.modules.calculus.freshVarGen(cl.cl), s.renamingCash, cl.cl)(using s.signature)
       if (CnfConj.canApply(cnfresult0)) {
         // conjunction of all derived clauses
         val (conjCl, cnfresult) = CnfConj(cnfresult0)
@@ -252,7 +252,7 @@ package inferenceControl {
         if (!sos || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
           leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties))  {
           Out.finest(s"Paramod on ${cl.id} and ${other.id}")
-          results = results ++ allParamods(cl, other)(state)
+          results = results ++ allParamods(cl, other)(using state)
         }
       }
       Out.debug(s"[Paramod] Result: ${results.map(_.id).mkString(",")}")
@@ -280,14 +280,14 @@ package inferenceControl {
       val withClause = withWrapper.cl
       val intoClause = intoWrapper.cl
 
-      val withConfigurationIt = new LiteralSideIterator(withClause, true, true, false)(sig)
+      val withConfigurationIt = new LiteralSideIterator(withClause, true, true, false)(using sig)
       while (withConfigurationIt.hasNext) {
         val (withIndex, withLit, withSide) = withConfigurationIt.next()
 
         assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty(sig)}\n lit = ${withLit.pretty(sig)}")
         assert(withLit.polarity)
 
-        val intoConfigurationIt = intoConfigurationIterator(intoClause)(sig)
+        val intoConfigurationIt = intoConfigurationIterator(intoClause)(using sig)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
           assert(!intoLit.flexflex)
@@ -347,7 +347,7 @@ package inferenceControl {
 //          assert(shiftedIntoTerm0 == shiftedIntoTerm)
 
           singleParamod02(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
-            intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+            intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(using sig)
         } else null
       }
     }
@@ -411,7 +411,7 @@ package inferenceControl {
                                      shiftedIntoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
 
       val (result0,preSimp) = OrderedParamod(withClause, withIndex, withSide,
-        shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+        shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(using sig)
 
       val uniLit = result0.lits.last
       val (uniEqLeft,uniEqRight) = UnificationControl.getUniTaskFromLit(uniLit)
@@ -439,10 +439,10 @@ package inferenceControl {
         if (maybeSubst.isDefined) {
           val initialTypeSubst = maybeSubst.get
           Out.finest(s"[Paramod] Type unification succeeded: ${initialTypeSubst.pretty}")
-          val result1 = result0.substituteOrdered(Subst.id, initialTypeSubst)(sig)
+          val result1 = result0.substituteOrdered(Subst.id, initialTypeSubst)(using sig)
           val result2 = Clause(result1.lits.map(l => Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)))
           val intermediateClause = if (result0 != preSimp) {
-            val preSimpRes1 = preSimp.substituteOrdered(Subst.id, initialTypeSubst)(sig)
+            val preSimpRes1 = preSimp.substituteOrdered(Subst.id, initialTypeSubst)(using sig)
             val preSimpRes2 = Clause(preSimpRes1.lits.map(l => Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)))
             val intermediateClause0 = AnnotatedClause(preSimpRes2, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
             AnnotatedClause(result2, InferredFrom(Simp, intermediateClause0), newProperties)
@@ -490,7 +490,7 @@ package inferenceControl {
         val vargen = freshVarGen(intermediateClause.cl)
         vargen.addVars(shiftedIntoClause.implicitlyBound)
         vargen.addVars(withClause.implicitlyBound)
-        val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
+        val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(using sig)
         if (result.isEmpty) {
 //          Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
 //          val (simpsubst, asd) = Simp.uniLitSimp(uniEqLeft, uniEqRight)
@@ -505,7 +505,7 @@ package inferenceControl {
           val typeSubst = initialTypeSubst.comp(typeSubst0).normalize
           val withTermSubst = withTerm.substitute(termSubst, typeSubst)
           val otherTermSubst = otherTerm.substitute(termSubst, typeSubst)
-          val cmpResult = ord.compare(otherTermSubst, withTermSubst)(sig)
+          val cmpResult = ord.compare(otherTermSubst, withTermSubst)(using sig)
           leo.Out.finest(s"Checking Ordering restrictions ...")
           leo.Out.finest(s"withTerm: ${withTerm.pretty(sig)}")
           leo.Out.finest(s"otherTerm: ${otherTerm.pretty(sig)}")
@@ -516,7 +516,7 @@ package inferenceControl {
 
           if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
             leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
-            leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+            leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(using sig).map(_.pretty(sig)).mkString("\n\t")}")
             val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
             val restrictedTySubst = typeSubst.restrict(i => shiftedIntoClause.typeVars.contains(i))
             leo.Out.finest(s"restrictedTermSubst: ${restrictedTermSubst.pretty}")
@@ -525,10 +525,10 @@ package inferenceControl {
             val intoLitSubst = intoClauseSubst(intoIndex)
             leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
             leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
-            leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+            leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(using sig).map(_.pretty(sig)).mkString("\n\t")}")
             myAssert(Clause.wellTyped(intoClauseSubst))
             myAssert(Literal.wellTyped(intoLitSubst))
-            if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
+            if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(using sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
               val restrictedTermSubst = termSubst.restrict(i => withClause.implicitlyBound.exists(_._1 == i))
               val restrictedTySubst = typeSubst.restrict(i => withClause.typeVars.contains(i))
               val withClauseSubst = withClause.substitute(restrictedTermSubst, restrictedTySubst)
@@ -537,8 +537,8 @@ package inferenceControl {
               leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
               myAssert(Clause.wellTyped(withClauseSubst))
               myAssert(Literal.wellTyped(withLitSubst))
-              if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
-                val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTHF(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
+              if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(using sig).contains(withLitSubst)) {
+                val res = AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTHF(termSubst, typeSubst, intermediateClause.cl.implicitlyBound, intermediateClause.cl.typeVars)(using sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
                 res
               } else {
                 leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
@@ -607,8 +607,8 @@ package inferenceControl {
       private var litIndex = 0
       private var lits = cl.lits
       private var side = leftSide
-      private var curSubterms: Set[Term] = _
-      private var curPositions: Set[Position] = _
+      private var curSubterms: Set[Term] = scala.compiletime.uninitialized
+      private var curPositions: Set[Position] = scala.compiletime.uninitialized
 
       def hasNext: Boolean = if (lits.isEmpty) false
       else {
@@ -900,7 +900,7 @@ package inferenceControl {
         leo.modules.myAssert(Clause.wellTyped(cl.cl),
           s"Not well typed: ${cl.pretty(state.signature)}"
         )
-        val results = Simp.detUniInferences(cl.cl)(state.signature)
+        val results = Simp.detUniInferences(cl.cl)(using state.signature)
         val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
         Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
         results0
@@ -967,7 +967,7 @@ package inferenceControl {
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
         Out.finest(s"Unification failed, but looking for uni simp.")
-        val detUniSimps = detUniInferences(cl0)(state)
+        val detUniSimps = detUniInferences(cl0)(using state)
         Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
         detUniSimps
 //        if (!uniLit.polarity) {
@@ -1040,7 +1040,7 @@ package inferenceControl {
 //          Set(res)
 //        } else Set()
         Out.finest(s"Unification failed, but looking for uni simp.")
-        val detUniSimps = detUniInferences(cl0)(state)
+        val detUniSimps = detUniInferences(cl0)(using state)
         Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
         detUniSimps
       } else {
@@ -1096,7 +1096,7 @@ package inferenceControl {
           Set(result)
         }
       } else {
-        val uniResultIterator = PreUni(freshVarGen, uniLits, otherLits, state.runStrategy.uniDepth)(sig)
+        val uniResultIterator = PreUni(freshVarGen, uniLits, otherLits, state.runStrategy.uniDepth)(using sig)
         val uniResult = uniResultIterator.take(state.runStrategy.unifierCount).toSet
         val result = uniResult.map(annotate(cl, _, PreUni)(sig))
         leo.Out.finest(s"doUnify0 result:\n${result.map(_.pretty(sig)).mkString("\n")}")
@@ -1106,7 +1106,7 @@ package inferenceControl {
 
     protected[control] final def doUnifyAllPattern(cl: AnnotatedClause, freshVarGen: FreshVarGen,
                                           uniLits: UniLits, otherLits: OtherLits)(sig: Signature):  AnnotatedClause = {
-      val result = PatternUni.apply(freshVarGen, uniLits, otherLits)(sig)
+      val result = PatternUni.apply(freshVarGen, uniLits, otherLits)(using sig)
       if (result.isEmpty) null
       else annotate(cl, result.get, PatternUni)(sig)
     }
@@ -1125,7 +1125,7 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      val res = AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTHF(subst._1, subst._2, origin.cl.implicitlyBound, origin.cl.typeVars)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
+      val res = AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTHF(subst._1, subst._2, origin.cl.implicitlyBound, origin.cl.typeVars)(using sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
       res
     }
 
@@ -1182,7 +1182,7 @@ package inferenceControl {
           Out.finest(s"[FuncExtControl] FV(${cl.id}): ${cl.cl.implicitlyBound.toString}\ttyFV(${cl.id}): ${cl.cl.typeVars.toString}")
           val vargen = freshVarGen(cl.cl)
           val (posFuncExtLits, negFuncExtLits) = funcExtLits.partition(_.polarity)
-          val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(sig))
+          val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(using sig))
           val steps = exhaustiveSteps(posFuncExtLits,vargen)(sig).iterator
           val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties))
           while (steps.hasNext) {
@@ -1204,7 +1204,7 @@ package inferenceControl {
     @tailrec private final def exhaustiveSteps0(posLits: Seq[Literal], vargen: FreshVarGen, done: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
       if (posLits.isEmpty) acc
       else {
-        val appliedOneStepPosFuncExtLits = posLits.map(lit => FuncExt.applyNew(lit, vargen)(sig))
+        val appliedOneStepPosFuncExtLits = posLits.map(lit => FuncExt.applyNew(lit, vargen)(using sig))
         val (_,todoLits,doneLits) = FuncExt.canApply(appliedOneStepPosFuncExtLits)
         exhaustiveSteps0(todoLits, vargen, done ++ doneLits, acc :+ (appliedOneStepPosFuncExtLits ++ done))(sig)
       }
@@ -1298,7 +1298,7 @@ package inferenceControl {
             cl
           else {
             val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
-            val simpResult = SimplificationControl.shallowSimp(result)(sig)
+            val simpResult = SimplificationControl.shallowSimp(result)(using sig)
             simpResult
           }
         )
@@ -1394,7 +1394,7 @@ package inferenceControl {
       leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
       if (shouldReplace(ty, LEVEL)) {
         leo.Out.finest(s"[Special Instances]: Should apply.")
-        val instances = Enumeration.specialInstances(ty, LEVEL)(sig)
+        val instances = Enumeration.specialInstances(ty, LEVEL)(using sig)
         if (instances.nonEmpty) {
           leo.Out.trace(s"[Special Instances]: Used (${instances.size}): ${instances.map(_.pretty(sig))}")
           instances.map(i => Term.mkTermApp(term, i).betaNormalize)
@@ -1494,11 +1494,11 @@ package inferenceControl {
       if(s.runStrategy.domConstr == 0) {
         return Set(c)
       }
-      val instatiatedClauses = Constraint.apply(c.cl, s.domainConstr, s.runStrategy.domConstr)(s.signature)
+      val instatiatedClauses = Constraint.apply(c.cl, s.domainConstr, s.runStrategy.domConstr)(using s.signature)
       val result = instatiatedClauses.map{ic =>
         if(ic != c.cl) {
           val ac = AnnotatedClause(ic, InferredFrom(Constraint, c), c.properties)
-          val simpResult = SimplificationControl.shallowSimp(ac)(s.signature)
+          val simpResult = SimplificationControl.shallowSimp(ac)(using s.signature)
           simpResult
         } else {
           c
@@ -1573,7 +1573,7 @@ package inferenceControl {
         val choiceFuns = state.choiceFunctions
         val sig = state.signature
         Out.trace(s"[Choice] Searching for possible choice terms...")
-        val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
+        val candidates = ChoiceRule.canApply(cl, choiceFuns)(using sig)
         if (candidates.nonEmpty) {
           Out.finest(s"[Choice] Found possible choice term.")
           var results: Set[AnnotatedClause] = Set()
@@ -1655,9 +1655,9 @@ package inferenceControl {
         collectedSpecs.map {case (hd, spec) => hd.pretty + ":\n" + spec.map(s => s._1.map(_.pretty(sig)).mkString(",") + " = " + s._2.pretty(sig)).mkString("\t\n")}.mkString("\n\n"))
       var result: Set[AnnotatedClause] = Set.empty
       collectedSpecs.foreach {case (hd, specs) =>
-        val a = SolveFuncSpec.apply(hd.ty, specs)(sig)
+        val a = SolveFuncSpec.apply(hd.ty, specs)(using sig)
         val hdIdx = Term.Bound.unapply(hd).get._2
-          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance", Seq.empty), cw.properties)
+          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(using sig), FromSystem("choice instance", Seq.empty), cw.properties)
       }
       Out.trace(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
 
@@ -1717,7 +1717,7 @@ package inferenceControl {
         assert(Clause.unit(cl.cl))
         val lit = cl.cl.lits.head
         assert(!lit.equational)
-        val newleft = DefExpSimp(lit.left)(sig)
+        val newleft = DefExpSimp(lit.left)(using sig)
         val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, cl), cl.properties)
         Out.trace(s"Def expansion: ${result.pretty(sig)}")
         result
@@ -1727,7 +1727,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(using sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.debug(s"[ToEq] [${cl.id}] > [${result.id}]")
         Out.trace(s"[ToEq] Result: ${result.pretty(sig)}")
         result
@@ -1768,7 +1768,7 @@ package inferenceControl {
         if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits.map(l => (l.left, l.right)), nonUniLits)(state)
 
         if (boolExtLits.isEmpty) {
-          val (tySubst, res) = Simp.uniLitSimp(uniLits)(sig)
+          val (tySubst, res) = Simp.uniLitSimp(uniLits)(using sig)
           if (res == uniLits) result = result + cl
           else {
             val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
@@ -1787,7 +1787,7 @@ package inferenceControl {
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
             val liftedUnified = doUnify0(cl, freshVarGen(liftedCl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(state)
             if (liftedUnified.isEmpty) {
-              val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
+              val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(using sig)
               if (res != liftedClUniLits) {
                 val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
                 val simpNewCl = Control.simp(newCl)
@@ -1882,7 +1882,7 @@ package inferenceControl {
       if (Configuration.isSet("acsimp")) {
         val acSymbols = sig.acSymbols
         Out.trace(s"[AC] Simp on ${cl.pretty(sig)}")
-        val pre_result = ACSimp.apply(cl.cl,acSymbols)(sig)
+        val pre_result = ACSimp.apply(cl.cl,acSymbols)(using sig)
         val result = if (pre_result == cl.cl) cl
         else AnnotatedClause(pre_result, InferredFrom(ACSimp, cl), cl.properties)
         Out.finest(s"[AC] Result: ${result.pretty(sig)}")
@@ -1931,8 +1931,8 @@ package inferenceControl {
 //      if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) cl
 //      else if (isPropSet(ClauseAnnotation.PropShallowSimplified, cl.properties)) simplifyReflect(cl)(state)
 //      else {
-        val result0 = cheapSimp(cl)(state)
-        simplifyReflect(result0)(state)
+        val result0 = cheapSimp(cl)(using state)
+        simplifyReflect(result0)(using state)
 //      }
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
@@ -2089,7 +2089,7 @@ package inferenceControl {
           else deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties)
           AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cl) ++ rewriteRulesUsed.toSeq), newAnnotation)
         }
-        val simpResult = Simp.shallowSimp(result0.cl)(sig)
+        val simpResult = Simp.shallowSimp(result0.cl)(using sig)
         val result = if (simpResult == result0.cl) result0
         else AnnotatedClause(simpResult, InferredFrom(Simp, Seq(result0)), result0.properties)
         Out.debug(s"[Rewriting] Result: ${result.pretty(sig)}")
@@ -2100,7 +2100,7 @@ package inferenceControl {
       rewriteClause(cl, state.groundRewriteRules, state.nonGroundRewriteRules)(state.signature)
     }
     private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Literal = {
-      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)(sig)
+      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)(using sig)
       else Literal.apply(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)
     }
     private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause], depth: Int = 0)(sig: Signature): Term = {
@@ -2253,11 +2253,11 @@ package inferenceControl {
       else convertLeibniz0(cl)(sig)
     }
     @inline private final def convertLeibniz0(cl: AnnotatedClause)(sig: Signature): AnnotatedClause = {
-      val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
+      val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)(using sig)
       if (cA_leibniz) {
         Out.trace(s"[DefEq][LEq] On ${cl.id}: Leibniz equalities found, replacing ...")
-        val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(using sig)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(using sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][LEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2275,8 +2275,8 @@ package inferenceControl {
       val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cl.cl)
       if (cA_Andrews) {
         Out.trace(s"[DefEq][AEq] On ${cl.id}: Andrews equalities found, replacing ...")
-        val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(using sig)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTHF(subst, Subst.id, cl.cl.implicitlyBound, cl.cl.typeVars)(using sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"[DefEq][AEq] Result: ${res.pretty(sig)}")
         res
       } else {
@@ -2466,7 +2466,7 @@ package indexingControl {
       * as feature vector index, subsumption index etc.
       * @note method may change in future (maybe more arguments will be needed). */
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit state: Control.LocalFVState): Unit = {
-      FVIndexControl.init(initClauses)(state)
+      FVIndexControl.init(initClauses)(using state)
 //      FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is
@@ -2600,7 +2600,7 @@ package indexingControl {
 
   object FOIndexControl {
     import leo.modules.indexing.FOIndex
-    private var foIndex: FOIndex = _
+    private var foIndex: FOIndex = scala.compiletime.uninitialized
 
     final def foIndexInit(): Unit  = {
       if (foIndex == null) foIndex = FOIndex()
@@ -3104,7 +3104,7 @@ package  externalProverControl {
       if (state.externalProvers.nonEmpty) {
         if (shouldRun(realProblem(clauses)(state), state) || force) {
           leo.Out.debug(s"[ExtProver]: Starting jobs ...")
-          state.lastCall.calledNow(realProblem(clauses)(state))(state)
+          state.lastCall.calledNow(realProblem(clauses)(state))(using state)
           val openCallState = state.openExtCalls
           state.externalProvers.foreach(prover =>
             if (openCallState.isDefinedAt(prover)) {
@@ -3124,7 +3124,7 @@ package  externalProverControl {
     final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         leo.Out.debug(s"[ExtProver]: Starting jobs ...")
-        state.lastCall.calledNow(realProblem(clauses)(state))(state)
+        state.lastCall.calledNow(realProblem(clauses)(state))(using state)
         val openCallState = state.openExtCalls
         state.externalProvers.foreach(prover =>
           if (openCallState.isDefinedAt(prover)) {
@@ -3145,7 +3145,7 @@ package  externalProverControl {
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
-      state.lastCall.calledNow(realProblem(clauses)(state))(state)
+      state.lastCall.calledNow(realProblem(clauses)(state))(using state)
       submit0(prover, clauses, state)
     }
 
@@ -3203,18 +3203,18 @@ package  externalProverControl {
       val extraArgs0 = Configuration.ATP_ARGS(prover.name)
       val extraArgs = if (extraArgs0 == "") Seq.empty else extraArgs0.split(" ").toSeq
       if (proverCaps.contains(THF)) {
-        val preparedProblem = prepareProblem(problem, THF)(sig)
+        val preparedProblem = prepareProblem(problem, THF)(using sig)
         callProver0(prover, problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
-        val preparedProblem = prepareProblem(problem, TFF)(sig)
+        val preparedProblem = prepareProblem(problem, TFF)(using sig)
         try {
           val lambdaElim = Configuration.LAMBDA_ELIM_STRATEGY
           val (translatedProblem, auxDefs, translatedSig) =
             if (supportsFeature(proverCaps, TFF)(Polymorphism))
-              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  PolyNative)(sig)
+              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  PolyNative)(using sig)
             else
-              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  MonoNative)(sig)
+              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  MonoNative)(using sig)
           callProver0(prover, problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
         } catch {
           case e: Exception =>
@@ -3275,7 +3275,7 @@ package  externalProverControl {
       }
     }
 
-    @inline final def shouldRun(problem: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = state.lastCall.shouldCall(problem)(state)
+    @inline final def shouldRun(problem: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = state.lastCall.shouldCall(problem)(using state)
 
     class MixedInfoLastCallStat extends State.LastCallStat[AnnotatedClause] {
       override def shouldCall(problem: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Boolean = {
@@ -3370,7 +3370,7 @@ package schedulingControl {
             }
           }
         }
-        Iterable(result:_*)
+        Iterable(result*)
       }
     }
 

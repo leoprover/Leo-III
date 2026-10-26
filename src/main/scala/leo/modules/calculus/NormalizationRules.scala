@@ -33,7 +33,7 @@ object DefExpSimp extends CalculusRule {
     while (litsIt.hasNext) {
       val lit = litsIt.next()
       if (lit.equational) {
-        newLits = newLits :+ Simp(Literal.mkOrdered(apply(lit.left), apply(lit.right), lit.polarity)(sig))
+        newLits = newLits :+ Simp(Literal.mkOrdered(apply(lit.left), apply(lit.right), lit.polarity)(using sig))
       } else {
         newLits = newLits :+ Simp(Literal(apply(lit.left), lit.polarity))
       }
@@ -107,7 +107,7 @@ object  StepCNF extends CalculusRule {
       case Not(t) => true
       case s ||| t => true
       case s & t => true
-      case s Impl t => true
+      case s `Impl` t => true
       //      case s <=> t => true
       case Forall(ty :::> t) => true
       case Exists(ty :::> t) => true
@@ -127,8 +127,8 @@ object  StepCNF extends CalculusRule {
       case Impl(lt,rt) if l.polarity => Beta(Literal(lt,false), Literal(rt, true))
       case Impl(lt,rt) if !l.polarity => Alpha(Literal(lt,true), Literal(rt,false))
       case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
-      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTermDefined(a, vargen.existingVars, vargen.existingTyVars, true)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
-      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTermDefined(a, vargen.existingVars, vargen.existingTyVars, false)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTermDefined(a, vargen.existingVars, vargen.existingTyVars, true)(using sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTermDefined(a, vargen.existingVars, vargen.existingTyVars, false)(using sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
       case _ => None(l)
     }
@@ -136,9 +136,9 @@ object  StepCNF extends CalculusRule {
 
 
   final def step(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Literal])(implicit sig: Signature) : Seq[Seq[Literal]] = {
-    val (norm, l+:rest) = ls.span(l => !canApply(l))
+    val (norm, l+:rest) = ls.span(l => !canApply(l)): @unchecked
     val c = norm ++ rest
-    apply(vargen, l)(sig) match {
+    apply(vargen, l)(using sig) match {
       case Alpha(a,b) =>  Seq(a +: c, b +: c)
       case Beta(a,b)  => Seq(a +: b +: c)
       case One(a)     => Seq(a +: c)
@@ -157,7 +157,7 @@ object  StepCNF extends CalculusRule {
     val (norm, rest) = ls.span(ls1 => !canApply(ls1))
     rest match {
       case Seq()  => ls
-      case (a +: c) => (c ++ step(vargen,a)(sig)) ++ norm
+      case (a +: c) => (c ++ step(vargen,a)(using sig)) ++ norm
     }
   }
 
@@ -165,7 +165,7 @@ object  StepCNF extends CalculusRule {
     var ls = Seq(c.lits)
     val vargen = freshVarGen(c)
     while(ls exists canApply){
-      ls = apply(vargen, ls)(sig)
+      ls = apply(vargen, ls)(using sig)
     }
     ls.map(ls1 => Clause(ls1))
   }
@@ -252,7 +252,7 @@ object FullCNF extends CalculusRule {
       case Not(_) => true
       case _ ||| _ => true
       case _ & _ => true
-      case _ Impl _ => true
+      case _ `Impl` _ => true
       case Forall(_ :::> _) => true
       case Exists(_ :::> _) => true
       case TyForall(TypeLambda(_)) => true
@@ -385,7 +385,7 @@ object LiftEq extends CalculusRule {
   }
 
   final def apply(posLiftLits: PosLiftLits, negLiftLits: NegLiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
-    posLiftLits.map(l => apply(POS_LIFT, l.left, l.polarity)(sig)) ++ negLiftLits.map(l => apply(NEG_LIFT, l.left, l.polarity)(sig)) ++ otherLits
+    posLiftLits.map(l => apply(POS_LIFT, l.left, l.polarity)(using sig)) ++ negLiftLits.map(l => apply(NEG_LIFT, l.left, l.polarity)(using sig)) ++ otherLits
   }
 
   final def apply(lift: Lift, t: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
@@ -399,10 +399,10 @@ object LiftEq extends CalculusRule {
     assert(l.isBetaNormal, s"${l.pretty(sig)} // ${l.toString}")
     assert(r.isBetaNormal, s"${r.pretty(sig)} // ${r.toString}")
     if (lift == POS_LIFT) {
-      Literal.mkOrdered(l,r,polarity)(sig)
+      Literal.mkOrdered(l,r,polarity)(using sig)
     } else {
       // lift == NEG_LIFT
-      Literal.mkOrdered(l,r,!polarity)(sig)
+      Literal.mkOrdered(l,r,!polarity)(using sig)
     }
 
   }
@@ -433,7 +433,7 @@ object ReplaceLeibnizEq extends CalculusRule {
             } else {
               if (gbTermMap contains headIndex) {
                 val curEntry = gbTermMap(headIndex)
-                if (arg.compareTo(curEntry)(sig) == CMP_LT) {
+                if (arg.compareTo(curEntry)(using sig) == CMP_LT) {
                   gbTermMap = gbTermMap + (headIndex -> arg)
                 }
               } else {
@@ -452,7 +452,7 @@ object ReplaceLeibnizEq extends CalculusRule {
   def apply(cl: Clause, bindings: Map[Int, Term])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = bindings.view.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1)))).toMap
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(using sig))
     (Clause(newLits), subst)
   }
 }
@@ -497,7 +497,7 @@ object ReplaceAndrewsEq extends CalculusRule {
   def apply(cl: Clause, vars: Map[Int, Type])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = vars.view.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}.toMap
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(using sig))
     (Clause(newLits), subst)
   }
 }
@@ -560,7 +560,7 @@ object RewriteSimp extends CalculusRule {
       val rightConfs = confs.getOrElse(Literal.rightSide, Set())
       val newRight = rightConfs.foldLeft(right) {case (curTerm, (pos, replaceBy)) => curTerm.replaceAt(pos, replaceBy)}
 
-      val newLit = Literal.mkOrdered(newLeft, newRight, lit.polarity)(sig)
+      val newLit = Literal.mkOrdered(newLeft, newRight, lit.polarity)(using sig)
       lits = lits.updated(litIndex, newLit)
     }
 
@@ -646,7 +646,7 @@ object ACSimp extends CalculusRule {
   }
 
   def apply(cl: Clause, acSymbols: Set[Signature.Key])(implicit sig: Signature): Clause = {
-    Clause(cl.lits.map(apply(_, acSymbols)(sig)))
+    Clause(cl.lits.map(apply(_, acSymbols)(using sig)))
   }
 }
 
@@ -772,7 +772,7 @@ object Simp extends CalculusRule {
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit0 = litIt.next().substituteOrdered(curSubst)
-      val lit = apply(lit0)(sig)
+      val lit = apply(lit0)(using sig)
 
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
@@ -816,14 +816,14 @@ object Simp extends CalculusRule {
     }
   }
 
-  final def apply(cl: Clause)(implicit sig: Signature): Clause = Clause(apply(cl.lits)(sig))
+  final def apply(cl: Clause)(implicit sig: Signature): Clause = Clause(apply(cl.lits)(using sig))
 
   final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     var newLits: Seq[Literal] = Vector.empty
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit0 = litIt.next()
-      val lit = apply(lit0)(sig)
+      val lit = apply(lit0)(using sig)
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
           newLits = newLits :+ lit
@@ -834,7 +834,7 @@ object Simp extends CalculusRule {
   }
 
   final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
-    Clause(shallowSimp(cl.lits)(sig))
+    Clause(shallowSimp(cl.lits)(using sig))
   }
 
   final def detUniInferences(cl: Clause)(implicit sig: Signature): Seq[Clause] = {
@@ -870,7 +870,7 @@ object Simp extends CalculusRule {
           val subst = HuetsPreUnification.BindRule.apply((left, right), leftAbstractions.size, canApplyBind)
           leo.Out.finest(s"[UniLitSimp] Bind subst: ${subst.pretty}")
           val newPartialSubst = partialSubst.comp(subst)
-          detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(sig))), newPartialSubst)(sig)
+          detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(using sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(using sig))), newPartialSubst)(sig)
         } else {
           val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
           if (canApplyDecomp._1) {
@@ -880,7 +880,7 @@ object Simp extends CalculusRule {
               if (tySubst == Subst.id) {
                 // not need to apply tySubst
                 val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
-                val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(sig)}
+                val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(using sig)}
                 detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits), partialSubst)(sig)
               } else {
                 detUniInferences0(literals.tail, acc.map(lits => lits :+ hd), partialSubst)(sig)
@@ -901,7 +901,7 @@ object Simp extends CalculusRule {
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     leo.modules.myAssert(l.forall(a => !a.polarity))
     val (subst, simpRes) = uniLitSimp0(Vector.empty, l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
-    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(using sig))
     (subst, simpResAsLits)
   }
   /** Given a unification literal `l` where `l = [a,b]^f`
@@ -911,12 +911,12 @@ object Simp extends CalculusRule {
   final def uniLitSimp(l: Literal)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     assert(!l.polarity)
     val (subst, simpRes) = uniLitSimp0(Vector.empty, Vector((l.left, l.right)), Subst.id)(sig)
-    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(using sig))
     (subst, simpResAsLits)
   }
   final def uniLitSimp(left: Term, right: Term)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     val (subst, simpRes) = uniLitSimp0(Vector.empty, Vector((left, right)), Subst.id)(sig)
-    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(using sig))
     (subst, simpResAsLits)
   }
 
@@ -983,15 +983,15 @@ object Simp extends CalculusRule {
     * @param t The term to be simplified
     * @return A term `r` that is semantically equivalent to `t` (i.e. has the same interpretation as before).
     */
-  @inline private[this] final def termSimp(t: Term): Term = {
+  @inline private final def termSimp(t: Term): Term = {
     val result = termSimp0(t.betaNormalize).betaNormalize // TODO: We dont actually need betaNF here,
     // but some code requires result to be beta normal and the term doesnt know if
     // its betanormal unless it was created by .betaNormalize
     if (t.sharing) Term.insert(result)
     else result
   }
-  @tailrec private[this] final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
-  private[this] final def normalizeReal(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt): Term = {
+  @tailrec private final def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) a.abs else gcd(b, a % b)
+  private final def normalizeReal(wholePart: BigInt, decimalPlaces: BigInt, exponent: BigInt): Term = {
 //    val decimalPlacesWithoutTrailingZeroes = if (decimalPlaces != 0) decimalPlaces.toString.reverse.dropWhile(_ == '0').reverse.toInt else 0
 //    val decimalPlacesWithoutTrailingZeroesLength = decimalPlacesWithoutTrailingZeroes.toString.length
 //    val wholePartAsString = wholePart.toString
@@ -1002,7 +1002,7 @@ object Simp extends CalculusRule {
     mkReal(wholePart, decimalPlaces, exponent)
   }
 
-  private[this] final def termSimp0(t: Term): Term = {
+  private final def termSimp0(t: Term): Term = {
     import leo.datastructures.Term.local._
     import leo.modules.HOLSignature.<=>
     import leo.datastructures.Term.{Symbol, ∙, Rational, Real}
@@ -1177,7 +1177,7 @@ object Simp extends CalculusRule {
     }
   }
 
-  @inline private[this] final def simpList(args: Seq[Either[Term, Type]]): Seq[Either[Term , Type]] = {
+  @inline private final def simpList(args: Seq[Either[Term, Type]]): Seq[Either[Term , Type]] = {
     if (args.isEmpty) args
     else {
       var result: Seq[Either[Term, Type]] = Vector.empty

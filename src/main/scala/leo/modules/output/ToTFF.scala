@@ -8,7 +8,7 @@ import scala.annotation.tailrec
   * Created by lex on 03.09.16.
   */
 object ToTFF {
-  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = apply(cl.cl, cl.role, cl.id.toString)(sig)
+  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = apply(cl.cl, cl.role, cl.id.toString)(using sig)
 
   final def apply(cl: Clause, role: Role, name: String)(implicit sig: Signature): String = {
     val res = apply0(cl.implicitlyBound, cl.typeVars, cl.lits)(sig)
@@ -66,11 +66,11 @@ object ToTFF {
 
     val interpretedSymbols = sig.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
-    val forall = Term.mkAtom(sig("!").key)(sig)
-    val exists = Term.mkAtom(sig("?").key)(sig)
-    val tyforall = Term.mkAtom(sig("!>").key)(sig)
-    val equality = Term.mkAtom(sig("=").key)(sig)
-    val neg_equality = Term.mkAtom(sig("!=").key)(sig)
+    val forall = Term.mkAtom(sig("!").key)(using sig)
+    val exists = Term.mkAtom(sig("?").key)(using sig)
+    val tyforall = Term.mkAtom(sig("!>").key)(using sig)
+    val equality = Term.mkAtom(sig("=").key)(using sig)
+    val neg_equality = Term.mkAtom(sig("!=").key)(using sig)
 
     t match {
       case `forall` ∙ _ =>

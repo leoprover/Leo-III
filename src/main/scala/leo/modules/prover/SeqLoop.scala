@@ -38,11 +38,11 @@ object SeqLoop {
     // some universal quantification may vanish after extensional instantiation
     // Run simp here again to eliminate connectives with true/false as operand due
     // to ext. instantiation.
-    result = Control.specialInstances(polaritySwitchedAndExpanded)(state)
+    result = Control.specialInstances(polaritySwitchedAndExpanded)(using state)
     // Exhaustively calculate CNF of input (do miniscoping before)
-    result = result.flatMap { cl => Control.cnf(Control.miniscope(cl))(state) }
+    result = result.flatMap { cl => Control.cnf(Control.miniscope(cl))(using state) }
     // Remove instances of axiom of choice (AoC)
-    result = result.filterNot { cl => Control.detectChoiceClause(cl)(state) }
+    result = result.filterNot { cl => Control.detectChoiceClause(cl)(using state) }
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
     // Do cheap simplification, transform equality symbols on top-level to proper equality literals
@@ -80,7 +80,7 @@ object SeqLoop {
 
     try {
       // Check if external provers were defined
-      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
+      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(using state)
       // Split input in conjecture/definitions/axioms etc.
       val remainingInput: Seq[AnnotatedClause] =
         if (Configuration.isSet("sine")) effectiveInputNew(parsedProblem, state) else effectiveInput(parsedProblem, state)
@@ -98,7 +98,7 @@ object SeqLoop {
       }
       state.setRunStrategy(strategy)
       Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}.  Searching for refutation ...")
-      run(remainingInput, startTime)(state)
+      run(remainingInput, startTime)(using state)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
       case e:Exception =>
@@ -136,7 +136,7 @@ object SeqLoop {
       while (toPreprocessIt.hasNext) {
         val todo = toPreprocessIt.next()
         Out.trace(s"# Process: ${todo.pretty(sig)}")
-        val result0 = preprocess(todo)(state)
+        val result0 = preprocess(todo)(using state)
         Out.trace(s"# Result:\n\t${result0.map {_.pretty(sig)}.mkString("\n\t")}")
         val result = result0.filterNot(cw => Clause.trivial(cw.cl))
         myAssert(result.forall(cl => Clause.wellTyped(cl.cl)),
@@ -148,7 +148,7 @@ object SeqLoop {
       /////////////////////////////////////////
       // Main loop start
       /////////////////////////////////////////
-      mainLoop(timeout, startTime)(state)
+      mainLoop(timeout, startTime)(using state)
       /////////////////////////////////////////
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
@@ -164,11 +164,11 @@ object SeqLoop {
           state.removeProcessed(clauses)
           val clauses0 = clauses.map(c => AnnotatedClause(Clause(c.cl.lits.map(l => Literal.mkLit(l.left, l.right, l.polarity))), c.role, c.annotation, c.properties))
           state.addUnprocessed(clauses0)
-          mainLoop(timeout, startTime)(state)
+          mainLoop(timeout, startTime)(using state)
           successSZS(state.szsStatus)
         } else {
           // Try something else, todo...
-          Control.despairSubmit(startTime, timeout)(state)
+          Control.despairSubmit(startTime, timeout)(using state)
           successSZS(state.szsStatus)
         }
       }
@@ -182,12 +182,12 @@ object SeqLoop {
     }
   }
 
-  private[this] final def mainLoop(timeout: Float, startTime: Long)(implicit state: LocalState): Unit = {
+  private final def mainLoop(timeout: Float, startTime: Long)(implicit state: LocalState): Unit = {
     implicit val sig: Signature = state.signature
     var loop = true
     Out.debug("## Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProofLoops)) {
-      Interaction(state)
+      Interaction(using state)
 
       if (!Configuration.GUIDED && System.currentTimeMillis() - startTime > 1000 * timeout) {
         loop = false
@@ -249,7 +249,7 @@ object SeqLoop {
                 // e.g. by forward subsumption
                 if (!Control.redundant(cur, state.processed)) {
                   Control.submit(state.processed, state)
-                  if(mainLoopInferences(cur)(state)) loop = false
+                  if(mainLoopInferences(cur)(using state)) loop = false
                   state.incProofLoopCount()
                 } else {
                   Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
@@ -265,7 +265,7 @@ object SeqLoop {
     }
   }
 
-  private[this] final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
+  private final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
     var newclauses: Set[AnnotatedClause] = Set.empty
     /////////////////////////////////////////
@@ -295,29 +295,29 @@ object SeqLoop {
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
-    val detUni_result = Control.detUniInferences(cur)(state)
+    val detUni_result = Control.detUniInferences(cur)(using state)
     newclauses = newclauses union detUni_result
-    val exhaustUni_result = Control.generalUnify(cur)(state)
+    val exhaustUni_result = Control.generalUnify(cur)(using state)
     newclauses = newclauses union exhaustUni_result
     /* Functional Extensionality */
-    val funcext_result = Control.funcExtNew(cur)(state)
+    val funcext_result = Control.funcExtNew(cur)(using state)
     newclauses = newclauses union funcext_result
 //    state.addToHotList(funcext_result)
 
     /* Boolean Extensionality */
-    val boolext_result = Control.boolext(cur)(state)
+    val boolext_result = Control.boolext(cur)(using state)
     newclauses = newclauses union boolext_result
 
     /* paramodulation where at least one involved clause is `cur` */
-    val paramod_result = Control.paramodSet(cur, state.processed)(state)
+    val paramod_result = Control.paramodSet(cur, state.processed)(using state)
     newclauses = newclauses union paramod_result
 
     /* Equality factoring of `cur` */
-    val factor_result = Control.factor(cur)(state)
+    val factor_result = Control.factor(cur)(using state)
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)(state)
+    val primSubst_result = Control.primsubst(cur)(using state)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
@@ -326,7 +326,7 @@ object SeqLoop {
     newclauses = newclauses.map(Control.liftEq)
 
     /* guess functions for those not solved by unification */
-    val funspec_result = Control.guessFuncSpec(Set(cur))(state)
+    val funspec_result = Control.guessFuncSpec(Set(cur))(using state)
     newclauses = newclauses union funspec_result
 
     val choice_result = Control.instantiateChoice(cur)
@@ -342,7 +342,7 @@ object SeqLoop {
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /* Pre-unify new clauses */
-    newclauses = Control.unifyNewClauses(newclauses)(state)
+    newclauses = Control.unifyNewClauses(newclauses)(using state)
 
     /* exhaustively: */
     /* (1) CNF (2) replace eq symbols on top-level by equational literals and */
@@ -475,7 +475,7 @@ object SeqLoop {
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
       try {
-        val proofSignature = userSignatureToTPTP(symbolsInProof(proof))(sig)
+        val proofSignature = userSignatureToTPTP(symbolsInProof(proof))(using sig)
         val proofString = if (Configuration.isSet("compressProof")) proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get))
         else proofToTPTP(proof)
         val proofOutput: String = if (proofSignature.isEmpty) proofString else proofSignature + "\n" + proofString

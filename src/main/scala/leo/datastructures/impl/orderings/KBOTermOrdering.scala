@@ -227,13 +227,13 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
 //  }
 
   final def termWeight(s: Term)(implicit sig: Signature): Ordinal = {
-    termWeight2(s)(sig)
+    termWeight2(s)(using sig)
   }
 
   final def termWeight1(s: Term)(implicit sig: Signature): Ordinal = {
     import leo.datastructures.Term._
     s match {
-      case Symbol(key) => ordinalWeight(sig(key)._ty, weightFunction(key)(sig))
+      case Symbol(key) => ordinalWeight(sig(key)._ty, weightFunction(key)(using sig))
       case Bound(ty, _) => ordinalWeight(ty, 1)
       case ty :::> body =>
         val wx = termWeight1(Term.local.mkBound(ty, 1))
@@ -252,7 +252,7 @@ final class KBOTermOrdering(weightFunction: SymbolWeighting, prec: Precedence) e
   final def termWeight2(s: Term)(implicit sig: Signature): Ordinal = {
     import leo.datastructures.Term._
     s match {
-      case Symbol(key) => ordinalWeight(sig(key)._ty, weightFunction(key)(sig))
+      case Symbol(key) => ordinalWeight(sig(key)._ty, weightFunction(key)(using sig))
       case Bound(ty, _) => ordinalWeight(ty, 1)
       case ty :::> body =>
         val wx = termWeight2(Term.local.mkBound(ty, 1))

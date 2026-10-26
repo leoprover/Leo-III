@@ -30,7 +30,7 @@ class InputProcessingTestSuite extends LeoTestSuite {
       print(s"Parsing ${p._1} ...")
       try {
         val sig = Signature.freshWithHOL()
-        val (t, res) = time(Input.readProblem(s"$source/${p._1}")(sig))
+        val (t, res) = time(Input.readProblem(s"$source/${p._1}")(using sig))
         println(s"done (${t/1000}ms).")
         println(s"Parsed ${res.size} annotated formulas.")
         res foreach { case (_, term, _) =>

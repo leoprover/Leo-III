@@ -51,7 +51,7 @@ trait Multiset[A]
   override def equals(that: Any): Boolean = that match {
     case thatSet: Multiset[_] =>
       (this eq thatSet) || ((this.size == thatSet.size) && (try
-        this subset thatSet.asInstanceOf[Multiset[A]]
+        this `subset` thatSet.asInstanceOf[Multiset[A]]
      catch {case _: ClassCastException => false} ))
     case _ => false
   }
@@ -73,7 +73,7 @@ trait Multiset[A]
 
 object Multiset {
   def empty[A]: Multiset[A] = impl.MultisetImpl.empty
-  def apply[A](elem: A, elems: A*): Multiset[A] = impl.MultisetImpl.apply(elem, elems:_*)
+  def apply[A](elem: A, elems: A*): Multiset[A] = impl.MultisetImpl.apply(elem, elems*)
   def apply[A](coll: Iterable[A]): Multiset[A] = impl.MultisetImpl.apply(coll)
 
   def fromMap[A](map: Map[A, Int]): MultisetImpl[A] = impl.MultisetImpl.fromMap(map)

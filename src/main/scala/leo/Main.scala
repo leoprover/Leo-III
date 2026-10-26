@@ -13,9 +13,9 @@ import leo.modules.input.{CLParameterParser, Input, ProblemStatistics}
   * @since 7/8/14
  */
 object Main {
-  private[this] var hook: scala.sys.ShutdownHookThread = _
-  final private[this] val MSG_LEO3_STOPPED: String = "Leo-III stopped externally."
-  final private[this] val MSG_LEO3_GENERAL_ERROR: String = "OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START"
+  private var hook: scala.sys.ShutdownHookThread = scala.compiletime.uninitialized
+  final private val MSG_LEO3_STOPPED: String = "Leo-III stopped externally."
+  final private val MSG_LEO3_GENERAL_ERROR: String = "OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START"
 
   final def main(args: Array[String]): Unit = {
     try {

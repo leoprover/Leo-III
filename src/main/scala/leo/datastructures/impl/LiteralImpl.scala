@@ -45,7 +45,7 @@ object LiteralImpl {
     } else {
       import leo.Configuration.{TERM_ORDERING => ord}
       import leo.datastructures.{CMP_EQ, CMP_GT, CMP_LT}
-      val cmpResult = ord.compare(t1,t2)(sig)
+      val cmpResult = ord.compare(t1,t2)(using sig)
       if (cmpResult == CMP_EQ || cmpResult == CMP_GT)
         EqLiteral(t1,t2,pol,true)
       else if (cmpResult == CMP_LT)
@@ -62,7 +62,7 @@ object LiteralImpl {
   }
 
 
-  private[this] final case class EqLiteral(left: Term,
+  private final case class EqLiteral(left: Term,
                                      right: Term,
                                      polarity: Boolean,
                                      oriented: Boolean) extends LiteralImpl {
@@ -83,7 +83,7 @@ object LiteralImpl {
 
   }
 
-  private[this] final case class NonEqLiteral(left: Term,
+  private final case class NonEqLiteral(left: Term,
                                    polarity: Boolean) extends LiteralImpl {
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.

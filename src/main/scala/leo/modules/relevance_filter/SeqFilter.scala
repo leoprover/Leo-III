@@ -32,7 +32,7 @@ object SeqFilter {
 
       // Translate all taken formulas to clauses
       taken.foreach{f =>
-        val (name, term, role) = processFormula(f)(sig)
+        val (name, term, role) = processFormula(f)(using sig)
         val nc : ClauseProxy = AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)
         res = nc +: res
       }

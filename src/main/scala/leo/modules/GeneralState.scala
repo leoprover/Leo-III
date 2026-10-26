@@ -114,16 +114,16 @@ object GeneralState {
 protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) extends GeneralState[T] {
   import leo.modules.relevance.NoAxiomFilter
   protected var current_szs : StatusSZS = SZS_Unknown
-  protected var conjecture0: T = _
+  protected var conjecture0: T = scala.compiletime.uninitialized
   protected val negConjecture0: mutable.Set[T] = mutable.Set.empty
-  protected var runStrategy0: RunStrategy = _
+  protected var runStrategy0: RunStrategy = scala.compiletime.uninitialized
   protected var symbolsInConjecture0: mutable.Set[Signature.Key] = mutable.Set.empty
   protected var current_externalProvers: Set[TPTPProver[T]] = Set()
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
   protected var derivationCl: Option[T] = None
   protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
-  protected var timeout0: Int = _
+  protected var timeout0: Int = scala.compiletime.uninitialized
   protected var domainConstr0 : Map[Type, Set[Term]] = Map()
   protected val dist0: SymbolDistribution = SymbolDistribution.empty
   val renamingCash : mutable.Map[Term, (Term, Boolean, Boolean)] = mutable.Map()
@@ -154,7 +154,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
-  private var stats0: ProblemStatistics = _
+  private var stats0: ProblemStatistics = scala.compiletime.uninitialized
   final def setProblemStatistics(stats: ProblemStatistics): Unit = {stats0 = stats}
   final def problemStatistics: ProblemStatistics = stats0
   final def symbolDistribution: SymbolDistribution = dist0
@@ -174,7 +174,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   }
 
 
-  private[this] var axiomfilter0: AxiomFilterConfig = NoAxiomFilter
+  private var axiomfilter0: AxiomFilterConfig = NoAxiomFilter
   final def setAxiomFilterConfig(filterConfig: AxiomFilterConfig): Unit = {
     axiomfilter0 = filterConfig
   }
@@ -192,7 +192,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
 
-  private[this] var langLevel0: LanguageLevel = Lang_Unknown
+  private var langLevel0: LanguageLevel = Lang_Unknown
   def languageLevel: LanguageLevel = langLevel0
   def setLanguageLevel(languageLevel: LanguageLevel): Unit = { langLevel0 = languageLevel  }
 

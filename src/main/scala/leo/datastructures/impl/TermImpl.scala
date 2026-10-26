@@ -143,7 +143,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
     case Atom(key,_) if !symbs.contains(key) => {
       val meta = sig(key)
       if (meta.hasDefn && !meta._defn.symbols.contains(key) && !isPropSet(Signature.PropSkolemConstant, meta.flag)) {
-        mkRedex(meta._defn.δ_expand_upTo(symbs)(sig), args.δ_expand_upTo(symbs)(sig))
+        mkRedex(meta._defn.δ_expand_upTo(symbs)(using sig), args.δ_expand_upTo(symbs)(sig))
       } else {
         mkRoot(hd, args.δ_expand_upTo(symbs)(sig))
       }
@@ -153,7 +153,7 @@ protected[impl] final case class Root(hd: Head, args: Spine) extends TermImpl {
 
   // Queries on terms
   override def ty: Type = ty0(hd.ty, args)
-  @tailrec private[this] def ty0(funty: Type, s: Spine): Type = s match {
+  @tailrec private def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
       case (_ -> out) => ty0(out, tail)
@@ -341,10 +341,10 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(sig) || args.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature): Redex = mkRedex(body.δ_expand(rep)(sig), args.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature): Redex = mkRedex(body.δ_expand(sig), args.δ_expand(sig))
-  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkRedex(body.δ_expand_upTo(symbs)(sig), args.δ_expand_upTo(symbs)(sig))
+  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(using sig) || args.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature): Redex = mkRedex(body.δ_expand(rep)(using sig), args.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature): Redex = mkRedex(body.δ_expand(using sig), args.δ_expand(sig))
+  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkRedex(body.δ_expand_upTo(symbs)(using sig), args.δ_expand_upTo(symbs)(sig))
 
   // Queries on terms
   lazy val ty: Type = ty0(body.ty, args)
@@ -365,8 +365,8 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   def vars0(depth: Int): (Multiset[Int], Set[Int]) = {
     val bodyVars0 = body.asInstanceOf[TermImpl].vars0(depth)
     val argsVars0 = args.vars0(depth)
-    if (args.length == 0) (bodyVars0._1 sum argsVars0._1, argsVars0._2)
-    else  (bodyVars0._1 sum argsVars0._1, bodyVars0._2 union argsVars0._2)
+    if (args.length == 0) (bodyVars0._1 `sum` argsVars0._1, argsVars0._2)
+    else  (bodyVars0._1 `sum` argsVars0._1, bodyVars0._2 union argsVars0._2)
   }
 
   lazy val symbolMap: Map[Signature.Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.view.mapValues{case (c,d) => (c,d+1)}.toMap)
@@ -444,10 +444,10 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth+1)
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature): TermImpl = mkTermAbstr(typ, body.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature): TermImpl = mkTermAbstr(typ, body.δ_expand(sig))
-  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkTermAbstr(typ, body.δ_expand_upTo(symbs)(sig))
+  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(using sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature): TermImpl = mkTermAbstr(typ, body.δ_expand(rep)(using sig))
+  final def δ_expand(implicit sig: Signature): TermImpl = mkTermAbstr(typ, body.δ_expand(using sig))
+  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkTermAbstr(typ, body.δ_expand_upTo(symbs)(using sig))
 
   // Queries on terms
   lazy val ty: Type = typ ->: body.ty
@@ -561,10 +561,10 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
-  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(sig)
-  final def δ_expand(rep: Int)(implicit sig: Signature): TermImpl = mkTypeAbstr(body.δ_expand(rep)(sig))
-  final def δ_expand(implicit sig: Signature): TermImpl = mkTypeAbstr(body.δ_expand(sig))
-  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkTypeAbstr(body.δ_expand_upTo(symbs)(sig))
+  final def δ_expandable(implicit sig: Signature): Boolean = body.δ_expandable(using sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature): TermImpl = mkTypeAbstr(body.δ_expand(rep)(using sig))
+  final def δ_expand(implicit sig: Signature): TermImpl = mkTypeAbstr(body.δ_expand(using sig))
+  final def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = mkTypeAbstr(body.δ_expand_upTo(symbs)(using sig))
 
   // Queries on terms
   lazy val ty: Type = mkPolyType(body.ty)
@@ -636,7 +636,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
    * into the arguments of a term whose head is a bound variable: symbolMap is
    * one of these queries, and the orderings that choose the given clause ask
    * for it constantly. */
-  private[this] lazy val betaNF: TermImpl = betaNormalize.asInstanceOf[TermImpl]
+  private lazy val betaNF: TermImpl = betaNormalize.asInstanceOf[TermImpl]
 
   // Queries on terms
   final def ty = term.ty
@@ -739,12 +739,12 @@ protected[impl] final case class Atom(id: Signature.Key, ty: Type) extends Head 
   override def defExpand(rep: Int)(sig: Signature): Term = if (rep == 0) TermImpl.headToTerm(this)
   else if (rep > 0) {
     val meta = sig(id)
-    if (meta.hasDefn) meta._defn.δ_expand(rep-1)(sig)
+    if (meta.hasDefn) meta._defn.δ_expand(rep-1)(using sig)
     else TermImpl.headToTerm(this)
   } else {
     //rep  < 0
     val meta = sig(id)
-    if (meta.hasDefn) meta._defn.δ_expand(rep)(sig)
+    if (meta.hasDefn) meta._defn.δ_expand(rep)(using sig)
     else TermImpl.headToTerm(this)
   }
   override def defExpand(sig: Signature): Term = defExpand(-1)(sig)
@@ -980,10 +980,10 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   def etaContract: Spine = App(hd.asInstanceOf[TermImpl].etaContract0, tail.etaContract)
 
   // Handling def. expansion
-  @inline final def δ_expandable(sig: Signature): Boolean = hd.δ_expandable(sig) || tail.δ_expandable(sig)
-  @inline final def δ_expand(rep: Int)(sig: Signature): Spine = cons(Left(hd.δ_expand(rep)(sig)), tail.δ_expand(rep)(sig))
-  @inline final def δ_expand(sig: Signature): Spine = cons(Left(hd.δ_expand(sig)), tail.δ_expand(sig))
-  @inline final def δ_expand_upTo(symbs: Set[Signature.Key])(sig: Signature): Spine = cons(Left(hd.δ_expand_upTo(symbs)(sig)), tail.δ_expand_upTo(symbs)(sig))
+  @inline final def δ_expandable(sig: Signature): Boolean = hd.δ_expandable(using sig) || tail.δ_expandable(sig)
+  @inline final def δ_expand(rep: Int)(sig: Signature): Spine = cons(Left(hd.δ_expand(rep)(using sig)), tail.δ_expand(rep)(sig))
+  @inline final def δ_expand(sig: Signature): Spine = cons(Left(hd.δ_expand(using sig)), tail.δ_expand(sig))
+  @inline final def δ_expand_upTo(symbs: Set[Signature.Key])(sig: Signature): Spine = cons(Left(hd.δ_expand_upTo(symbs)(using sig)), tail.δ_expand_upTo(symbs)(sig))
 
   // Queries
   lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
@@ -991,7 +991,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   def vars0(depth: Int): (Multiset[Int], Set[Int]) = {
     val headVars = hd.asInstanceOf[TermImpl].vars0(depth)
     val tailVars = tail.vars0(depth)
-    (headVars._1 sum tailVars._1, headVars._2 union tailVars._2)
+    (headVars._1 `sum` tailVars._1, headVars._2 union tailVars._2)
   }
   lazy val symbolMap: Map[Signature.Key, (Int, Int)] = hd.asInstanceOf[TermImpl].fuseSymbolMap(hd.asInstanceOf[TermImpl].symbolMap, tail.symbolMap)
   lazy val length: Int = 1 + tail.length

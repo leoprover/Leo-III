@@ -83,7 +83,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   final lazy val combinator_I: Term = {
     val id = combinator_I_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def I(ty: Type): Term = mkTypeApp(combinator_I, ty)
 
@@ -102,7 +102,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   final lazy val combinator_K: Term = {
     val id = combinator_K_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def K(ty1: Type, ty2: Type, arg: Term): Term = {
     Out.finest("application of K")
@@ -128,7 +128,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   final lazy val combinator_S: Term = {
     val id = combinator_S_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def S(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     mkhApp(mkTypeApp(combinator_S, Seq(ty1, ty2, ty3)), Seq(arg1, arg2))
@@ -149,7 +149,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   final lazy val combinator_B: Term = {
     val id = combinator_B_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
@@ -170,7 +170,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   final lazy val combinator_C: Term = {
     val id = combinator_C_key
     usedSymbols += id
-    mkAtom(id)(sig)
+    mkAtom(id)(using sig)
   }
   final def C(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     mkhApp(mkTypeApp(combinator_C, Seq(ty1, ty2, ty3)),Seq(arg1,arg2))
@@ -436,7 +436,7 @@ protected[encoding] class LambdaElim_LambdaLifting(sig: TypedFOLEncodingSignatur
           val newFunTy0 = Type.mkFunType(directAppliedTys, indirectArgsToGoalTy)
           val newFunTy = mkPolyUnivType(ftyVars.size,newFunTy0)
           Out.finest(s"newFunTy: ${newFunTy.pretty(sig)}")
-          val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(sig)
+          val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(using sig)
           addNewFunDef(newFun, body, translatedFv, ftyVars, transformedAbsTypes)(holSignature)
           val result0 = Term.local.mkTypeApp(newFun, ftyVars)
           val result = Term.local.mkTermApp(result0, translatedFv)

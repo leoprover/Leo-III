@@ -111,7 +111,7 @@ package object modules {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.foreach { key =>
       val name = sig.apply(key).name
-      sb.append(ToTHF(key)(sig))
+      sb.append(ToTHF(key)(using sig))
       sb.append("\n")
     }
     sb.dropRight(1).toString()
@@ -223,7 +223,7 @@ package object modules {
 
   private def mkTPTP(cl : ClauseProxy)(sig: Signature) : String = {
     try{
-      ToTHF.withAnnotation(cl)(sig)
+      ToTHF.withAnnotation(cl)(using sig)
     } catch {
       case e : Throwable => leo.Out.warn(s"Could not translate: ${cl.pretty}.\n Error: ${e.toString}"); cl.pretty
     }

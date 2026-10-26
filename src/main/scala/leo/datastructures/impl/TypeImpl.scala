@@ -204,8 +204,8 @@ protected[datastructures] final case class ProductTypeNode(tys: Seq[Type]) exten
   def isApplicableWith(arg: Type): Boolean = false
 
   // Queries on types
-  final lazy val typeVars: Set[Type] = Set.concat(tys.map(_.typeVars):_*)
-  final lazy val symbols: Set[Signature.Key] = Set.concat(tys.map(_.symbols):_*)
+  final lazy val typeVars: Set[Type] = Set.concat(tys.map(_.typeVars)*)
+  final lazy val symbols: Set[Signature.Key] = Set.concat(tys.map(_.symbols)*)
 
   final val funDomainType = None
   final val codomainType: ProductTypeNode = this

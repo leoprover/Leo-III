@@ -130,7 +130,7 @@ trait Term extends Pretty with Prettier {
   def typeClosure(subst: Subst): Term
 
   // Other operations
-  final def compareTo(that: Term)(implicit sig: Signature): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)(sig)
+  final def compareTo(that: Term)(implicit sig: Signature): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)(using sig)
   /** Return the β-nf of the term */
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */
@@ -167,7 +167,7 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
+  override final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(using sig)
   override final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
   override final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
   override final def mkInteger(n: BigInt): Term = TermImpl.mkInteger(n)

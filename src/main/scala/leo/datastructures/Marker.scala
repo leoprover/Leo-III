@@ -155,7 +155,7 @@ object AnnotatedClause {
 
 abstract sealed class ClauseAnnotation extends Pretty {
   def fromRule: leo.modules.calculus.CalculusRule
-  def parents: Seq[_ <: ClauseProxy]
+  def parents: Seq[? <: ClauseProxy]
 }
 
 object ClauseAnnotation {

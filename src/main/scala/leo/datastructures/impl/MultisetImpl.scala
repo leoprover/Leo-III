@@ -77,7 +77,7 @@ class MultisetImpl[A](contents: Map[A, Int]) extends Multiset[A] {
     new Iterator[A] {
       val mapIterator: Iterator[A] = contents.keysIterator
       var curMult: Int = -1
-      var curElem: A = _
+      var curElem: A = scala.compiletime.uninitialized
 
       override def hasNext: Boolean = {
         if (curMult <= 0) {

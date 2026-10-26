@@ -129,7 +129,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
     import leo.datastructures.Clause
     assert(Term.wellTyped(f1))
     println(f1.pretty(sig))
-    val cnf = leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(sig).toSet
+    val cnf = leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(using sig).toSet
     assert(cnf.forall(Clause.wellTyped))
     cnf.foreach{cl => println(cl.pretty(sig))}
     val result = EncodingAnalyzer.analyze(cnf)

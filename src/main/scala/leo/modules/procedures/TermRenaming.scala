@@ -6,5 +6,5 @@ sealed abstract class TermRenaming
 object TermRenaming {
   final def apply(): TermRenaming = new TermRenamingImpl()
 
-  private[this] final class TermRenamingImpl extends TermRenaming
+  private final class TermRenamingImpl extends TermRenaming
 }

@@ -20,7 +20,7 @@ import leo.modules.input.CLParameterParser
  * @since 13.11.2014
  */
 object Configuration extends DefaultConfiguration {
-  private var configMap: Map[String, Seq[String]] = _
+  private var configMap: Map[String, Seq[String]] = scala.compiletime.uninitialized
 
   private val PARAM_THREADCOUNT = "n"
   private val PARAM_VERBOSITY = "v"

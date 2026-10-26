@@ -18,8 +18,8 @@ class TermOrderingTest extends LeoTestSuite {
     val y = vargen(i)
     val expect = CMP_NC
 
-    validate(c0,x,expect)(sig)
-    validate(c0,y,expect)(sig)
+    validate(c0,x,expect)(using sig)
+    validate(c0,y,expect)(using sig)
   }
 
   test("f(X) > X") {
@@ -34,7 +34,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = X
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("f(X,Y) > X / f(X,Y) >  Y") {
@@ -51,8 +51,8 @@ class TermOrderingTest extends LeoTestSuite {
     val t2 = Y
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
-    validate(s,t2,expect)(sig)
+    validate(s,t,expect)(using sig)
+    validate(s,t2,expect)(using sig)
   }
 
   test("f(X) < g(X)") {
@@ -68,7 +68,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(X)
     val expect = CMP_LT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("f(f(X)) > f(X)") {
@@ -83,7 +83,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = f(X)
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("f(X) < g(f(X))") {
@@ -99,7 +99,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(f(X))
     val expect = CMP_LT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
 
@@ -118,7 +118,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = f(sk4(f(sk4(f(sk4(f(sk4(X))))))))
     val expect = CMP_LT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("p(X) > F / p(X) > T") {
@@ -134,8 +134,8 @@ class TermOrderingTest extends LeoTestSuite {
     val t2 = LitTrue
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
-    validate(s,t2,expect)(sig)
+    validate(s,t,expect)(using sig)
+    validate(s,t2,expect)(using sig)
   }
 
   test("f <> λXλY.f Y X") {
@@ -148,7 +148,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = λ(i,i)(f(mkBound(i,1), mkBound(i,2)))
     val expect = CMP_NC
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("e(c(x)) > x(e)") {
@@ -164,7 +164,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = X(e)
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   test("totality 1") {
@@ -180,8 +180,8 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(f(c), f(f(d)))
     val u = f(g(f(d),c))
 
-    validate(s,t,CMP_LT)(sig)
-    validate(s,u,CMP_LT)(sig)
+    validate(s,t,CMP_LT)(using sig)
+    validate(s,u,CMP_LT)(using sig)
   }
 
   test("totality 2") {
@@ -197,13 +197,13 @@ class TermOrderingTest extends LeoTestSuite {
     val s = f(g(c,f(d)))
     val t = g(c,c)
 
-    validate(d,c,CMP_LT)(sig)
-    validate(g,c,CMP_GT)(sig)
-    validate(f,c,CMP_GT)(sig)
-    validate(c,c,CMP_EQ)(sig)
-    validate(f(d),c,CMP_GT)(sig)
+    validate(d,c,CMP_LT)(using sig)
+    validate(g,c,CMP_GT)(using sig)
+    validate(f,c,CMP_GT)(using sig)
+    validate(c,c,CMP_EQ)(using sig)
+    validate(f(d),c,CMP_GT)(using sig)
 
-    validate(s,t,CMP_GT)(sig)
+    validate(s,t,CMP_GT)(using sig)
   }
 
   test("l^f > l^t") {
@@ -218,7 +218,7 @@ class TermOrderingTest extends LeoTestSuite {
     val t = Literal.mkLit(p(X), true)
     val expect = CMP_GT
 
-    validate(s,t,expect)(sig)
+    validate(s,t,expect)(using sig)
   }
 
   private final def validate(s: Term, t:Term, expect: CMP_Result)(implicit sig: Signature): Unit = {

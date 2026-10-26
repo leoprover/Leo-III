@@ -26,7 +26,7 @@ class UniLitSimpTest extends LeoTestSuite {
     import leo.datastructures.Subst
     println(left.pretty(sig))
     println(right.pretty(sig))
-    val result = Simp.uniLitSimp(Literal.mkNeg(left, right))(sig)
+    val result = Simp.uniLitSimp(Literal.mkNeg(left, right))(using sig)
     println(s"Result:\n\t${result._2.map(_.pretty(sig)).mkString("\n\t")}")
     assert(result._2.size == 2)
 

@@ -59,7 +59,7 @@ trait Literal extends Pretty with Prettier {
     * `mc(l) ≡ {{s},{t}}` if `l.polarity` and `mc(l) ≡ {{s,t}}` if `!l.polarity`,
     * and `(s,t) ≡ (l.left,l.right)`.
     * */
-  @inline final def compare(that: Literal)(implicit sig: Signature): CMP_Result = Literal.compare(this, that)(sig)
+  @inline final def compare(that: Literal)(implicit sig: Signature): CMP_Result = Literal.compare(this, that)(using sig)
 
 
   // Utility functions
@@ -165,7 +165,7 @@ object Literal {
     assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
     assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
     assert(t1.ty == t2.ty)
-    LitImpl.mkOrdered(t1,t2,pol)(sig)
+    LitImpl.mkOrdered(t1,t2,pol)(using sig)
   }
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
@@ -187,7 +187,7 @@ object Literal {
     * t1 will be used as left and t2 as right.
     * Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def mkPosOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,true)(sig)
+  @inline final def mkPosOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,true)(using sig)
   /** Create new (equational) literal with equation `left = right`
     * and negative polarity. During construction, the method
     * tries to order the two terms into and ordered equation left=right,
@@ -195,7 +195,7 @@ object Literal {
     * t1 will be used as left and t2 as right.
     * Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`.*/
-  @inline final def mkNegOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,false)(sig)
+  @inline final def mkNegOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,false)(using sig)
   // Apply method redirections
   /** Create new unordered (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
@@ -239,7 +239,7 @@ object Literal {
       var j = i+1
       while (j <= maxIdx) {
         val l2 = lits(j)
-        val cmp = l1.compare(l2)(sig)
+        val cmp = l1.compare(l2)(using sig)
         if (cmp == CMP_GT) { // l1 > l2
           notmax = notmax :+ l2
           notstrictMax = notstrictMax :+ l2
@@ -259,8 +259,8 @@ object Literal {
     }
     Map(LitStrictlyMax -> lits.diff(notstrictMax), LitMax -> lits.diff(notmax))
   }
-  final def maxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(sig)(LitMax)
-  final def strictlyMaxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(sig)(LitStrictlyMax)
+  final def maxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(using sig)(LitMax)
+  final def strictlyMaxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(using sig)(LitStrictlyMax)
 
   /** Compare two literals of same polarity*/
   private final def cmpSamePol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
@@ -273,12 +273,12 @@ object Literal {
     if (a.oriented) {
       if (b.oriented) {
         // both oriented
-        val albl = al.compareTo(bl)(sig)
+        val albl = al.compareTo(bl)(using sig)
         if (albl == CMP_GT) CMP_GT
         else if (albl == CMP_LT) CMP_LT
         else {
           if (albl == CMP_EQ) {
-            val arbr = ar.compareTo(br)(sig)
+            val arbr = ar.compareTo(br)(using sig)
             if (arbr == CMP_GT) CMP_GT
             else if (arbr == CMP_LT) CMP_LT
             else CMP_NC
@@ -286,18 +286,18 @@ object Literal {
         }
       } else {
         // only a oriented
-        val albl = al.compareTo(bl)(sig)
+        val albl = al.compareTo(bl)(using sig)
         if (albl == CMP_LT) CMP_LT
         else {
-          val albr = al.compareTo(br)(sig)
+          val albr = al.compareTo(br)(using sig)
           if (albr == CMP_LT) CMP_LT
           else if (albl == CMP_GT && albr == CMP_GT) CMP_GT
           else {
-            val arbr = ar.compareTo(br)(sig)
+            val arbr = ar.compareTo(br)(using sig)
             if (isGE(albl) && isGE(arbr)) CMP_GT
             else if (isLE(albl) && isLE(arbr)) CMP_LT
             else {
-              val arbl = ar.compareTo(bl)(sig)
+              val arbl = ar.compareTo(bl)(using sig)
               if (isLE(arbl) && isLE(albr)) CMP_LT
               else CMP_NC
             }
@@ -307,18 +307,18 @@ object Literal {
     } else {
       if (b.oriented) {
         // only b oriented
-        val albl = al.compareTo(bl)(sig)
+        val albl = al.compareTo(bl)(using sig)
         if (albl == CMP_GT) CMP_GT
         else {
-          val arbl = ar.compareTo(bl)(sig)
+          val arbl = ar.compareTo(bl)(using sig)
           if (arbl == CMP_GT) CMP_GT
           else if (albl == CMP_LT && arbl == CMP_LT) CMP_LT
           else {
-            val albr = al.compareTo(br)(sig)
+            val albr = al.compareTo(br)(using sig)
             if (isLE(arbl) && isLE(albr)) CMP_LT
             else if (isGE(arbl) && isGE(albr)) CMP_GT
             else {
-              val arbr = ar.compareTo(br)(sig)
+              val arbr = ar.compareTo(br)(using sig)
               if (isGE(albl) && isGE(arbr)) CMP_GT
               else CMP_NC
             }
@@ -327,10 +327,10 @@ object Literal {
       } else {
         // none oriented
 
-        val albl = al.compareTo(bl)(sig)
-        val albr = al.compareTo(br)(sig)
-        val arbl = ar.compareTo(bl)(sig)
-        val arbr = ar.compareTo(br)(sig)
+        val albl = al.compareTo(bl)(using sig)
+        val albr = al.compareTo(br)(using sig)
+        val arbl = ar.compareTo(bl)(using sig)
+        val arbr = ar.compareTo(br)(using sig)
 
         if ((albl == CMP_GT && albr == CMP_GT) ||
           (isGE(albl) && isGE(arbr)) ||
@@ -360,21 +360,21 @@ object Literal {
 
     if (a.oriented) {
 //      println("a oriented")
-      val albl = al.compareTo(bl)(sig)
+      val albl = al.compareTo(bl)(using sig)
 //      println(s"albl: ${Orderings.pretty(albl)}")
       if (isLE(albl)) CMP_LT
       else {
-        val albr = al.compareTo(br)(sig)
+        val albr = al.compareTo(br)(using sig)
 //        println(s"albr: ${Orderings.pretty(albr)}")
         if (isLE(albr)) CMP_LT
         else if (albl == CMP_GT && albr == CMP_GT) CMP_GT
         else CMP_NC
       }
     } else {
-      val albl = al.compareTo(bl)(sig)
-      val albr = al.compareTo(br)(sig)
-      val arbl = ar.compareTo(bl)(sig)
-      val arbr = ar.compareTo(br)(sig)
+      val albl = al.compareTo(bl)(using sig)
+      val albr = al.compareTo(br)(using sig)
+      val arbl = ar.compareTo(bl)(using sig)
+      val arbr = ar.compareTo(br)(using sig)
 
       if ((albl == CMP_GT && albr == CMP_GT) || (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
       else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT

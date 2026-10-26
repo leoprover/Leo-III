@@ -64,7 +64,7 @@ object ToTHF {
       // Print out type declaration (needed in all cases)
       val tyDecl = s"thf(${escapeTPTPName(name)}, type, $symbolName: ${typeToTHF(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
-      if (constant.hasDefn && !typeOnly) s"${tyDecl}\n${definitionToTPTP(k)(sig)}"
+      if (constant.hasDefn && !typeOnly) s"${tyDecl}\n${definitionToTPTP(k)(using sig)}"
       else tyDecl
     } else {
       // Its a type constant
@@ -75,7 +75,7 @@ object ToTHF {
   }
 
   final def output(k: Signature.Key)(implicit sig: Signature): Output = new Output {
-    final def apply(): String = ToTHF(k)(sig)
+    final def apply(): String = ToTHF(k)(using sig)
   }
 
   final def definitionToTPTP(k: Signature.Key)(implicit sig: Signature): String = {
@@ -131,7 +131,7 @@ object ToTHF {
     while(keys2.hasNext){
       val k = keys2.next()
       if(sig(k).hasDefn){
-        sb.append(definitionToTPTP(k)(sig))
+        sb.append(definitionToTPTP(k)(using sig))
         sb.append("\n")
       }
     }
@@ -405,7 +405,7 @@ object ToTHF {
           case _ => s"(${toTPTP0(left,tyVarCount,bVars)(sig)}) ${sig(!===.key).name} (${toTPTP0(right,tyVarCount,bVars)(sig)})"
         }
       }
-      case t1 Impl t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(Impl.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
+      case t1 `Impl` t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(Impl.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
       case t1 <= t2  => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(<=.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
       case t1 <=> t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(<=>.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
       case t1 ~& t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(~&.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
@@ -438,7 +438,7 @@ object ToTHF {
     }
   }
 
-  private[this] final def argToTPTP(arg: Either[Term, Type], tyVarCount: Int, bVars: Map[Int, String])(sig: Signature): String = {
+  private final def argToTPTP(arg: Either[Term, Type], tyVarCount: Int, bVars: Map[Int, String])(sig: Signature): String = {
     arg match {
       case Left(termArg) => termArg match {
         case Bound(_, _) | Symbol(_) => toTPTP0(termArg,tyVarCount, bVars)(sig)
