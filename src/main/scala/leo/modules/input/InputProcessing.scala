@@ -3,7 +3,7 @@ package leo.modules.input
 import leo.datastructures.{Kind, NotWellTypedException, Role, Signature, TPTP, Term, Type}
 import leo.datastructures.Term.{mkAtom, mkBound, mkInteger, mkRational, mkReal, mkTermApp, mkTypeApp, Λ, λ}
 import leo.datastructures.Type.{mkFunType, mkNAryPolyType, mkProdType, mkType, mkVarType, typeKind}
-import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
+import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError, SZS_UsageError}
 import leo.modules.SZSException
 import leo.{Configuration, Out}
 
@@ -308,7 +308,12 @@ object InputProcessing {
           }
         } else {
           if (ft.isUninterpretedFunction) throw new SZSException(SZS_InputError, s"Symbol '$f' is unknown, please specify its type first.")
-          else throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$f' is not supported or unknown.")
+          else {
+            if (leo.datastructures.TPTP.isDollarDollarWord(f) || leo.datastructures.TPTP.knownTPTPDollarWords.contains(f))
+              throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$f' is not supported by Leo-III.")
+            else
+              throw new SZSException(SZS_InputError, s"Dollar word symbol '$f' is not a legal TPTP defined symbol.")
+          }
         }
 
       case Variable(name) =>
@@ -826,7 +831,7 @@ object InputProcessing {
           }
         } else LitTrue
       case ft@AtomicFormula(f, args) =>
-        val key = getOrCreateSymbolWithWarning(sig)(f, mkSimplePredicateType(args.size))
+        val key = getOrCreateSymbol(sig)(f, mkSimplePredicateType(args.size), failOrWarn = true)
         if (sig(key).isTypeConstructor) {
           throw new SZSException(SZS_TypeError, s"Symbol '${sig(key).name}' is used as term symbol, but it's a type (or type constructor).")
         } else {
@@ -970,7 +975,7 @@ object InputProcessing {
 
     term match {
       case AtomicTerm(f, args) => // Expect type constructors and polymorphic symbols here
-        val meta = sig(getOrCreateSymbolWithWarning(sig)(f, mkSimpleFunctionType(args.size)))
+        val meta = sig(getOrCreateSymbol(sig)(f, mkSimpleFunctionType(args.size), failOrWarn = true))
         if (meta.isTypeConstructor) {
           val result = if (args.isEmpty) Type.mkType(meta.key)
           else {
@@ -1576,26 +1581,26 @@ object InputProcessing {
   private case class TermVariableMarker(typ: Type) extends VariableMarker
   private case object TypeVariableMarker extends VariableMarker
 
-  @inline private final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, force: Boolean = false): Signature.Key = {
+  @inline private final def getOrCreateSymbol(sig: Signature)(name: String, ty: Type, failOrWarn: Boolean = false): Signature.Key = {
+    import leo.datastructures.TPTP
     if (sig.exists(name)) sig(name).key
     else {
-      if (name.startsWith("$") && !force) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
-      else sig.addUninterpreted(name, ty)
-    }
-  }
-
-  /** Analogous to [[getOrCreateSymbol]] only that a warning is issued additionally (used for TFF). */
-  @inline private final def getOrCreateSymbolWithWarning(sig: Signature)(name: String, ty: Type): Signature.Key = {
-    if (sig.exists(name)) sig(name).key
-    else {
-      if (name.startsWith("$")) throw new SZSException(SZS_Inappropriate, s"System symbol or defined (TPTP) symbol '$name' is not supported or unknown.")
-      else {
-        if (Configuration.isSet("no-default-types"))
-          throw new SZSException(SZS_TypeError, s"Symbol '$name' has unknown type. Declare its type first.")
-        else {
-          leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
-          sig.addUninterpreted(name, ty)
+      if (TPTP.isDollarWord(name)) {
+        if (TPTP.knownTPTPDollarWords.contains(name))
+          throw new SZSException(SZS_Inappropriate, s"TPTP defined symbol '$name' is not supported by Leo-III.")
+        else
+          throw new SZSException(SZS_InputError, s"Dollar word symbol '$name' is not a legal TPTP defined symbol.")
+      } else if (TPTP.isDollarDollarWord(name)) {
+        throw new SZSException(SZS_Inappropriate, s"System symbol '$name' is not supported.")
+      } else {
+        if (failOrWarn) {
+          if (Configuration.isSet("no-default-types"))
+            throw new SZSException(SZS_TypeError, s"Symbol '$name' has unknown type, default types are disabled. Declare its type first.")
+          else {
+            leo.Out.warn(s"Symbol '$name' was used without specifying its type first. Assuming default type '${ty.pretty(sig)}' ...")
+          }
         }
+        sig.addUninterpreted(name, ty)
       }
     }
   }
