@@ -27,7 +27,7 @@ lazy val leo = (project in file("."))
       "-Xmx2g"
     ),
     //resolvers += "Sonatype S01 OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.5",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.8.0",
     libraryDependencies += "io.github.leoprover" %% "logic-embedding-runtime" % "2.0.0",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.20" % "test",
     
